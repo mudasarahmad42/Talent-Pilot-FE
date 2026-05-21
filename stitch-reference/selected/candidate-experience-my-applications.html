@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Applications | Talent Pilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#c0c7cf",
+                        "outline": "#727783",
+                        "on-primary-container": "#dbe6ff",
+                        "surface-variant": "#d5e3fc",
+                        "surface-dim": "#ccdbf3",
+                        "inverse-on-surface": "#eaf1ff",
+                        "tertiary": "#005b3e",
+                        "surface-tint": "#005eb5",
+                        "on-secondary-fixed-variant": "#40484e",
+                        "surface": "#f8f9ff",
+                        "on-tertiary-fixed-variant": "#005137",
+                        "surface-container-highest": "#d5e3fc",
+                        "on-background": "#0d1c2e",
+                        "on-surface": "#0d1c2e",
+                        "tertiary-fixed": "#68fcbf",
+                        "primary-fixed-dim": "#a8c8ff",
+                        "surface-container": "#e6eeff",
+                        "secondary-fixed": "#dce3eb",
+                        "on-tertiary-fixed": "#002114",
+                        "on-primary-fixed-variant": "#00468a",
+                        "surface-container-low": "#eff4ff",
+                        "inverse-surface": "#233144",
+                        "primary-fixed": "#d6e3ff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#dce3eb",
+                        "tertiary-container": "#007652",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#151c22",
+                        "secondary": "#585f66",
+                        "on-secondary-container": "#5e656c",
+                        "surface-container-high": "#dce9ff",
+                        "on-tertiary-container": "#76ffc4",
+                        "primary-container": "#0a66c2",
+                        "surface-bright": "#f8f9ff",
+                        "inverse-primary": "#a8c8ff",
+                        "on-surface-variant": "#414752",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#45dfa4",
+                        "primary": "#004e99",
+                        "on-primary-fixed": "#001b3d",
+                        "error": "#ba1a1a",
+                        "background": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#c1c6d4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "24px",
+                        "margin-desktop": "40px",
+                        "stack-sm": "12px",
+                        "stack-lg": "48px",
+                        "margin-mobile": "16px",
+                        "gutter": "24px",
+                        "base": "8px",
+                        "container-max": "1120px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-xl-mobile": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            position: relative;
+        }
+        .active-tab::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #004e99;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Top Navigation Bar -->
+<header class="bg-surface-container-lowest sticky top-0 z-50 shadow-[0_8px_30px_rgba(10,102,194,0.04)]">
+<div class="max-w-container-max mx-auto px-margin-desktop h-20 flex justify-between items-center">
+<div class="flex items-center gap-10">
+<span class="font-headline-md text-headline-md font-bold text-primary">Talent Pilot</span>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Jobs</a>
+<a class="font-label-md text-label-md text-primary border-b-2 border-primary pb-1" href="#">My Applications</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Interviews</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Profile</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-6 py-2 bg-primary-container text-white rounded-lg font-label-md text-label-md hover:opacity-90 transition-all active:scale-95">Find Jobs</button>
+<button class="hidden md:block font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">Log Out</button>
+</div>
+</div>
+</header>
+<main class="max-w-container-max mx-auto px-margin-desktop py-stack-lg min-h-screen">
+<!-- Header Section -->
+<section class="mb-stack-lg">
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">My Applications</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Track and manage your professional journey. Stay updated on your progress and respond to recruiter invitations.</p>
+</section>
+<!-- Filters Section -->
+<section class="mb-stack-md flex flex-wrap gap-4 items-center bg-surface-container-low p-4 rounded-xl border border-outline-variant/30">
+<div class="relative group">
+<label class="block text-[10px] uppercase tracking-wider text-outline mb-1 px-1">Status</label>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-label-md font-label-md appearance-none pr-10 focus:ring-2 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+<option>All Statuses</option>
+<option>Invited</option>
+<option>Applied</option>
+<option>Interviewing</option>
+<option>Hired</option>
+<option>Rejected</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-9 pointer-events-none text-on-surface-variant text-sm">expand_more</span>
+</div>
+<div class="relative group">
+<label class="block text-[10px] uppercase tracking-wider text-outline mb-1 px-1">Date Applied</label>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-label-md font-label-md appearance-none pr-10 focus:ring-2 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+<option>Last 30 days</option>
+<option>Last 90 days</option>
+<option>All time</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-9 pointer-events-none text-on-surface-variant text-sm">calendar_month</span>
+</div>
+<div class="relative group">
+<label class="block text-[10px] uppercase tracking-wider text-outline mb-1 px-1">Department</label>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-label-md font-label-md appearance-none pr-10 focus:ring-2 focus:ring-primary focus:border-primary outline-none cursor-pointer">
+<option>Engineering</option>
+<option>Sales</option>
+<option>Marketing</option>
+<option>HR</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-9 pointer-events-none text-on-surface-variant text-sm">work</span>
+</div>
+<button class="ml-auto mt-4 md:mt-0 flex items-center gap-2 text-primary font-label-md hover:underline">
+<span class="material-symbols-outlined text-[20px]">filter_list_off</span>
+                Clear Filters
+            </button>
+</section>
+<!-- Application List -->
+<div class="space-y-6">
+<!-- 1. Invited Application (High Priority) -->
+<div class="bg-surface-container-lowest rounded-xl border-2 border-primary/20 shadow-[0_8px_30px_rgba(10,102,194,0.06)] overflow-hidden transition-all hover:border-primary/40">
+<div class="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex gap-6 items-start">
+<div class="w-16 h-16 rounded-xl bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-4xl" data-weight="fill">developer_mode_tv</span>
+</div>
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h3 class="font-headline-md text-headline-md text-on-surface">Senior .NET Engineer</h3>
+<span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+                                    Invited
+                                </span>
+</div>
+<p class="text-on-surface-variant font-body-md mb-2">Engineering • Remote • TKXEL</p>
+<div class="flex gap-4 text-outline font-label-sm">
+<span>Recieved: Oct 20, 2023</span>
+<span>•</span>
+<span class="text-primary font-semibold">Response required in 48h</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row items-center gap-4">
+<button class="w-full sm:w-auto px-8 py-3 bg-primary text-white rounded-lg font-label-md font-semibold hover:opacity-90 shadow-sm transition-all active:scale-95">Confirm Application</button>
+<button class="w-full sm:w-auto px-8 py-3 bg-transparent text-secondary font-label-md font-semibold hover:bg-secondary/5 rounded-lg transition-all">Not Interested</button>
+</div>
+</div>
+<div class="bg-primary/5 px-8 py-4 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-[20px]">info</span>
+<p class="text-primary font-label-md">Our recruitment team identified your profile as a great match for this role.</p>
+</div>
+</div>
+<!-- 2. Active Application -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant hover:shadow-md transition-all">
+<div class="p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 flex-grow">
+<div class="col-span-1 md:col-span-2">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Angular Developer</h3>
+<p class="text-on-surface-variant font-label-md">Engineering • Full-time</p>
+</div>
+<div>
+<p class="text-outline font-label-sm uppercase mb-1">Status</p>
+<span class="px-3 py-1 bg-[#F3E8FF] text-[#7E22CE] rounded-full text-label-sm font-label-sm flex items-center w-fit gap-1">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                                Interview Scheduled
+                            </span>
+</div>
+<div>
+<p class="text-outline font-label-sm uppercase mb-1">Last Updated</p>
+<p class="font-label-md text-on-surface">Oct 24, 2023</p>
+</div>
+</div>
+<div class="lg:text-right flex-shrink-0">
+<button class="text-primary font-label-md flex items-center gap-1 hover:underline lg:justify-end">
+                            View Details
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="border-t border-outline-variant/30 px-8 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-low/50">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[18px]">tips_and_updates</span>
+</div>
+<div>
+<span class="text-on-surface-variant font-label-sm">Next Step:</span>
+<span class="text-on-surface font-label-md ml-1">Technical Assessment on Oct 27, 2023</span>
+</div>
+</div>
+<button class="text-primary border border-primary/30 px-4 py-1.5 rounded-lg text-label-md font-label-md hover:bg-primary/5">
+                        Prepare Now
+                    </button>
+</div>
+</div>
+<!-- 3. Past Application -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant opacity-80 hover:opacity-100 transition-all group">
+<div class="p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 flex-grow">
+<div class="col-span-1 md:col-span-2">
+<h3 class="font-headline-md text-headline-md text-on-surface-variant group-hover:text-on-surface mb-1 transition-colors">QA Automation Engineer</h3>
+<p class="text-outline font-label-md">Engineering • Contract</p>
+</div>
+<div>
+<p class="text-outline font-label-sm uppercase mb-1">Status</p>
+<span class="px-3 py-1 bg-error-container text-error rounded-full text-label-sm font-label-sm flex items-center w-fit gap-1">
+<span class="material-symbols-outlined text-[14px]">cancel</span>
+                                Rejected
+                            </span>
+</div>
+<div>
+<p class="text-outline font-label-sm uppercase mb-1">Date Applied</p>
+<p class="font-label-md text-outline">Sept 15, 2023</p>
+</div>
+</div>
+<div class="lg:text-right flex-shrink-0">
+<button class="text-on-surface-variant font-label-md flex items-center gap-1 hover:text-primary transition-colors lg:justify-end">
+                            Archive
+                            <span class="material-symbols-outlined text-[18px]">archive</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Help/Guide Box -->
+<aside class="mt-stack-lg bg-surface-container p-8 rounded-2xl flex flex-col md:flex-row gap-6 items-center">
+<div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0">
+<span class="material-symbols-outlined text-primary text-3xl">lightbulb</span>
+</div>
+<div class="flex-grow text-center md:text-left">
+<h4 class="font-headline-md text-on-surface mb-1">Career Guide: Nailing the Technical Interview</h4>
+<p class="text-on-surface-variant font-body-md">We noticed you have an upcoming technical assessment. Check out our latest guide on best practices for Angular coding challenges.</p>
+</div>
+<button class="px-6 py-2.5 bg-white border border-outline-variant text-primary rounded-lg font-label-md hover:bg-primary-fixed transition-colors shrink-0">Read Guide</button>
+</aside>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-highest dark:bg-inverse-surface mt-stack-lg border-t border-outline-variant">
+<div class="max-w-container-max mx-auto py-stack-md px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-base">
+<div class="flex items-center gap-4">
+<span class="font-headline-md font-semibold text-primary">Talent Pilot</span>
+<span class="hidden md:block w-px h-6 bg-outline-variant"></span>
+<p class="font-body-md text-on-surface-variant">© 2024 Talent Pilot. Your career journey, supported.</p>
+</div>
+<div class="flex gap-8">
+<a class="font-label-md text-on-surface-variant hover:text-primary underline decoration-2 underline-offset-4" href="#">Careers</a>
+<a class="font-label-md text-on-surface-variant hover:text-primary underline decoration-2 underline-offset-4" href="#">Privacy Policy</a>
+<a class="font-label-md text-on-surface-variant hover:text-primary underline decoration-2 underline-offset-4" href="#">Terms of Service</a>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('button, select').forEach(el => {
+            el.addEventListener('click', function(e) {
+                // Potential for adding subtle ripple effect or sound feedback
+            });
+        });
+
+        // Simple scroll observer for sticky header elevation
+        const header = document.querySelector('header');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 0) {
+                header.classList.add('shadow-md');
+            } else {
+                header.classList.remove('shadow-md');
+            }
+        });
+    </script>
+</body></html>

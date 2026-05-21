@@ -1,0 +1,327 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Job Application | Senior .NET Engineer - Talent Pilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "primary-fixed-dim": "#a8c8ff",
+                "inverse-surface": "#303032",
+                "on-primary-fixed": "#001b3d",
+                "surface-container-low": "#f6f3f5",
+                "primary-container": "#0a66c2",
+                "tertiary-container": "#057642",
+                "on-tertiary-fixed-variant": "#00522c",
+                "on-surface-variant": "#414752",
+                "primary": "#004e99",
+                "on-tertiary-container": "#9afab9",
+                "outline-variant": "#c1c6d4",
+                "surface": "#fcf8fb",
+                "on-secondary": "#ffffff",
+                "on-error": "#ffffff",
+                "inverse-on-surface": "#f3f0f2",
+                "surface-container-lowest": "#ffffff",
+                "on-surface": "#1b1b1d",
+                "background": "#fcf8fb",
+                "secondary": "#5b5f62",
+                "surface-bright": "#fcf8fb",
+                "on-secondary-fixed-variant": "#43474a",
+                "on-secondary-fixed": "#181c1e",
+                "on-error-container": "#93000a",
+                "surface-container": "#f0edef",
+                "on-secondary-container": "#5f6366",
+                "inverse-primary": "#a8c8ff",
+                "secondary-fixed-dim": "#c3c7ca",
+                "surface-variant": "#e4e2e4",
+                "on-primary": "#ffffff",
+                "surface-dim": "#dcd9dc",
+                "secondary-container": "#dde0e3",
+                "tertiary-fixed": "#97f7b6",
+                "tertiary": "#005b31",
+                "surface-container-highest": "#e4e2e4",
+                "tertiary-fixed-dim": "#7cda9b",
+                "on-tertiary-fixed": "#00210e",
+                "on-primary-container": "#dbe6ff",
+                "on-background": "#1b1b1d",
+                "primary-fixed": "#d6e3ff",
+                "on-tertiary": "#ffffff",
+                "surface-container-high": "#eae7ea",
+                "outline": "#727783",
+                "secondary-fixed": "#e0e3e6",
+                "error": "#ba1a1a",
+                "surface-tint": "#005eb5",
+                "on-primary-fixed-variant": "#00468a",
+                "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "container-max-width": "1120px",
+                "section-padding": "64px",
+                "gutter": "24px",
+                "margin-mobile": "16px",
+                "unit": "8px"
+            },
+            "fontFamily": {
+                "headline-xl-mobile": ["Plus Jakarta Sans"],
+                "headline-xl": ["Plus Jakarta Sans"],
+                "headline-md": ["Plus Jakarta Sans"],
+                "body-md": ["Plus Jakarta Sans"],
+                "label-md": ["Plus Jakarta Sans"],
+                "body-lg": ["Plus Jakarta Sans"],
+                "headline-lg": ["Plus Jakarta Sans"],
+                "label-sm": ["Plus Jakarta Sans"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f3f6f9; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .ambient-shadow { box-shadow: 0 20px 25px -5px rgba(10, 102, 194, 0.08); }
+        .stepper-line::after { content: ''; position: absolute; top: 20px; left: 0; width: 100%; height: 2px; background: #e0e3e6; z-index: 0; }
+        .transition-all { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopNavBar -->
+<header class="bg-surface-container-lowest dark:bg-inverse-surface border-b border-outline-variant dark:border-outline shadow-sm dark:shadow-none fixed top-0 w-full z-50">
+<div class="flex justify-between items-center w-full max-w-[1120px] mx-auto px-margin-mobile md:px-gutter h-16">
+<div class="flex items-center gap-8">
+<a class="font-headline-md text-headline-md font-black text-primary dark:text-inverse-primary tracking-tight" href="#">Talent Pilot</a>
+<nav class="hidden md:flex gap-6">
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-label-md text-label-md" href="#">Jobs</a>
+<a class="text-primary dark:text-primary-fixed-dim font-bold border-b-2 border-primary dark:border-primary-fixed-dim pb-1 font-label-md text-label-md" href="#">My Applications</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-label-md text-label-md" href="#">Profile</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-label-md text-label-md" href="#">Interviews</a>
+</nav>
+</div>
+<div class="flex items-center gap-3 bg-surface-container-low dark:bg-surface-container rounded-lg p-1.5 transition-all duration-200">
+<span class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant px-2">Ayesha Khan</span>
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden border border-outline-variant">
+<img alt="Ayesha Khan's profile avatar" class="w-full h-full object-cover" data-alt="A professional headshot of Ayesha Khan, a woman in her late 20s with a warm and confident expression, set against a soft-focus office background. The lighting is bright and airy, following a modern light-mode aesthetic. The composition is clean and centered, emphasizing a high-trust, professional identity consistent with a premium talent portal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBty0eLeSEb_QXAoP6Kt02be5BbrSZmII-CqhMZv6BfUlMtqWZnH_INYy2Gumd4VJ_PR-4lmGe3skxpuqSKiDK-q-lFjPoXgqJE-kBQv95IULRxXyRCVrmLcnkwyzC01q6mPVQ_8bYksR6iEKZPc7yEN6qEhwoDwg2Ql2bcn9zHjllTiSGHpk3ACShNffDZDjo7yX7W_thqJiEuu1UZAUaqlWgbMXLaGgs3GOBhhi6hqz9dVBd2IqNhNv3jSHGAWVTajXl_0HErmoo">
+</div>
+</div>
+</div>
+</header>
+<main class="pt-32 pb-section-padding px-margin-mobile md:px-gutter">
+<div class="max-w-[1120px] mx-auto">
+<!-- Job Header -->
+<div class="mb-12 text-center">
+<div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-primary-container/10 text-primary-container font-label-sm text-label-sm mb-4">
+<span class="material-symbols-outlined text-[16px]">engineering</span> Engineering Department
+                </div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">Senior .NET Engineer</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">Lahore / Remote • Full-time • 5-7 years exp.</p>
+<div class="flex flex-wrap justify-center gap-2 mt-4">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-lg font-label-sm text-label-sm">.NET</span>
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-lg font-label-sm text-label-sm">SQL Server</span>
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-lg font-label-sm text-label-sm">Azure</span>
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-lg font-label-sm text-label-sm">REST APIs</span>
+</div>
+</div>
+<!-- Stepper -->
+<div class="relative flex justify-between items-center mb-16 max-w-4xl mx-auto px-4 md:px-12">
+<div class="absolute top-5 left-12 right-12 h-1 bg-outline-variant z-0"></div>
+<div class="absolute top-5 left-12 w-0 h-1 bg-primary-container z-0" id="stepper-progress" style="width: 0%;"></div>
+<!-- Step 1: Active -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold ring-4 ring-primary-container/20">1</div>
+<span class="font-label-md text-label-md text-primary font-bold">Profile</span>
+</div>
+<!-- Step 2 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold">2</div>
+<span class="font-label-md text-label-md text-on-surface-variant">CV Upload</span>
+</div>
+<!-- Step 3 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold">3</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Screening</span>
+</div>
+<!-- Step 4 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold">4</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Review</span>
+</div>
+<!-- Step 5 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-bold">5</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Submit</span>
+</div>
+</div>
+<!-- Form Card -->
+<div class="bg-surface-container-lowest rounded-2xl ambient-shadow p-8 md:p-12 max-w-4xl mx-auto">
+<form class="space-y-12" id="applicationForm">
+<!-- Section 1: Profile Information -->
+<section>
+<div class="flex items-center gap-3 mb-8 border-b border-outline-variant pb-4">
+<span class="material-symbols-outlined text-primary-container font-bold">person_outline</span>
+<h2 class="font-headline-md text-headline-md">Profile Information</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Full Name</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" type="text" value="Ayesha Khan">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Email</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" type="email" value="ayesha.khan@tkxel.com">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Phone Number</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" placeholder="+92 3XX XXXXXXX" type="tel">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">LinkedIn URL</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" placeholder="linkedin.com/in/username" type="url">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Current Designation</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" placeholder="e.g. Software Engineer" type="text">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Current Company</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" placeholder="Enter company name" type="text">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Total Experience (Years)</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" placeholder="e.g. 5" step="0.5" type="number">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Expected Salary (Monthly)</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" placeholder="e.g. PKR 250,000" type="text">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Notice Period</label>
+<select class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md bg-transparent">
+<option>Immediate</option>
+<option>15 Days</option>
+<option>1 Month</option>
+<option>2 Months</option>
+<option>Currently Serving</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface">Availability for Interview</label>
+<input class="w-full h-[56px] px-4 rounded-lg border border-outline hover:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container outline-none transition-all font-body-md" placeholder="e.g. Weekdays after 5 PM" type="text">
+</div>
+</div>
+</section>
+<!-- Section 2: CV Upload -->
+<section>
+<div class="flex items-center gap-3 mb-8 border-b border-outline-variant pb-4">
+<span class="material-symbols-outlined text-primary-container font-bold">upload_file</span>
+<h2 class="font-headline-md text-headline-md">CV Upload</h2>
+</div>
+<div class="border-2 border-dashed border-outline-variant rounded-xl p-12 text-center bg-surface hover:bg-primary-container/5 transition-all cursor-pointer group relative overflow-hidden" onclick="triggerFileInput()">
+<input accept=".docx" class="hidden" id="cvInput" type="file">
+<div class="flex flex-col items-center gap-4">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-primary-container group-hover:scale-110 transition-all duration-300">
+<span class="material-symbols-outlined text-[32px]">cloud_upload</span>
+</div>
+<div>
+<p class="font-headline-md text-headline-md mb-1">Upload CV</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Drag and drop or click to browse files</p>
+<p class="mt-4 font-label-sm text-label-sm text-secondary px-3 py-1 bg-secondary-container/50 rounded-full inline-block">DOCX only</p>
+</div>
+</div>
+</div>
+<!-- Validation Error Message -->
+<div class="mt-4 flex items-center gap-2 text-error animate-pulse">
+<span class="material-symbols-outlined text-[20px]">error</span>
+<p class="font-label-md text-label-md">PDF format is not supported. Please upload a .DOCX file.</p>
+</div>
+</section>
+<!-- Section 3: Review & Consent -->
+<section>
+<div class="flex items-center gap-3 mb-8 border-b border-outline-variant pb-4">
+<span class="material-symbols-outlined text-primary-container font-bold">verified_user</span>
+<h2 class="font-headline-md text-headline-md">Review &amp; Consent</h2>
+</div>
+<div class="bg-surface-container rounded-xl p-6 mb-8">
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                                By submitting this application, you confirm that the information provided is accurate and complete to the best of your knowledge. TKXEL is an equal opportunity employer and maintains a high standard of data privacy.
+                            </p>
+</div>
+<label class="flex items-start gap-4 cursor-pointer group">
+<div class="pt-1">
+<input class="w-5 h-5 rounded border-outline text-primary-container focus:ring-primary-container" type="checkbox">
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant select-none">
+                                I agree to the <a class="text-primary-container underline font-semibold" href="#">privacy policy</a> and <a class="text-primary-container underline font-semibold" href="#">terms of service</a>.
+                            </span>
+</label>
+</section>
+<!-- Action Buttons -->
+<div class="pt-8 flex flex-col md:flex-row gap-4 items-center justify-end">
+<button class="w-full md:w-auto h-12 px-8 rounded-lg border border-primary-container text-primary-container font-bold hover:bg-primary-container/5 active:scale-95 transition-all" type="button">
+                            Save Draft
+                        </button>
+<button class="w-full md:w-auto h-12 px-12 rounded-lg bg-primary-container text-on-primary font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all" type="submit">
+                            Submit Application
+                        </button>
+</div>
+</form>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="border-t border-outline-variant dark:border-outline bg-surface dark:bg-inverse-surface mt-12">
+<div class="flex flex-col md:flex-row justify-between items-center w-full max-w-[1120px] mx-auto px-margin-mobile md:px-gutter py-section-padding gap-8">
+<div class="flex flex-col items-center md:items-start gap-4">
+<span class="font-headline-md text-headline-md font-bold text-on-surface dark:text-inverse-on-surface">Talent Pilot</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant dark:text-outline-variant">© 2024 Talent Pilot. Powered by TKXEL.</p>
+</div>
+<div class="flex gap-8">
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-all" href="#">Careers</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-all" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-all" href="#">Terms of Service</a>
+</div>
+</div>
+</footer>
+<script>
+        function triggerFileInput() {
+            document.getElementById('cvInput').click();
+        }
+
+        // Lightweight interaction for the form submission
+        document.getElementById('applicationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Submitting...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                alert('Application submitted successfully for the Senior .NET Engineer role!');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 2000);
+        });
+
+        // Simple stepper animation logic (visual only)
+        window.addEventListener('DOMContentLoaded', () => {
+            const progressBar = document.getElementById('stepper-progress');
+            if (progressBar) {
+                setTimeout(() => {
+                    progressBar.style.width = '0%'; // Start at step 1
+                }, 500);
+            }
+        });
+    </script>
+
+
+</body></html>

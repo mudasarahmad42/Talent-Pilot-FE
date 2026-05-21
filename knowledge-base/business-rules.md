@@ -1,0 +1,23 @@
+# Business Rules
+
+- Job Request is the root record for the recruitment lifecycle.
+- Presales creates resource/job requests for client needs.
+- PMO checks current benched employees before recruitment starts.
+- PMO can refer one or more benched employees back to Presales.
+- Internal bench referrals do not require an internal interview cycle in MVP.
+- Recruiter/HR receives the request only when PMO cannot satisfy it from bench.
+- Recruiter recommendation priority:
+  - candidates who cleared similar interviews but were on hold or not offered
+  - candidates who cleared some interviews for similar work but failed later stages
+  - new manual sourcing and Talent Pilot job posting
+- Candidate and application are separate:
+  - Candidate is the person/profile.
+  - CandidateApplication is one application for one job post.
+- Candidate must log in or register before applying.
+- Candidate can re-apply after the configured cooldown period.
+- Recruiters can manually source from LinkedIn/Indeed but those are source labels only in MVP.
+- Candidate CV upload is DOCX only in MVP.
+- Hiring Pipeline handles interviews and feedback.
+- Workflow handles operational handoffs and task ownership.
+- Notifications are backend-owned and sent by Email and SignalR.
+- AI agents are advisory and cannot reject, hire, or move final stages by themselves.

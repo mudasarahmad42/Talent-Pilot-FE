@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=IBM+Plex+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "status-error": "#C81E1E",
+                        "secondary-container": "#d8e0ef",
+                        "status-success": "#057A55",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-fixed-dim": "#bfc7d6",
+                        "on-primary-fixed": "#001b3d",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "nav-bg": "#1B232E",
+                        "status-warning": "#B45309",
+                        "on-error-container": "#93000a",
+                        "background": "#f7fafc",
+                        "surface-bg": "#FFFFFF",
+                        "error-container": "#ffdad6",
+                        "text-muted": "#6B7280",
+                        "on-primary-container": "#dbe6ff",
+                        "secondary": "#575f6c",
+                        "on-secondary-fixed": "#141c27",
+                        "on-tertiary": "#ffffff",
+                        "outline": "#727783",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary-container": "#a94b00",
+                        "surface": "#f7fafc",
+                        "surface-dim": "#d7dadc",
+                        "on-secondary-container": "#5b6370",
+                        "on-secondary-fixed-variant": "#3f4753",
+                        "surface-variant": "#e0e3e5",
+                        "surface-bright": "#f7fafc",
+                        "surface-container-high": "#e5e9eb",
+                        "surface-tint": "#005eb5",
+                        "inverse-on-surface": "#eef1f3",
+                        "tertiary-fixed": "#ffdbca",
+                        "on-tertiary-container": "#ffe0d1",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#00468a",
+                        "on-tertiary-fixed-variant": "#773300",
+                        "on-surface-variant": "#414752",
+                        "outline-variant": "#c1c6d4",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#d6e3ff",
+                        "primary-fixed-dim": "#a8c8ff",
+                        "on-background": "#181c1e",
+                        "on-tertiary-fixed": "#331200",
+                        "secondary-fixed": "#dbe3f2",
+                        "surface-container": "#ebeef0",
+                        "border-subtle": "#E1E4E8",
+                        "primary": "#004e99",
+                        "tertiary-fixed-dim": "#ffb68e",
+                        "text-main": "#111827",
+                        "surface-container-low": "#f1f4f6",
+                        "tertiary": "#833900",
+                        "inverse-primary": "#a8c8ff",
+                        "on-surface": "#181c1e",
+                        "primary-container": "#0a66c2"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "container-margin": "24px",
+                        "base": "8px",
+                        "header-height": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "data-mono": ["IBM Plex Mono"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-xl": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f7fafc;
+        }
+        .custom-toggle:checked + .toggle-bg {
+            background-color: #0a66c2;
+        }
+        .custom-toggle:checked + .toggle-bg .toggle-dot {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-sidebar-width h-header-height bg-nav-bg text-on-primary-container">
+<div class="flex items-center px-6">
+<span class="font-headline-md text-headline-md font-bold text-on-primary">Talent Pilot</span>
+</div>
+<nav class="flex items-center gap-6">
+<a class="font-body-md text-body-md text-on-secondary-fixed-variant hover:text-on-primary transition-colors" href="#">Dashboard</a>
+<a class="font-body-md text-body-md text-on-secondary-fixed-variant hover:text-on-primary transition-colors" href="#">Job Requests</a>
+<a class="font-body-md text-body-md text-on-secondary-fixed-variant hover:text-on-primary transition-colors" href="#">Candidates</a>
+<a class="font-body-md text-body-md text-on-primary border-b-2 border-primary-container pb-1" href="#">Admin Center</a>
+</nav>
+<div class="flex items-center gap-4 px-6">
+<button class="p-2 transition-all duration-200 active:scale-95 hover:bg-on-surface-variant/10 rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-outline-variant">
+<img alt="User profile menu" class="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFxOrz2MTyK0J10yLvBsSl8sIqPLcttRUYMAuxOyZk2bIq3kc81iHOVqqD1uqL4n-V2f7rFmW0zBiZVquM2N0khPZNnS7sLjRjokFEQdRx8KaCz4lexaY4dAT-7t-BAuq-Z1yX5ivXELVRyhjO2NwaPWBXPtfPH8kIvqD2VsfHIR6bWR1GdOm5W2oYgV-RQ9bBqbQp7wIcyBnKTOL5yH42XrJ9KtK76KB3NBvebEi3kmHtcW2YPCBd5pC1YgDeXISU3JWsQCSDFuA"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-header-height h-[calc(100vh-theme(spacing.header-height))] w-sidebar-width p-4 flex flex-col gap-2 overflow-y-auto bg-surface-bg border-r border-border-subtle">
+<div class="mb-6 px-2">
+<h2 class="font-headline-sm text-headline-sm font-bold text-primary">Admin Center</h2>
+<p class="font-label-md text-label-md text-secondary uppercase tracking-wider">Global Configuration</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 bg-secondary-fixed text-primary font-bold rounded-lg transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="business">business</span>
+<span class="font-label-md text-label-md">Tenant Profile</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="palette">palette</span>
+<span class="font-label-md text-label-md">Branding</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="web">web</span>
+<span class="font-label-md text-label-md">Career Page</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Users</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-label-md text-label-md">Roles &amp; Permissions</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span class="font-label-md text-label-md">Groups</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span class="font-label-md text-label-md">Departments</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-label-md text-label-md">Skills</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-label-md text-label-md">Hiring Pipeline</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings_applications">settings_applications</span>
+<span class="font-label-md text-label-md">Workflows</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+<span class="font-label-md text-label-md">Notifications</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span class="font-label-md text-label-md">AI Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="extension">extension</span>
+<span class="font-label-md text-label-md">Integrations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-label-md text-label-md">Audit Logs</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-sidebar-width pt-header-height min-h-screen">
+<div class="p-container-margin max-w-7xl mx-auto">
+<!-- Page Header -->
+<div class="flex items-center justify-between mb-4">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-text-main">Tenant Profile</h1>
+<p class="font-body-md text-body-md text-text-muted">Manage company details and brand identity</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="bg-surface-container-high text-on-surface-variant px-6 py-[10px] h-[44px] rounded-lg font-label-md text-label-md transition-all duration-200 active:scale-95 hover:bg-surface-variant">
+                        Reset
+                    </button>
+<button class="bg-primary text-on-primary px-6 py-[10px] h-[44px] rounded-lg font-label-md text-label-md transition-all duration-200 active:scale-95 shadow-sm hover:brightness-110">
+                        Save Changes
+                    </button>
+</div>
+</div>
+<!-- Tab Bar -->
+<div class="border-b border-border-subtle mb-8 flex gap-8">
+<button class="px-1 py-4 font-label-md text-label-md text-primary border-b-2 border-primary">Profile</button>
+<button class="px-1 py-4 font-label-md text-label-md text-secondary hover:text-primary transition-colors">Branding</button>
+<button class="px-1 py-4 font-label-md text-label-md text-secondary hover:text-primary transition-colors">Career Page</button>
+<button class="px-1 py-4 font-label-md text-label-md text-secondary hover:text-primary transition-colors">Security</button>
+</div>
+<!-- Content Grid -->
+<div class="grid grid-cols-12 gap-gutter items-start">
+<!-- Left Column (Forms) -->
+<div class="col-span-12 lg:col-span-8 space-y-gutter">
+<!-- Card 1: Tenant Identity -->
+<section class="bg-surface-bg border border-border-subtle p-8 rounded-lg">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="fingerprint">fingerprint</span>
+<h3 class="font-headline-md text-headline-md text-text-main">Tenant Identity</h3>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Tenant Name</label>
+<input class="w-full h-11 px-4 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" type="text" value="TKXEL"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Tenant Slug</label>
+<div class="relative">
+<input class="w-full h-11 px-4 bg-surface-container-low border border-outline-variant rounded-lg font-body-md text-body-md text-text-muted cursor-not-allowed" readonly="" type="text" value="tkxel"/>
+<span class="absolute right-3 top-3 text-text-muted material-symbols-outlined" style="font-size: 18px;">lock</span>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Company Domain</label>
+<input class="w-full h-11 px-4 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" type="text" value="tkxel.com"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Admin Contact Email</label>
+<input class="w-full h-11 px-4 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" type="email" value="admin@tkxel.com"/>
+</div>
+<div class="col-span-2">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Tenant Status</label>
+<div class="h-11 px-4 flex items-center bg-status-success/10 border border-status-success/20 rounded-lg w-fit">
+<span class="h-2 w-2 rounded-full bg-status-success mr-2"></span>
+<span class="font-label-md text-label-md text-status-success uppercase">Active</span>
+<span class="material-symbols-outlined text-status-success ml-3" style="font-size: 18px;">arrow_drop_down</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Card 2: Branding Preview -->
+<section class="bg-surface-bg border border-border-subtle p-8 rounded-lg">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="brush">brush</span>
+<h3 class="font-headline-md text-headline-md text-text-main">Branding Preview</h3>
+</div>
+<div class="space-y-8">
+<div class="flex items-start gap-8">
+<div class="flex-shrink-0">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Company Logo</label>
+<div class="h-32 w-32 rounded-lg border-2 border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center group hover:border-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors mb-1" style="font-size: 32px;">upload</span>
+<span class="font-label-md text-[11px] text-outline text-center px-2">Click to upload or drop here</span>
+</div>
+</div>
+<div class="flex-1 space-y-6">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Company Display Name</label>
+<input class="w-full h-11 px-4 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" type="text" value="TKXEL"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Primary Color</label>
+<div class="flex items-center justify-between h-11 px-4 border border-border-subtle rounded-lg bg-surface-container-lowest">
+<div class="flex items-center gap-3">
+<div class="h-6 w-6 rounded border border-outline-variant" style="background-color: #0A66C2;"></div>
+<span class="font-data-mono text-data-mono text-text-main">#0A66C2</span>
+</div>
+<button class="material-symbols-outlined text-secondary hover:text-primary transition-colors" style="font-size: 20px;">edit</button>
+</div>
+</div>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-4 uppercase tracking-wider">Visual Preview</label>
+<div class="border border-outline-variant rounded-lg overflow-hidden bg-surface-container-low p-6">
+<!-- Mock Header -->
+<div class="bg-nav-bg h-14 rounded-t-lg flex items-center justify-between px-6">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 bg-on-primary rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-size: 20px;">business</span>
+</div>
+<span class="text-on-primary font-bold text-body-md">TKXEL Careers</span>
+</div>
+<div class="flex gap-4">
+<div class="h-2 w-12 bg-white/20 rounded"></div>
+<div class="h-2 w-12 bg-white/20 rounded"></div>
+</div>
+</div>
+<!-- Mock Body -->
+<div class="bg-surface-bg p-8 border-x border-b border-outline-variant rounded-b-lg">
+<div class="max-w-md space-y-4">
+<div class="h-6 w-3/4 bg-surface-container-high rounded"></div>
+<div class="space-y-2">
+<div class="h-3 w-full bg-surface-container rounded"></div>
+<div class="h-3 w-5/6 bg-surface-container rounded"></div>
+</div>
+<button class="bg-[#0A66C2] text-white px-8 py-2.5 rounded font-label-md text-label-md shadow-sm">
+                                                View Open Roles
+                                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Card 3: Defaults -->
+<section class="bg-surface-bg border border-border-subtle p-8 rounded-lg">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="settings">settings</span>
+<h3 class="font-headline-md text-headline-md text-text-main">Defaults</h3>
+</div>
+<div class="grid grid-cols-2 gap-x-6 gap-y-8">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Default Timezone</label>
+<div class="relative">
+<select class="w-full h-11 pl-4 pr-10 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none appearance-none transition-all">
+<option>Asia/Karachi (GMT+05:00)</option>
+<option>UTC (GMT+00:00)</option>
+<option>America/New_York (GMT-05:00)</option>
+</select>
+<span class="absolute right-3 top-3 pointer-events-none material-symbols-outlined text-secondary">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Default Currency</label>
+<div class="relative">
+<select class="w-full h-11 pl-4 pr-10 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none appearance-none transition-all">
+<option>PKR (Rs)</option>
+<option>USD ($)</option>
+<option>EUR (€)</option>
+</select>
+<span class="absolute right-3 top-3 pointer-events-none material-symbols-outlined text-secondary">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Candidate CV Format</label>
+<div class="flex gap-4">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="w-4 h-4 text-primary border-outline-variant focus:ring-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-text-main">DOCX</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer opacity-50">
+<input class="w-4 h-4 text-primary border-outline-variant focus:ring-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-text-main">PDF</span>
+</label>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Candidate Login Required</label>
+<div class="flex items-center gap-3">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer custom-toggle" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer transition-colors toggle-bg">
+<div class="absolute top-[2px] left-[2px] bg-white border-gray-300 border rounded-full h-5 w-5 transition-all toggle-dot"></div>
+</div>
+</label>
+<span class="font-label-md text-label-md text-status-success font-bold">Enabled</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column (Summary Panel) -->
+<div class="col-span-12 lg:col-span-4 sticky top-[calc(theme(spacing.header-height)+theme(spacing.container-margin))]">
+<section class="bg-surface-bg border border-border-subtle rounded-lg overflow-hidden shadow-sm">
+<div class="bg-surface-container-low p-6 border-b border-border-subtle flex items-center justify-between">
+<h3 class="font-headline-md text-headline-md text-text-main">Tenant Summary</h3>
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded-full border border-primary/20 flex items-center gap-1 uppercase tracking-tighter">
+<span class="material-symbols-outlined" style="font-size: 14px;">verified</span>
+                                Setup Complete
+                            </span>
+</div>
+<div class="p-6 space-y-6">
+<div class="grid grid-cols-2 gap-4">
+<div class="p-4 bg-surface-container-lowest border border-border-subtle rounded-lg">
+<p class="font-label-md text-label-md text-text-muted mb-1">Status</p>
+<p class="font-body-md text-body-md font-bold text-status-success">Active</p>
+</div>
+<div class="p-4 bg-surface-container-lowest border border-border-subtle rounded-lg">
+<p class="font-label-md text-label-md text-text-muted mb-1">Users</p>
+<p class="font-body-md text-body-md font-bold text-text-main">42</p>
+</div>
+<div class="p-4 bg-surface-container-lowest border border-border-subtle rounded-lg">
+<p class="font-label-md text-label-md text-text-muted mb-1">Roles</p>
+<p class="font-body-md text-body-md font-bold text-text-main">11</p>
+</div>
+<div class="p-4 bg-surface-container-lowest border border-border-subtle rounded-lg">
+<p class="font-label-md text-label-md text-text-muted mb-1">Career Page</p>
+<p class="font-body-md text-body-md font-bold text-primary">Enabled</p>
+</div>
+</div>
+<div class="border-t border-border-subtle pt-6">
+<label class="block font-label-md text-label-md text-text-muted mb-3 uppercase">Configuration Highlights</label>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">AI Provider</span>
+<span class="font-data-mono text-data-mono text-text-main bg-surface-variant/30 px-2 py-0.5 rounded">Mock/Ollama</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">Primary Region</span>
+<span class="font-body-md text-body-md text-text-main">PK-KHI-1</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">SSO Integrated</span>
+<span class="material-symbols-outlined text-status-success">check_circle</span>
+</div>
+</div>
+</div>
+<button class="w-full py-3 bg-surface-container-high hover:bg-surface-variant text-text-main font-label-md text-label-md rounded-lg transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">history</span>
+                                View Audit Logs
+                            </button>
+</div>
+</section>
+<!-- Quick Support Info -->
+<div class="mt-gutter p-6 bg-primary/5 border border-primary/10 rounded-lg">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary">contact_support</span>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-text-main">Need assistance?</h4>
+<p class="font-label-md text-label-md text-text-muted mt-1">Contact your dedicated success manager for enterprise configuration support.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

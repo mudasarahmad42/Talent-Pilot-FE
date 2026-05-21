@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TKXEL Careers | Job Listings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#d6e0f7",
+                    "inverse-surface": "#303031",
+                    "secondary-fixed-dim": "#bdc7de",
+                    "on-tertiary-fixed": "#181c1e",
+                    "outline": "#727783",
+                    "on-primary-fixed": "#001b3d",
+                    "on-secondary": "#ffffff",
+                    "on-surface-variant": "#414752",
+                    "on-secondary-fixed-variant": "#3d475a",
+                    "on-tertiary-fixed-variant": "#43474a",
+                    "surface": "#fbf9f8",
+                    "surface-variant": "#e4e2e2",
+                    "background": "#fbf9f8",
+                    "surface-container-low": "#f5f3f3",
+                    "on-error-container": "#93000a",
+                    "on-surface": "#1b1c1c",
+                    "on-primary": "#ffffff",
+                    "inverse-on-surface": "#f2f0f0",
+                    "surface-dim": "#dbdad9",
+                    "on-primary-container": "#dbe6ff",
+                    "surface-container-highest": "#e4e2e2",
+                    "on-secondary-container": "#596377",
+                    "surface-container-high": "#e9e8e7",
+                    "surface-tint": "#005eb5",
+                    "surface-container": "#efeded",
+                    "outline-variant": "#c1c6d4",
+                    "tertiary-container": "#63676a",
+                    "primary": "#004e99",
+                    "surface-bright": "#fbf9f8",
+                    "primary-container": "#0a66c2",
+                    "on-tertiary-container": "#e3e6e9",
+                    "inverse-primary": "#a8c8ff",
+                    "secondary-fixed": "#d9e3fa",
+                    "on-secondary-fixed": "#121c2d",
+                    "on-error": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#c3c7ca",
+                    "error-container": "#ffdad6",
+                    "secondary": "#555f72",
+                    "tertiary": "#4b4f52",
+                    "tertiary-fixed": "#e0e3e6",
+                    "on-background": "#1b1c1c",
+                    "surface-container-lowest": "#ffffff",
+                    "error": "#ba1a1a",
+                    "primary-fixed": "#d6e3ff",
+                    "primary-fixed-dim": "#a8c8ff",
+                    "on-primary-fixed-variant": "#00468a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "24px",
+                    "sm": "12px",
+                    "base": "8px",
+                    "gutter": "24px",
+                    "xs": "4px",
+                    "lg": "40px",
+                    "xl": "64px",
+                    "container-max": "1200px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "headline-sm": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .soft-card-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .soft-card-shadow:hover {
+            box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md selection:bg-primary/20">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline shadow-sm dark:shadow-none">
+<div class="max-w-container-max mx-auto h-16 px-gutter flex justify-between items-center">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">Talent Pilot</span>
+<nav class="hidden md:flex gap-6">
+<a class="font-label-md text-label-md text-primary dark:text-inverse-primary border-b-2 border-primary dark:border-inverse-primary pb-1 active:opacity-80 transition-opacity" href="#">Jobs</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200" href="#">My Applications</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200" href="#">Profile</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant font-medium hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200" href="#">Interviews</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+<img alt="Candidate profile avatar" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A professional and friendly headshot of a young male professional with a warm smile, wearing a clean white shirt against a neutral studio background. The lighting is soft and flattering, emphasizing a modern corporate and high-trust aesthetic suitable for a career platform profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYBtKHhmKWVwDodF51gzkaSqGwbCeo3SYVokhk46W8YJ81ZfUV5rnzQqZ2SurlezbMIK6nT2RNm47mn5_yW58exsbaOddpI49fCCriduZQpW7WauMrXbC4UPO385gbMmHUfu5hsB6jFNgYHFOnuKF8AUPHbefXFYIXsvcvB4ztVh3L-3Ih8NKBpullgvHU7EPgQvbjm2PDDN6GcfT21yk8bAedebYnXQjX3UyBq6mYUBzH9ksAbhlNgynTZKc38CWOh7FIswtmpB0"/>
+</div>
+</div>
+</header>
+<main class="pt-16 min-h-screen">
+<!-- Hero Section -->
+<section class="relative h-[320px] md:h-[400px] flex items-center overflow-hidden bg-primary-fixed text-on-primary-fixed">
+<div class="absolute inset-0 z-0">
+<img alt="TKXEL Office" class="w-full h-full object-cover opacity-20" data-alt="A spacious, high-tech modern office environment for a leading engineering firm. The space features sleek glass partitions, ergonomic wooden workstations, and large windows revealing a vibrant urban landscape. The atmosphere is professional, energetic, and clean, using a color palette of cool blues and warm wood tones to convey innovation and engineering excellence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqy8ve-YJErYT_2wcpK3c_QImcrxrA9a-E-5Kj9-ONnPlb-zdPAco4TalUUJRyTWLWM_-0Lv4cMTVGDKGYp2I0bZA1_P0mqaa5IwesfZzI37F5faVTr756FrlSnMUKsYT_vAGrGPp5jf10PYYISABxiMzHXMYZTcwXsxDIpa2I4DJzzgjVREp-GRdqvRxpyguK9B_ZRyUNzjtcOLo-JwfRWgwEsoTIpvya_H--UyBJVeKsR_zhvTL98Usl9sJGQi3hQd9dFGF_W1k"/>
+<div class="absolute inset-0 bg-gradient-to-r from-primary-fixed via-primary-fixed/80 to-transparent"></div>
+</div>
+<div class="relative z-10 max-w-container-max mx-auto px-gutter w-full">
+<div class="max-w-2xl">
+<h1 class="font-display-lg text-display-lg md:text-display-lg text-primary mb-4 leading-tight">Join the Future of Engineering at TKXEL</h1>
+<p class="font-body-lg text-body-lg text-on-secondary-fixed-variant mb-8">Work with the world's leading brands on cutting-edge software solutions. Your career leap starts here.</p>
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant/70">
+<span class="material-symbols-outlined text-base">info</span>
+                        Only published JobRequests appear here. Log in to apply.
+                    </div>
+</div>
+</div>
+</section>
+<div class="max-w-container-max mx-auto px-gutter py-lg flex flex-col lg:flex-row gap-gutter">
+<!-- Main Content Area -->
+<div class="flex-1 space-y-md">
+<!-- Search & Filters -->
+<div class="bg-surface-container-lowest p-md rounded-xl soft-card-shadow">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+<div class="md:col-span-12 relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface-container rounded-lg border-none focus:ring-2 focus:ring-primary/20 text-body-md transition-all" placeholder="Search by job title, keyword, or company..." type="text"/>
+</div>
+<div class="md:col-span-3">
+<select class="w-full px-4 py-2.5 bg-surface-container rounded-lg border-none text-label-md focus:ring-2 focus:ring-primary/20">
+<option>Department</option>
+<option>Engineering</option>
+<option>Product</option>
+<option>Design</option>
+</select>
+</div>
+<div class="md:col-span-3">
+<select class="w-full px-4 py-2.5 bg-surface-container rounded-lg border-none text-label-md focus:ring-2 focus:ring-primary/20">
+<option>Location</option>
+<option>Lahore, Pakistan</option>
+<option>Remote</option>
+<option>United States</option>
+</select>
+</div>
+<div class="md:col-span-2">
+<select class="w-full px-4 py-2.5 bg-surface-container rounded-lg border-none text-label-md focus:ring-2 focus:ring-primary/20">
+<option>Experience</option>
+<option>Junior (1-3y)</option>
+<option>Senior (5-7y+)</option>
+</select>
+</div>
+<div class="md:col-span-4 flex gap-2">
+<button class="flex-1 bg-primary text-on-primary py-2.5 rounded-lg font-label-md hover:bg-primary/90 transition-colors">Apply Filters</button>
+<button class="px-4 py-2.5 bg-surface-container text-on-surface-variant rounded-lg font-label-md hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Job List -->
+<div class="space-y-4">
+<!-- Job Card 1: Senior .NET Engineer -->
+<div class="bg-surface-container-lowest p-md rounded-xl soft-card-shadow flex flex-col md:flex-row md:items-center justify-between gap-md border-l-4 border-primary">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Senior .NET Engineer</h3>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-label-sm font-label-sm">Applied</span>
+</div>
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-on-surface-variant text-label-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">domain</span>Engineering</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">location_on</span>Lahore, PK (Hybrid)</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">work</span>Full-time</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">history</span>2 days ago</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-3">
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">.NET Core</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">Azure</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">Microservices</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="text-label-sm font-label-sm text-outline">5-7 years exp.</span>
+<button class="w-full md:w-auto px-6 py-2 border border-primary text-primary rounded-lg font-label-md hover:bg-primary/5 transition-colors">View Status</button>
+</div>
+</div>
+<!-- Job Card 2: Angular Developer -->
+<div class="bg-surface-container-lowest p-md rounded-xl soft-card-shadow flex flex-col md:flex-row md:items-center justify-between gap-md border-l-4 border-secondary">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Angular Developer</h3>
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-label-sm font-label-sm">Invited</span>
+</div>
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-on-surface-variant text-label-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">domain</span>Engineering</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">location_on</span>Remote</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">work</span>Full-time</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">history</span>1 day ago</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-3">
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">Angular 16</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">TypeScript</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">Tailwind CSS</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="text-label-sm font-label-sm text-outline">3-5 years exp.</span>
+<button class="w-full md:w-auto px-6 py-2 bg-primary text-on-primary rounded-lg font-label-md hover:bg-primary/90 transition-colors">Accept Invitation</button>
+</div>
+</div>
+<!-- Job Card 3: QA Automation Engineer -->
+<div class="bg-surface-container-lowest p-md rounded-xl soft-card-shadow flex flex-col md:flex-row md:items-center justify-between gap-md opacity-75 grayscale-[0.5]">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">QA Automation Engineer</h3>
+<span class="bg-error-container text-on-error-container px-3 py-1 rounded-full text-label-sm font-label-sm">Re-apply unavailable</span>
+</div>
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-on-surface-variant text-label-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">domain</span>Quality Assurance</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">location_on</span>Lahore, PK</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">work</span>Full-time</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">history</span>5 days ago</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-3">
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">Selenium</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">Cypress</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="text-label-sm font-label-sm text-outline">4+ years exp.</span>
+<button class="w-full md:w-auto px-6 py-2 bg-surface-container text-outline-variant rounded-lg font-label-md cursor-not-allowed" disabled="">Locked</button>
+</div>
+</div>
+<!-- Job Card 4: DevOps Engineer -->
+<div class="bg-surface-container-lowest p-md rounded-xl soft-card-shadow flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">DevOps Engineer</h3>
+<span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full text-label-sm font-label-sm">New</span>
+</div>
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-on-surface-variant text-label-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">domain</span>Infrastructure</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">location_on</span>Remote</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">work</span>Contract</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">history</span>12 hours ago</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-3">
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">Kubernetes</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">AWS</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">CI/CD</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="text-label-sm font-label-sm text-outline">5-8 years exp.</span>
+<button class="w-full md:w-auto px-6 py-2 bg-primary text-on-primary rounded-lg font-label-md hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">Apply Now</button>
+</div>
+</div>
+<!-- Job Card 5: AI/ML Engineer -->
+<div class="bg-surface-container-lowest p-md rounded-xl soft-card-shadow flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">AI/ML Engineer</h3>
+<span class="bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full text-label-sm font-label-sm">Hot</span>
+</div>
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-on-surface-variant text-label-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">domain</span>Data Science</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">location_on</span>Lahore, PK</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">work</span>Full-time</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">history</span>3 days ago</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-3">
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">PyTorch</span>
+<span class="px-2 py-1 bg-surface-container rounded text-label-sm text-on-secondary-container">NLP</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="text-label-sm font-label-sm text-outline">2-4 years exp.</span>
+<button class="w-full md:w-auto px-6 py-2 bg-primary text-on-primary rounded-lg font-label-md hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">Apply Now</button>
+</div>
+</div>
+</div>
+<!-- Pagination/Load More -->
+<div class="flex justify-center pt-8">
+<button class="px-8 py-3 bg-surface-container-high text-on-surface-variant rounded-full font-label-md hover:bg-outline-variant transition-colors flex items-center gap-2">
+                        Load More Positions
+                        <span class="material-symbols-outlined">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Sidebar -->
+<aside class="w-full lg:w-[320px] space-y-md">
+<!-- Status Summary -->
+<div class="bg-surface-container-lowest p-md rounded-xl soft-card-shadow">
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-6">Candidate Status</h4>
+<div class="space-y-6">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">description</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Applications</p>
+<p class="text-label-sm text-on-surface-variant">Active track</p>
+</div>
+</div>
+<span class="text-headline-sm font-bold text-primary">08</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container">event</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Interviews</p>
+<p class="text-label-sm text-on-surface-variant">Upcoming</p>
+</div>
+</div>
+<span class="text-headline-sm font-bold text-on-secondary-container">02</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-4 uppercase tracking-wider">Next Step</p>
+<div class="p-3 bg-surface-container rounded-lg border-l-4 border-primary">
+<p class="font-label-md text-label-md text-on-surface">Technical Assessment</p>
+<p class="text-label-sm text-on-surface-variant">Angular Developer Position</p>
+<p class="text-label-sm text-primary font-bold mt-2">Tomorrow at 10:00 AM</p>
+</div>
+</div>
+</div>
+<!-- Profile Completion -->
+<div class="bg-primary text-on-primary p-md rounded-xl soft-card-shadow">
+<h4 class="font-label-md text-label-md mb-2">Complete your profile</h4>
+<p class="text-label-sm opacity-90 mb-4">Complete profiles are 3x more likely to be noticed by our recruiters.</p>
+<div class="w-full bg-primary-container/30 h-2 rounded-full mb-4">
+<div class="w-[75%] bg-white h-full rounded-full"></div>
+</div>
+<button class="w-full py-2 bg-white text-primary rounded-lg font-label-md">Update Resume</button>
+</div>
+</aside>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low dark:bg-surface-container-lowest border-t border-outline-variant dark:border-outline mt-xl">
+<div class="max-w-container-max mx-auto py-lg px-gutter flex flex-col md:flex-row justify-between items-center">
+<div class="mb-4 md:mb-0">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface dark:text-inverse-on-surface">Talent Pilot</span>
+<p class="font-label-sm text-label-sm text-on-secondary-container dark:text-secondary-fixed-dim mt-2">© 2024 Talent Pilot. All rights reserved.</p>
+</div>
+<div class="flex gap-8">
+<a class="font-label-sm text-label-sm text-on-secondary-container dark:text-secondary-fixed-dim hover:underline hover:text-primary transition-colors" href="#">Careers</a>
+<a class="font-label-sm text-label-sm text-on-secondary-container dark:text-secondary-fixed-dim hover:underline hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="font-label-sm text-label-sm text-on-secondary-container dark:text-secondary-fixed-dim hover:underline hover:text-primary transition-colors" href="#">Terms</a>
+</div>
+</div>
+</footer>
+<script>
+        // Simple micro-interaction for filter inputs
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                e.target.classList.add('bg-primary-container/10');
+                setTimeout(() => {
+                    e.target.classList.remove('bg-primary-container/10');
+                }, 1000);
+            });
+        });
+
+        // Sticky nav shadow on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-md');
+            } else {
+                header.classList.remove('shadow-md');
+            }
+        });
+    </script>
+</body></html>

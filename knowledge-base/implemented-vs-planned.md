@@ -1,0 +1,47 @@
+# Implemented vs Planned
+
+## Implemented
+
+- Angular app shell with route-level Admin Center, Talent Pilot App, and Candidate Experience boundaries.
+- Backend-backed login cards and session persistence.
+- Permission constants, permission guard, admin guard, and permission service.
+- Admin Center pages consuming backend APIs:
+  - tenant profile
+  - users
+  - roles and permission policy
+  - groups
+  - workflows
+  - notifications
+  - AI settings
+  - integrations/source tracking view
+  - audit logs
+- Talent Pilot internal backend-backed screens:
+  - dashboard snapshot
+  - my work / job request lists from operations snapshot
+  - create job request
+  - PMO queue claim action
+  - job request detail/activity
+  - notifications read/read-all
+- Backend-required empty states for screens whose APIs are not ready.
+
+## Planned Next
+
+- Replace create job request free-text lookup fields with backend lookup APIs.
+- Wire user add/edit/deactivate/resend invite actions fully to backend mutations.
+- Wire role create/edit/bulk user assignment and permission review flows.
+- Add notification template editor backed by backend templates API.
+- Add SignalR notification hub client.
+- Implement candidate job listing, job detail, apply, profile, application status, and interview schedule APIs.
+- Implement recruiter candidate prospect, invite link, job publishing, and pipeline management screens.
+- Implement interview scheduling/feedback and Hiring Manager final review screens.
+- Add focused Angular tests around auth, permissions, date formatting, and critical save flows.
+
+## Do Not Add As Active MVP UI
+
+- Finance or budget approvals.
+- HOD approvals.
+- Generic workflow designer.
+- Formal offer approval/signoff workflow.
+- Onboarding, payroll, orientation, or IT equipment tracking.
+- Automated external job-board posting/scraping.
+- Candidate-visible AI scores.

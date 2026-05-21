@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Talent Pilot - PMO Queue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=IBM+Plex+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e5e9eb;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d7dadc;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#d6e3ff",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#181c1e",
+                        "text-main": "#111827",
+                        "on-background": "#181c1e",
+                        "inverse-surface": "#2d3133",
+                        "status-error": "#C81E1E",
+                        "on-surface-variant": "#414752",
+                        "surface-container": "#ebeef0",
+                        "surface-container-high": "#e5e9eb",
+                        "on-primary-fixed": "#001b3d",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f7fafc",
+                        "on-secondary-fixed": "#141c27",
+                        "nav-bg": "#1B232E",
+                        "surface-bg": "#FFFFFF",
+                        "surface-tint": "#005eb5",
+                        "inverse-primary": "#a8c8ff",
+                        "surface-dim": "#d7dadc",
+                        "surface-variant": "#e0e3e5",
+                        "primary-container": "#0a66c2",
+                        "tertiary-fixed-dim": "#ffb68e",
+                        "secondary-fixed-dim": "#bfc7d6",
+                        "on-tertiary-fixed": "#331200",
+                        "tertiary-container": "#a94b00",
+                        "secondary-fixed": "#dbe3f2",
+                        "on-secondary-container": "#5b6370",
+                        "on-primary-container": "#dbe6ff",
+                        "inverse-on-surface": "#eef1f3",
+                        "status-success": "#057A55",
+                        "on-tertiary-container": "#ffe0d1",
+                        "secondary": "#575f6c",
+                        "outline": "#727783",
+                        "surface-container-low": "#f1f4f6",
+                        "tertiary": "#833900",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffdbca",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#773300",
+                        "on-secondary-fixed-variant": "#3f4753",
+                        "on-primary": "#ffffff",
+                        "background": "#f7fafc",
+                        "border-subtle": "#E1E4E8",
+                        "primary-fixed-dim": "#a8c8ff",
+                        "secondary-container": "#d8e0ef",
+                        "surface": "#f7fafc",
+                        "primary": "#004e99",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-secondary": "#ffffff",
+                        "status-warning": "#B45309",
+                        "outline-variant": "#c1c6d4",
+                        "on-primary-fixed-variant": "#00468a",
+                        "error-container": "#ffdad6",
+                        "text-muted": "#6B7280"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "gutter": "16px",
+                        "sidebar-width": "260px",
+                        "header-height": "64px",
+                        "container-margin": "24px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "data-mono": ["IBM Plex Mono"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-xl": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background font-body-md text-on-surface antialiased">
+<!-- Top Navigation -->
+<header class="bg-nav-bg text-on-primary fixed top-0 w-full z-50 h-[64px] border-none flex items-center justify-between px-gutter">
+<div class="flex items-center gap-gutter">
+<h1 class="font-headline-lg text-headline-lg font-bold text-surface-bg tracking-tight">Talent Pilot</h1>
+<nav class="hidden md:flex items-center gap-6 ml-10">
+<a class="text-surface-variant hover:text-white transition-colors cursor-pointer font-body-md text-body-md" href="#">Dashboard</a>
+<a class="text-primary-fixed font-bold border-b-2 border-primary-fixed cursor-pointer font-body-md text-body-md" href="#">PMO Queue</a>
+<a class="text-surface-variant hover:text-white transition-colors cursor-pointer font-body-md text-body-md" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative max-w-xs hidden md:block">
+<input class="bg-white/10 border-none text-white text-body-md px-4 py-2 rounded-lg w-64 focus:ring-1 focus:ring-primary-fixed placeholder:text-surface-variant" placeholder="Search requests..." type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-2 text-surface-variant text-[20px]">search</span>
+</div>
+<button class="material-symbols-outlined text-on-primary hover:bg-white/10 p-2 rounded-full transition-all">notifications</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-white/20">
+<img alt="User Profile" data-alt="Close-up professional portrait of a business administrator in a modern corporate setting, soft studio lighting, high-end professional atmosphere with neutral gray and deep navy tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuClUxvqU7rbWd8LSWqY_hXhWHSpKQCrdgXwCVCwZJWxJYM5ZJ-GzluIDNnxh9TWq5szrsCjbeS2fptuoydWTvGQGnqiwc1UCw2vWOcg9S3RpW5Pvgb5oLkgFvAKLcnK1XprD2vEwKKpNQWColopElgd_Wi0NlJf1JiB8EL8cwKZZCda47oiM9ZFtAnoiZktDRBVuUwu7uuZTrc9VcZcKRbNuEfCVudsGXpsK2WNR0CRNMMFuw7MPfF-eyOAG2RA0colgAtKBJXzkdk"/>
+</div>
+</div>
+</header>
+<!-- Sidebar Navigation -->
+<aside class="bg-surface-container-low fixed left-0 top-[64px] w-sidebar-width h-[calc(100vh-64px)] border-r border-border-subtle flex flex-col py-base px-base gap-2 z-40">
+<div class="px-3 py-4 mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">RecruitOps</h2>
+<p class="text-on-surface-variant font-label-md text-label-md opacity-70 uppercase tracking-widest">Enterprise Admin</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-150 ease-in-out rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 bg-primary-container text-on-primary-container font-bold rounded-lg transition-colors duration-150 ease-in-out font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">assignment</span>
+                PMO Queue
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-150 ease-in-out rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">group</span>
+                Talent Pool
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-150 ease-in-out rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">event</span>
+                Interviews
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-150 ease-in-out rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                Reports
+            </a>
+</nav>
+<div class="mt-auto px-3 py-4 border-t border-border-subtle flex items-center gap-3">
+<div class="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center text-primary font-bold">JD</div>
+<div class="overflow-hidden">
+<p class="text-on-surface font-bold text-label-md truncate">Jane Doe</p>
+<p class="text-on-surface-variant text-[10px] truncate">Senior PMO Manager</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-sidebar-width mt-[64px] p-container-margin min-h-[calc(100vh-64px)]">
+<!-- Header Section -->
+<header class="mb-gutter flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface">PMO Queue</h1>
+<p class="text-on-surface-variant font-body-md text-body-md mt-1">Manage and process incoming job requests for bench check and fulfillment</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-4 py-2 border border-border-subtle bg-white text-on-surface-variant font-label-md text-label-md rounded-xl hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    Filter
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 border border-border-subtle bg-white text-on-surface-variant font-label-md text-label-md rounded-xl hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                    Export
+                </button>
+</div>
+</header>
+<!-- Information Banner -->
+<div class="mb-gutter bg-primary-fixed/30 border border-primary-fixed text-on-primary-fixed-variant px-4 py-3 rounded-xl flex items-start gap-3">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="text-body-md">Only one PMO user can claim and own a specific job request at a time to prevent duplicate processing. Claims expire after 4 hours of inactivity.</p>
+</div>
+<!-- Navigation Tabs -->
+<div class="mb-gutter flex border-b border-border-subtle">
+<button class="px-gutter py-3 border-b-2 border-primary-container text-primary font-bold font-label-md text-label-md transition-all">New Requests (12)</button>
+<button class="px-gutter py-3 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all">Claimed by Me (4)</button>
+<button class="px-gutter py-3 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all">In Progress (8)</button>
+<button class="px-gutter py-3 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all">Returned by Presales (2)</button>
+</div>
+<!-- Content Table Container -->
+<div class="bg-surface-bg border border-border-subtle rounded-xl overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-bold text-label-md uppercase tracking-wider">
+<th class="px-gutter py-4">Code &amp; Title</th>
+<th class="px-gutter py-4">Client</th>
+<th class="px-gutter py-4">Pos.</th>
+<th class="px-gutter py-4">Required Skills</th>
+<th class="px-gutter py-4">Priority</th>
+<th class="px-gutter py-4">Creator</th>
+<th class="px-gutter py-4">Assigned</th>
+<th class="px-gutter py-4">Status</th>
+<th class="px-gutter py-4 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-default">
+<td class="px-gutter py-4">
+<div class="flex flex-col">
+<span class="text-primary font-bold font-data-mono">JR-1025</span>
+<span class="font-bold text-on-surface truncate max-w-[200px]">Senior .NET Developer</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant font-body-md">Global Logistics Corp</td>
+<td class="px-gutter py-4 font-bold text-on-surface">2</td>
+<td class="px-gutter py-4">
+<div class="flex flex-wrap gap-1">
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">.NET</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">SQL</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">Azure</span>
+</div>
+</td>
+<td class="px-gutter py-4">
+<span class="px-2 py-1 bg-red-100 text-status-error text-[11px] font-bold rounded-lg uppercase">High</span>
+</td>
+<td class="px-gutter py-4">
+<div class="flex items-center gap-2">
+<img alt="Creator Avatar" class="w-6 h-6 rounded-full" data-alt="A small profile avatar of a professional business woman with a friendly expression, set against a clean, corporate blurred background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDL_Pcr3UYayKCfAbyFuKzXKHGCWpkWL_PewF4Z8zvV_yb0SF48eE0_QiI7egiB-SMAXn02JRYGIbAzLS-SU4823N6O17eUrYoT-eCGPwb1eCYeLI6jOArndVqgS3i0totxYzIwBZYJrPJs8Q9j7ZEDQL1O7ocp25G9_3d1-HcOUkCimIdQTmAGaUuZgC4iPM_YgEAuLumOIn1tSjHO99APXciZ3_5hCNjRV7aCfZEEWRMHEtX_KUfNyrPLqZBjC3nj1WhMXTSJ_14"/>
+<span class="text-label-md text-on-surface truncate">Alex Miller</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant text-label-md whitespace-nowrap">2h ago</td>
+<td class="px-gutter py-4">
+<span class="flex items-center gap-1.5 text-on-surface-variant font-bold text-[11px] uppercase">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                                    Unclaimed
+                                </span>
+</td>
+<td class="px-gutter py-4 text-right">
+<button class="px-4 py-2 bg-primary-container text-on-primary-container font-bold text-label-md rounded-lg hover:shadow-md transition-all active:scale-95">Claim Ownership</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-default">
+<td class="px-gutter py-4">
+<div class="flex flex-col">
+<span class="text-primary font-bold font-data-mono">JR-1028</span>
+<span class="font-bold text-on-surface truncate max-w-[200px]">Lead UI Designer</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant font-body-md">NexGen FinTech</td>
+<td class="px-gutter py-4 font-bold text-on-surface">1</td>
+<td class="px-gutter py-4">
+<div class="flex flex-wrap gap-1">
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">Figma</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">React</span>
+</div>
+</td>
+<td class="px-gutter py-4">
+<span class="px-2 py-1 bg-amber-100 text-status-warning text-[11px] font-bold rounded-lg uppercase">Medium</span>
+</td>
+<td class="px-gutter py-4">
+<div class="flex items-center gap-2">
+<img alt="Creator Avatar" class="w-6 h-6 rounded-full" data-alt="A small profile avatar of a male professional wearing glasses, neutral expression, set against a modern office background blur." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbZy2Eb2F0a51GIkZSktco2wc9Pmyr725kTxQHsW8pX59xcZF5eh0duk42aEaQAnK9pZlP2VLFNYeNq5juxZucS6GnTnsaI0NvPq93_Nif4pGkA0YedB1aE9y1TIf6Wk3ksSWYJU9gr1vaeV8XjR0tycgVAkuxweaHUW3WAgY3Ykx6PPMpfDCskhbh6qC_UlyNyZMif9cnqmot1DDs9ced5XXUdpax5dsAeYV1_uhG7vpZ1M3RqHHPIcp8utoZh6Yb8txVFftxYcg"/>
+<span class="text-label-md text-on-surface truncate">Sarah Wong</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant text-label-md whitespace-nowrap">5h ago</td>
+<td class="px-gutter py-4">
+<span class="flex items-center gap-1.5 text-on-surface-variant font-bold text-[11px] uppercase">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                                    Unclaimed
+                                </span>
+</td>
+<td class="px-gutter py-4 text-right">
+<button class="px-4 py-2 bg-primary-container text-on-primary-container font-bold text-label-md rounded-lg hover:shadow-md transition-all active:scale-95">Claim Ownership</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-default">
+<td class="px-gutter py-4">
+<div class="flex flex-col">
+<span class="text-primary font-bold font-data-mono">JR-1031</span>
+<span class="font-bold text-on-surface truncate max-w-[200px]">Cloud Architect</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant font-body-md">CyberSecure Systems</td>
+<td class="px-gutter py-4 font-bold text-on-surface">3</td>
+<td class="px-gutter py-4">
+<div class="flex flex-wrap gap-1">
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">AWS</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">Terraform</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">Python</span>
+</div>
+</td>
+<td class="px-gutter py-4">
+<span class="px-2 py-1 bg-emerald-100 text-status-success text-[11px] font-bold rounded-lg uppercase">Low</span>
+</td>
+<td class="px-gutter py-4">
+<div class="flex items-center gap-2">
+<img alt="Creator Avatar" class="w-6 h-6 rounded-full" data-alt="A small profile avatar of a middle-aged male with professional attire, soft lighting, clean corporate look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPB4wAV3egbVn4r5Eh51ksZwzxbSShNQJehJ-sHBjZbKXQnMACH2Xfm3Qjflx7Vum1GDLlK97OcTf0gk4n9mb41PVgdlI77DIX-lZ_3p2cOG3xhuGBsp9FKBJEkMWRF1o4LOLQO4nTGJJaK-_t2WyhRxk6HBj4vjcx6l3DFjI-XbogZyB-8Mok8jlm3trPh_87s6ZGfP5e6drc6rW9sStfAbo94htUE6c4jUtS1r0WclLYzNWNNlsnUGzJmpwspTzsXYbySDJEVoc"/>
+<span class="text-label-md text-on-surface truncate">Robert King</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant text-label-md whitespace-nowrap">1d ago</td>
+<td class="px-gutter py-4">
+<span class="flex items-center gap-1.5 text-on-surface-variant font-bold text-[11px] uppercase">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                                    Unclaimed
+                                </span>
+</td>
+<td class="px-gutter py-4 text-right">
+<button class="px-4 py-2 bg-primary-container text-on-primary-container font-bold text-label-md rounded-lg hover:shadow-md transition-all active:scale-95">Claim Ownership</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-default">
+<td class="px-gutter py-4 border-b-0">
+<div class="flex flex-col">
+<span class="text-primary font-bold font-data-mono">JR-1033</span>
+<span class="font-bold text-on-surface truncate max-w-[200px]">Data Scientist</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant font-body-md border-b-0">Insight Labs</td>
+<td class="px-gutter py-4 font-bold text-on-surface border-b-0">1</td>
+<td class="px-gutter py-4 border-b-0">
+<div class="flex flex-wrap gap-1">
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">R</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[11px] font-bold text-on-surface-variant uppercase">PyTorch</span>
+</div>
+</td>
+<td class="px-gutter py-4 border-b-0">
+<span class="px-2 py-1 bg-red-100 text-status-error text-[11px] font-bold rounded-lg uppercase">High</span>
+</td>
+<td class="px-gutter py-4 border-b-0">
+<div class="flex items-center gap-2">
+<img alt="Creator Avatar" class="w-6 h-6 rounded-full" data-alt="Professional avatar icon of a marketing executive, friendly demeanor, bright lighting, high quality corporate photo." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMQgZqpg2KANBN-j35uf59bVUZeQL4gJUfjMftG-SoPRSCI_7a-59_lNSY9xkfvG49RpNPdznnx-HYKQptl1bVjOj9cQx5hCxc3H3PdDlwBeN-asD-2GVYJgMVK8pErmiqx02m7JUH-KOkAjRW-E9QqIHiMJqNJm7mSA1nb7aO2v9_PCK288McA2zKUAeyo8H_L5Y1SZaGI3zHQHWnMzqiSwsAEdOFsm5JLF-nkxq-prY8u1DwjkH3uZoPUHuag7dnDYtamJ-ZYXk"/>
+<span class="text-label-md text-on-surface truncate">Alex Miller</span>
+</div>
+</td>
+<td class="px-gutter py-4 text-on-surface-variant text-label-md whitespace-nowrap border-b-0">2d ago</td>
+<td class="px-gutter py-4 border-b-0">
+<span class="flex items-center gap-1.5 text-on-surface-variant font-bold text-[11px] uppercase">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                                    Unclaimed
+                                </span>
+</td>
+<td class="px-gutter py-4 text-right border-b-0">
+<button class="px-4 py-2 bg-primary-container text-on-primary-container font-bold text-label-md rounded-lg hover:shadow-md transition-all active:scale-95">Claim Ownership</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="bg-surface-container-low px-gutter py-3 flex items-center justify-between border-t border-border-subtle">
+<span class="text-on-surface-variant text-label-md">Showing 1-4 of 12 new requests</span>
+<div class="flex items-center gap-2">
+<button class="p-1.5 border border-border-subtle bg-white rounded hover:bg-surface-container-high transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="px-3 py-1 bg-primary-container text-on-primary-container font-bold text-label-md rounded shadow-sm">1</button>
+<button class="px-3 py-1 hover:bg-surface-container-high text-on-surface-variant font-label-md rounded transition-colors">2</button>
+<button class="px-3 py-1 hover:bg-surface-container-high text-on-surface-variant font-label-md rounded transition-colors">3</button>
+<button class="p-1.5 border border-border-subtle bg-white rounded hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Summary Context -->
+<div class="mt-gutter grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="bg-surface-bg p-gutter border border-border-subtle rounded-xl">
+<div class="flex items-center justify-between mb-2">
+<span class="text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">Queue Health</span>
+<span class="material-symbols-outlined text-status-success">trending_up</span>
+</div>
+<p class="text-headline-md font-headline-md text-on-surface">Optimal</p>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-status-success h-full w-[85%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-bg p-gutter border border-border-subtle rounded-xl">
+<div class="flex items-center justify-between mb-2">
+<span class="text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">Avg. Claim Time</span>
+<span class="material-symbols-outlined text-primary">timer</span>
+</div>
+<p class="text-headline-md font-headline-md text-on-surface">18 mins</p>
+<p class="text-on-surface-variant text-[10px] mt-2">▼ 4% from last week</p>
+</div>
+<div class="bg-surface-bg p-gutter border border-border-subtle rounded-xl">
+<div class="flex items-center justify-between mb-2">
+<span class="text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">Unresolved High Priority</span>
+<span class="material-symbols-outlined text-status-error">warning</span>
+</div>
+<p class="text-headline-md font-headline-md text-on-surface">2</p>
+<p class="text-on-surface-variant text-[10px] mt-2">Requires immediate allocation</p>
+</div>
+</div>
+</main>
+<!-- Micro-interactions Script -->
+<script>
+        // Simple button active state visual feedback
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', function() {
+                this.style.transform = 'scale(0.97)';
+            });
+            button.addEventListener('mouseup', function() {
+                this.style.transform = 'scale(1)';
+            });
+            button.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // Tab switching logic (visual only)
+        const tabs = document.querySelectorAll('.border-b button');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => {
+                    t.classList.remove('border-primary-container', 'text-primary', 'font-bold');
+                    t.classList.add('border-transparent', 'text-on-surface-variant');
+                });
+                tab.classList.add('border-primary-container', 'text-primary', 'font-bold');
+                tab.classList.remove('border-transparent', 'text-on-surface-variant');
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Talent Pilot | Admin Center - Users</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #E1E4E8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #cbd5e1;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f7fafc;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#eef1f3",
+                        "surface-container-low": "#f1f4f6",
+                        "tertiary-fixed-dim": "#ffb68e",
+                        "on-tertiary-container": "#ffe0d1",
+                        "background": "#f7fafc",
+                        "secondary": "#575f6c",
+                        "outline-variant": "#c1c6d4",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#141c27",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#a8c8ff",
+                        "on-primary-container": "#dbe6ff",
+                        "on-primary-fixed-variant": "#00468a",
+                        "status-warning": "#B45309",
+                        "on-primary-fixed": "#001b3d",
+                        "surface-dim": "#d7dadc",
+                        "on-surface-variant": "#414752",
+                        "tertiary": "#833900",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#bfc7d6",
+                        "outline": "#727783",
+                        "inverse-primary": "#a8c8ff",
+                        "surface-container": "#ebeef0",
+                        "tertiary-container": "#a94b00",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-fixed": "#dbe3f2",
+                        "primary-fixed": "#d6e3ff",
+                        "tertiary-fixed": "#ffdbca",
+                        "surface": "#f7fafc",
+                        "secondary-container": "#d8e0ef",
+                        "on-tertiary-fixed-variant": "#773300",
+                        "text-main": "#111827",
+                        "inverse-surface": "#2d3133",
+                        "error": "#ba1a1a",
+                        "text-muted": "#6B7280",
+                        "surface-variant": "#e0e3e5",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#005eb5",
+                        "on-surface": "#181c1e",
+                        "status-success": "#057A55",
+                        "status-error": "#C81E1E",
+                        "surface-bright": "#f7fafc",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#331200",
+                        "on-primary": "#ffffff",
+                        "on-background": "#181c1e",
+                        "surface-container-high": "#e5e9eb",
+                        "on-secondary": "#ffffff",
+                        "border-subtle": "#E1E4E8",
+                        "primary-container": "#0a66c2",
+                        "primary": "#004e99",
+                        "nav-bg": "#1B232E",
+                        "on-secondary-fixed-variant": "#3f4753",
+                        "on-secondary-container": "#5b6370",
+                        "surface-bg": "#FFFFFF"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "container-margin": "24px",
+                        "base": "8px",
+                        "gutter": "16px",
+                        "header-height": "64px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "data-mono": ["IBM Plex Mono"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-xl": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-header-height bg-nav-bg text-on-primary">
+<div class="flex items-center gap-8">
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary tracking-tight">Talent Pilot</h1>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-on-secondary-fixed-variant hover:text-on-primary transition-colors font-body-md text-body-md" href="#">Dashboard</a>
+<a class="text-on-secondary-fixed-variant hover:text-on-primary transition-colors font-body-md text-body-md" href="#">Job Requests</a>
+<a class="text-on-secondary-fixed-variant hover:text-on-primary transition-colors font-body-md text-body-md" href="#">Candidates</a>
+<a class="text-on-primary border-b-2 border-primary-container pb-1 font-body-md text-body-md" href="#">Admin Center</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-secondary-fixed-variant">search</span>
+<input class="bg-surface-bg/10 border-none rounded-lg pl-10 pr-4 py-1.5 text-body-md w-64 focus:ring-1 focus:ring-primary-container transition-all" placeholder="Search..." type="text"/>
+</div>
+<button class="p-2 hover:bg-on-surface-variant/10 rounded-full transition-all duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-on-secondary-fixed-variant">
+<img alt="User profile menu" data-alt="A professional headshot of a corporate administrator in a modern office setting. The lighting is crisp and neutral, reflecting a high-end enterprise environment with a clean, light-mode aesthetic. The individual has a confident yet approachable expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkcTLMg2LARMNUmVzaLETliHf-dUNpI1ftLsSpFCQh5LxHJ38It997l0tGrSsVkbwiIbr7Pt_2iptadxmsoSxwlkp7EVsGg_Nm7iafRIdXHeODw7cxVgjT1TKbBURNj-O5MLIagZFV0svz51R-PULZ8MJrqwl-FpEgqdjQ1-h3_aqD-lvr38rUWII0opJILJchhA5bCFSJukynr0Cvq01KOvpf2SvSqgLm1A1y9wIn5nhpd8vfs1bi1n1LtroAvJQWwGqCP6Ms8f4"/>
+</div>
+</div>
+</header>
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-header-height h-[calc(100vh-theme(spacing.header-height))] w-sidebar-width p-4 flex flex-col gap-1 overflow-y-auto bg-surface-bg border-r border-border-subtle">
+<div class="px-2 py-4 mb-2">
+<h2 class="font-headline-sm text-headline-sm font-bold text-primary">Admin Center</h2>
+<p class="text-secondary text-label-md font-label-md">Global Configuration</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="business">business</span>
+                Tenant Profile
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="palette">palette</span>
+                Branding
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="web">web</span>
+                Career Page
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 bg-secondary-fixed text-primary font-bold rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="group">group</span>
+                Users
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="security">security</span>
+                Roles &amp; Permissions
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="hub">hub</span>
+                Groups
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="domain">domain</span>
+                Departments
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="psychology">psychology</span>
+                Skills
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="account_tree">account_tree</span>
+                Hiring Pipeline
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings_applications">settings_applications</span>
+                Workflows
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications_active">notifications_active</span>
+                Notifications
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="smart_toy">smart_toy</span>
+                AI Settings
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="extension">extension</span>
+                Integrations
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container hover:text-on-surface transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="history">history</span>
+                Audit Logs
+            </a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-sidebar-width mt-header-height p-6 min-h-[calc(100vh-theme(spacing.header-height))]">
+<!-- Header Section -->
+<header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface">Users</h1>
+<p class="text-text-muted font-body-md text-body-md mt-1">Manage internal people, operational roles, groups, and workflow access.</p>
+</div>
+<button class="bg-primary hover:bg-primary-container text-on-primary px-6 h-[44px] rounded-lg font-body-md text-body-md font-semibold transition-all duration-200 active:scale-95 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+                + Add Internal User
+            </button>
+</header>
+<!-- Summary Metrics Bar -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="bg-surface-bg border border-border-subtle p-4 rounded-xl flex items-center justify-between">
+<div>
+<p class="text-text-muted font-label-md text-label-md uppercase tracking-wider">Internal Users</p>
+<p class="font-headline-lg text-headline-lg text-on-surface mt-1">42</p>
+</div>
+<div class="bg-primary/10 p-3 rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+</div>
+</div>
+<div class="bg-surface-bg border border-border-subtle p-4 rounded-xl flex items-center justify-between">
+<div>
+<p class="text-text-muted font-label-md text-label-md uppercase tracking-wider">Routing Groups</p>
+<p class="font-headline-lg text-headline-lg text-on-surface mt-1">5</p>
+</div>
+<div class="bg-primary/10 p-3 rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+</div>
+</div>
+<div class="bg-surface-bg border border-border-subtle p-4 rounded-xl flex items-center justify-between">
+<div>
+<p class="text-text-muted font-label-md text-label-md uppercase tracking-wider">Bench Visible To</p>
+<div class="mt-2">
+<span class="bg-secondary-fixed text-primary px-3 py-1 rounded-lg font-bold font-body-md text-body-md">PMO</span>
+</div>
+</div>
+<div class="bg-primary/10 p-3 rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</div>
+</div>
+</section>
+<!-- Users Table Container -->
+<section class="bg-surface-bg border border-border-subtle rounded-xl overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-border-subtle">
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant font-bold">User</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant font-bold">Roles</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant font-bold">Groups</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant font-bold">Operational Access</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant font-bold">Account</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant font-bold">Last Active</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant font-bold text-center">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-body-md overflow-hidden">
+<img alt="Tenant Admin" data-alt="A clean, professional portrait of a male business executive. Minimalist background, high-end studio lighting, reflecting a corporate identity of transparency and authority within a light-themed interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDP0t3XAJot4j0kArj3w30DcrsF1teHDI34QIMHHz-yRjxu7awh_GxHdLhq-sw-B9wcVRdMnN3asIIgW-RMx_-m_01LmobGIn1ZJBPTT2Hs3sJnZmjfI033N3ELdwzabeYnbjbJZy7SUXCCsKKajnEr2Z66dViI0_PDcohKBV5TxnIdGIluxv0q24RAItSpbmcSkYDSHTD3n9YmPVBdY2JoPYnt6pqhtM0WcWZt15txtaOGba5Ulv8xRFY5XM3adfYlPIHgQs6pGIk"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-bold text-on-surface">Tenant Admin</span>
+<span class="text-text-muted text-label-md font-label-md">admin@tkxel.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="bg-primary-container/10 text-primary-fixed-variant border border-primary-container/20 px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">Tenant Admin (P1)</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-on-surface font-body-md text-body-md">Admin Team</span>
+</td>
+<td class="px-6 py-4 max-w-xs">
+<span class="text-on-surface font-body-md text-body-md">Tenant configuration</span>
+</td>
+<td class="px-6 py-4">
+<span class="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-tight">Active</span>
+</td>
+<td class="px-6 py-4 text-text-muted font-body-md text-body-md">Today</td>
+<td class="px-6 py-4 text-center">
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container transition-all relative action-trigger">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-body-md overflow-hidden">
+<img alt="Presales User" data-alt="A sharp, modern headshot of a female professional in a bright, modern office space. High-contrast, clean lines, professional atmosphere with soft overhead lighting, part of a high-performance HR platform visualization." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-bxth1Dy1QPpdG5a5kSeHmUvF2kqFoGLo7d1u1KcWjM-JLDVRBByZ7Ej193rFBp7I0lnyA0JFMZudg7lvve0eN5K1DtMoY06--UzjC5ABYRvu7gRpPm8ydvJdCOJ7WNuEWKxm8aw_tUkXiVi755r4j2_nckwIwvh7niFaIDpDOsNMdzL_HQheH_xOwjmF9EonM8vfjtkADTf42sqakJ4GFWMM3zvHKWzdohxuYcf4B0jVK4Xd6DNJ1LC5GNb4fvrKjQ7tiVc5E_Q"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-bold text-on-surface">Presales User</span>
+<span class="text-text-muted text-label-md font-label-md">presales@tkxel.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="bg-primary-container/10 text-primary-fixed-variant border border-primary-container/20 px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">Presales (P1)</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-on-surface font-body-md text-body-md">Presales Team</span>
+</td>
+<td class="px-6 py-4 max-w-xs">
+<span class="text-on-surface font-body-md text-body-md">Create resource requests</span>
+</td>
+<td class="px-6 py-4">
+<span class="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-tight">Active</span>
+</td>
+<td class="px-6 py-4 text-text-muted font-body-md text-body-md">Today</td>
+<td class="px-6 py-4 text-center">
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-body-md overflow-hidden">
+<img alt="PMO User" data-alt="Professional headshot of a middle-aged male corporate leader. Crisp, modern attire, soft background suggesting an open-plan tech office. Bright lighting conditions for a professional, institutional-grade HR dashboard UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuArwG8Z1DvOEA4hwstBULoTD2krN_qCz0wXab-lx_lCt7ncAhjYvCmQA27XpM7UuwbsNIq8i7iCog6WmHxz3_Sx6uJSVaBN9bjIeo011I6NZcUHeWSLyv8E8kqpgF_yIpYKOKiCA3b_4H3-ROrSxYgCo_30PGI3ERyAP8T6NZZ-hAy93LqSBXst7rRHk9HJZu9NN0irAMZdsd-evg42aMbcmlgHCJhP_yRW2FWSjPxGEDumggQdAUm11lIEqivdM4M7Y1huY7zdeFo"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-bold text-on-surface">PMO User</span>
+<span class="text-text-muted text-label-md font-label-md">pmo@tkxel.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col gap-1">
+<span class="bg-primary-container/10 text-primary-fixed-variant border border-primary-container/20 px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">PMO (P1)</span>
+<span class="bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">PMO Lead (P2)</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-on-surface font-body-md text-body-md">PMO Group</span>
+</td>
+<td class="px-6 py-4 max-w-xs">
+<span class="text-on-surface font-body-md text-body-md">Bench review and referrals</span>
+</td>
+<td class="px-6 py-4">
+<span class="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-tight">Active</span>
+</td>
+<td class="px-6 py-4 text-text-muted font-body-md text-body-md">Yesterday</td>
+<td class="px-6 py-4 text-center">
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-body-md overflow-hidden">
+<img alt="Recruiter User" data-alt="Modern professional headshot of a younger male employee in a high-tech corporate environment. Minimalist and clear aesthetic, natural sunlight, high information density styling suited for an enterprise management tool." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRaqYnkNsG_fyfQ8pm9-eAKcwZns8aH_ekMCCa1LZ5xZdy2hG0jY-QdHI4I3gJFwhfPO8wsdC_L0hK183uRtvpZsXf8rC1ZDyIDPcLnz3jQBtV1T1a-SRwJnQbGMb8jickHOiM_q9dhlhk99Ej9Nqs5-aFPGS231knuEweUB4AcW0hUZhInRhTF6QwvvZuAQNq71uV7YEgTuDizMuS93iBf3rTfzqCmLeCAfbD7wxQuxJmBz4Nf3K4grTPuEz_gU3oNDbh5yNecF4"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-bold text-on-surface">Recruiter User</span>
+<span class="text-text-muted text-label-md font-label-md">recruiter@tkxel.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="bg-primary-container/10 text-primary-fixed-variant border border-primary-container/20 px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">Recruiter (P1)</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-on-surface font-body-md text-body-md">Recruitment Team</span>
+</td>
+<td class="px-6 py-4 max-w-xs">
+<span class="text-on-surface font-body-md text-body-md">Candidates and hiring pipeline</span>
+</td>
+<td class="px-6 py-4">
+<span class="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-tight">Active</span>
+</td>
+<td class="px-6 py-4 text-text-muted font-body-md text-body-md">2h ago</td>
+<td class="px-6 py-4 text-center">
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-body-md overflow-hidden">
+<img alt="Hiring Manager" data-alt="A sophisticated business portrait of a female leader in a high-performance recruitment context. Deep shadows but clear lighting on features, professional and efficient mood, consistent with institutional SaaS branding." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRhM7pMHfNRTQ2tyTF08jR5y4Ex4-8Pe0mz8zNDTkKo_-youw-8NZY_JmiDrd90zDXv_8Hw7_tq-dXPNejTdRjbNY2wsQVRoUQEue3Y_InzchoL6qtrxmpWWhL4kXVB9iOXhp-ZZhec1ekbBwmd3DFgF5EQHP-NNkR5nnKggBnIEKJDPfgRAKmj4pL3N-IYRAJqtMRhLHG_LuqFwks-24tT5mBXe5iEg2RASTZUnYfYW2mrbRICnAB52lE3j0YJBjhSmb_ej2_aLw"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-bold text-on-surface">Hiring Manager</span>
+<span class="text-text-muted text-label-md font-label-md">hiring.manager@tkxel.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col gap-1">
+<span class="bg-primary-container/10 text-primary-fixed-variant border border-primary-container/20 px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">Hiring Manager (P1)</span>
+<span class="bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">Interviewer (P2)</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-on-surface font-body-md text-body-md">Delivery Leadership</span>
+</td>
+<td class="px-6 py-4 max-w-xs">
+<span class="text-on-surface font-body-md text-body-md">Candidate review decisions</span>
+</td>
+<td class="px-6 py-4">
+<span class="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-tight">Active</span>
+</td>
+<td class="px-6 py-4 text-text-muted font-body-md text-body-md">Today</td>
+<td class="px-6 py-4 text-center">
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-body-md overflow-hidden">
+<img alt="Interviewer User" data-alt="A professional headshot of an engineering manager in a modern setting. Professional lighting, crisp detail, bright white environment reflecting a modern enterprise software aesthetic. Clean and authoritative look for high-stakes admin portal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYERMf042O8xEqobYuMkmwUUjTKQ2M_WUncfzkeWUqkOgSG2nv5pmUNMfSAntoRYnkNSbIRspFPkP7V-oZg_ceN6wiyrB9-Uk-zgZz_BKH2p3hN52DZxjUbyNFKr5UWgdA8AW5tVlwNReaIs0qZI7bGBu3lC-16p0mKRuG0fN7cEueRNGi671BtrsEdrNYv8bJClyN3x3p146tV5IyhFKAESkzUup_uiomgHxfWQrw0h0_vgh51MCGCVd_Y73Em3je0Q6UDb59idI"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-bold text-on-surface">Interviewer User</span>
+<span class="text-text-muted text-label-md font-label-md">interviewer@tkxel.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="bg-primary-container/10 text-primary-fixed-variant border border-primary-container/20 px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">Interviewer (P1)</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-on-surface font-body-md text-body-md">Engineering Interviewers</span>
+</td>
+<td class="px-6 py-4 max-w-xs">
+<span class="text-on-surface font-body-md text-body-md">Interview feedback</span>
+</td>
+<td class="px-6 py-4">
+<span class="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-tight">Active</span>
+</td>
+<td class="px-6 py-4 text-text-muted font-body-md text-body-md">3d ago</td>
+<td class="px-6 py-4 text-center">
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 7 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container flex items-center justify-center font-bold text-body-md overflow-hidden">
+<img alt="Bench Employee" data-alt="A professional portrait of a software engineer for an HR portal. Sharp focus, clean modern lighting, neutral background. Mood is technical and focused, supporting an enterprise-grade recruitment and resource management software system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBTUIekTbx7HQfsBbCQX5qKuygfatgLYjKF_NkALG6DJnM7_dl1dEd6zxTsNlNXpQxDSlSMBUgsRH3SEMfEtFj9z2u94NtOlzTf_uVIimsHKOJWZK1F87mpCzqiAHHL2t1vKGwf7EF_XaHD1EjVQWc-gwQh8XBORFkZknNsmM9s8Cj4JKTd5dnR_nXAtix7qaeHXUhuZ6WxXaJxXVDH3jhf_7K4_vCzL_yIYlSDvVXFjun1PA1mTILYgUJjc3kDAczZUqPQa9LEpw"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-bold text-on-surface">Bench Employee</span>
+<span class="text-text-muted text-label-md font-label-md">employee@tkxel.com</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="bg-primary-container/10 text-primary-fixed-variant border border-primary-container/20 px-2 py-0.5 rounded text-[12px] font-semibold whitespace-nowrap">Employee (P1)</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-on-surface font-body-md text-body-md">Engineering</span>
+</td>
+<td class="px-6 py-4 max-w-xs">
+<span class="text-on-surface font-body-md text-body-md">Bench match profile</span>
+</td>
+<td class="px-6 py-4">
+<span class="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[12px] font-bold uppercase tracking-tight">Active</span>
+</td>
+<td class="px-6 py-4 text-text-muted font-body-md text-body-md">5d ago</td>
+<td class="px-6 py-4 text-center">
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination-like footer -->
+<div class="px-6 py-4 bg-surface-container-low border-t border-border-subtle flex items-center justify-between">
+<span class="text-text-muted font-label-md text-label-md">Showing 7 of 42 users</span>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-surface-bg border border-border-subtle rounded-lg text-secondary hover:text-primary transition-colors text-body-md">Previous</button>
+<button class="px-3 py-1 bg-primary text-on-primary rounded-lg text-body-md font-bold">1</button>
+<button class="px-3 py-1 bg-surface-bg border border-border-subtle rounded-lg text-secondary hover:text-primary transition-colors text-body-md">2</button>
+<button class="px-3 py-1 bg-surface-bg border border-border-subtle rounded-lg text-secondary hover:text-primary transition-colors text-body-md">Next</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Context Menu Template (Hidden by default) -->
+<div class="fixed hidden z-[60] bg-surface-bg border border-border-subtle rounded-xl shadow-xl w-56 py-2" id="action-menu">
+<button class="w-full text-left px-4 py-2 hover:bg-surface-container text-body-md transition-colors flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px] text-secondary">open_in_new</span>
+            Open details
+        </button>
+<button class="w-full text-left px-4 py-2 hover:bg-surface-container text-body-md transition-colors flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px] text-secondary">manage_accounts</span>
+            Edit access
+        </button>
+<button class="w-full text-left px-4 py-2 hover:bg-surface-container text-body-md transition-colors flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px] text-secondary">shield</span>
+            Manage roles
+        </button>
+<button class="w-full text-left px-4 py-2 hover:bg-surface-container text-body-md transition-colors flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px] text-secondary">history</span>
+            View audit history
+        </button>
+<hr class="my-2 border-border-subtle"/>
+<button class="w-full text-left px-4 py-2 hover:bg-surface-container text-body-md transition-colors text-status-error flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px]">person_off</span>
+            Deactivate access
+        </button>
+</div>
+<script>
+        // Simple Interaction logic for the action menu
+        const triggers = document.querySelectorAll('.action-trigger');
+        const menu = document.getElementById('action-menu');
+
+        triggers.forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const rect = trigger.getBoundingClientRect();
+                menu.style.top = `${rect.bottom + 8}px`;
+                menu.style.left = `${rect.left - 180}px`;
+                menu.classList.toggle('hidden');
+            });
+        });
+
+        document.addEventListener('click', () => {
+            menu.classList.add('hidden');
+        });
+
+        // Add some atmospheric micro-interaction for rows
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.transform = 'translateX(4px)';
+                row.style.transition = 'transform 0.2s ease-out';
+            });
+            row.addEventListener('mouseleave', () => {
+                row.style.transform = 'translateX(0px)';
+            });
+        });
+    </script>
+</body></html>

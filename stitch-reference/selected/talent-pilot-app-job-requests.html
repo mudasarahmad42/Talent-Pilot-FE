@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Talent Pilot App - Job Requests</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#a8c8ff",
+                        "tertiary-fixed": "#ffdbca",
+                        "on-tertiary-container": "#ffe0d1",
+                        "on-surface": "#181c1e",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-bg": "#FFFFFF",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#331200",
+                        "surface-variant": "#e0e3e5",
+                        "outline-variant": "#c1c6d4",
+                        "border-subtle": "#E1E4E8",
+                        "secondary-container": "#d8e0ef",
+                        "tertiary-fixed-dim": "#ffb68e",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f1f4f6",
+                        "secondary-fixed-dim": "#bfc7d6",
+                        "on-primary-fixed-variant": "#00468a",
+                        "text-main": "#111827",
+                        "secondary-fixed": "#dbe3f2",
+                        "nav-bg": "#1B232E",
+                        "on-primary-fixed": "#001b3d",
+                        "on-tertiary-fixed-variant": "#773300",
+                        "surface-tint": "#005eb5",
+                        "inverse-on-surface": "#eef1f3",
+                        "tertiary-container": "#a94b00",
+                        "secondary": "#575f6c",
+                        "status-error": "#C81E1E",
+                        "on-surface-variant": "#414752",
+                        "error": "#ba1a1a",
+                        "surface-container": "#ebeef0",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-container": "#0a66c2",
+                        "background": "#f7fafc",
+                        "tertiary": "#833900",
+                        "on-secondary-fixed": "#141c27",
+                        "surface": "#f7fafc",
+                        "on-secondary-container": "#5b6370",
+                        "text-muted": "#6B7280",
+                        "status-success": "#057A55",
+                        "surface-dim": "#d7dadc",
+                        "status-warning": "#B45309",
+                        "on-background": "#181c1e",
+                        "outline": "#727783",
+                        "inverse-surface": "#2d3133",
+                        "primary-fixed": "#d6e3ff",
+                        "surface-container-high": "#e5e9eb",
+                        "primary-fixed-dim": "#a8c8ff",
+                        "surface-bright": "#f7fafc",
+                        "on-secondary-fixed-variant": "#3f4753",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#dbe6ff",
+                        "primary": "#004e99"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "container-margin": "24px",
+                        "base": "8px",
+                        "sidebar-width": "260px",
+                        "gutter": "16px",
+                        "header-height": "64px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "data-mono": ["IBM Plex Mono"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-xl": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #F7F9FB;
+        }
+        /* Custom Table Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E1E4E8;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center h-header-height px-container-margin w-full fixed top-0 z-50 bg-nav-bg">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-on-primary">RecruitOps</span>
+<nav class="hidden md:flex gap-6">
+<a class="font-label-md text-label-md text-on-primary/70 hover:text-on-primary transition-colors duration-200" href="#">Dashboard</a>
+<a class="font-label-md text-label-md text-on-primary border-b-2 border-primary-fixed pb-1" href="#">Job Requests</a>
+<a class="font-label-md text-label-md text-on-primary/70 hover:text-on-primary transition-colors duration-200" href="#">Candidates</a>
+<a class="font-label-md text-label-md text-on-primary/70 hover:text-on-primary transition-colors duration-200" href="#">Admin Center</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<input class="bg-white/10 border-none text-on-primary text-body-md rounded-xl px-4 py-1.5 w-64 focus:ring-1 focus:ring-primary-fixed outline-none" placeholder="Search..." type="text"/>
+</div>
+<button class="text-on-primary/70 hover:text-on-primary">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-primary/70 hover:text-on-primary">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-white/20">
+<img alt="User profile" data-alt="A professional headshot of a corporate recruitment manager in a minimalist office setting, soft natural lighting, high-end photography style, consistent with a modern enterprise B2B software aesthetic using cool tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMalNI1rpjp8SRlt7ye1qq63OV2q27587-i8kb8HetA5SJ_TpbI_P4osxWD9MDwxsruiQURB4RkolN83Y_embXRgEyTA2coLbEZuypm6ftrtCxaOSpJMYVbcmpFc-8J3Gpr9k9qjFE63hR28RI9Z6BLMyxyLDKKa7JIfaPUOjtBdZRpcCgv7cPt7Vixup4sIM7ZxBdc1G1REsLgUzhp8e8igqBj9DDP_1ZFJzD1RHnyNvRTnUBup0UKnoZOR3EluXzLVgOwfMy9Zc"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-header-height h-[calc(100vh-theme(spacing.header-height))] w-sidebar-width flex flex-col p-base border-r border-border-subtle bg-surface-bg z-40">
+<div class="px-4 py-6 mb-4">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Talent Pilot App</h2>
+</div>
+<p class="text-label-md font-label-md text-on-surface-variant px-11">Recruitment Module</p>
+</div>
+<nav class="flex-1 px-2 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-secondary-container text-on-secondary-container font-semibold rounded-lg group" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+<span class="font-label-md text-label-md">Active Requests</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined">drafts</span>
+<span class="font-label-md text-label-md">Drafts</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined">archive</span>
+<span class="font-label-md text-label-md">Archived</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<div class="px-2 pb-4 border-t border-border-subtle pt-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 rounded-lg group" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Log Out</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-sidebar-width pt-header-height min-h-screen">
+<div class="p-container-margin max-w-[1600px] mx-auto">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-text-main mb-1">Job Requests</h1>
+<p class="font-body-md text-text-muted">Manage and monitor all recruitment requisitions across the organization.</p>
+</div>
+<button class="bg-primary-container text-white px-6 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-all flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined">add</span>
+                    New Job Request
+                </button>
+</div>
+<!-- Stats Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-8">
+<div class="bg-surface-bg border border-border-subtle p-5 rounded-xl flex items-center gap-4">
+<div class="w-12 h-12 bg-primary-fixed rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">assignment</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-text-muted">Total Requests</p>
+<p class="text-headline-md font-bold text-text-main">12</p>
+</div>
+</div>
+<div class="bg-surface-bg border border-border-subtle p-5 rounded-xl flex items-center gap-4">
+<div class="w-12 h-12 bg-tertiary-fixed rounded-full flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">pending_actions</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-text-muted">Pending Approval</p>
+<p class="text-headline-md font-bold text-text-main">3</p>
+</div>
+</div>
+<div class="bg-surface-bg border border-border-subtle p-5 rounded-xl flex items-center gap-4">
+<div class="w-12 h-12 bg-secondary-fixed rounded-full flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">groups</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-text-muted">Active Hiring</p>
+<p class="text-headline-md font-bold text-text-main">8</p>
+</div>
+</div>
+<div class="bg-surface-bg border border-border-subtle p-5 rounded-xl flex items-center gap-4">
+<div class="w-12 h-12 bg-status-success/10 rounded-full flex items-center justify-center text-status-success">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-text-muted">Completed</p>
+<p class="text-headline-md font-bold text-text-main">42</p>
+</div>
+</div>
+</div>
+<!-- Filter Bar -->
+<div class="bg-surface-bg border border-border-subtle p-4 rounded-xl mb-6 shadow-sm">
+<div class="flex flex-wrap items-center gap-4">
+<div class="flex-1 min-w-[240px]">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-border-subtle rounded-xl text-body-md focus:ring-1 focus:ring-primary-container outline-none" placeholder="Search request codes or titles..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<select class="bg-surface-container-lowest border border-border-subtle rounded-xl text-body-md py-2 px-4 focus:ring-1 focus:ring-primary-container outline-none">
+<option>Status: All</option>
+<option>Open</option>
+<option>Closed</option>
+<option>On Hold</option>
+</select>
+<select class="bg-surface-container-lowest border border-border-subtle rounded-xl text-body-md py-2 px-4 focus:ring-1 focus:ring-primary-container outline-none">
+<option>Department: All</option>
+<option>Engineering</option>
+<option>Product</option>
+<option>Marketing</option>
+</select>
+<select class="bg-surface-container-lowest border border-border-subtle rounded-xl text-body-md py-2 px-4 focus:ring-1 focus:ring-primary-container outline-none">
+<option>Priority: All</option>
+<option>High</option>
+<option>Medium</option>
+<option>Low</option>
+</select>
+<button class="p-2 border border-border-subtle rounded-xl hover:bg-surface-container-low text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Table Container -->
+<div class="bg-white border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-border-subtle">
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Code</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Title</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Department</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Positions</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Priority</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Stage</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Owner</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider">Status</th>
+<th class="px-4 py-3 font-label-md text-label-md text-text-muted uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-4 py-4 font-data-mono text-data-mono font-semibold text-primary">JR-1001</td>
+<td class="px-4 py-4 font-body-md font-semibold text-text-main">Senior .NET Engineer</td>
+<td class="px-4 py-4 font-body-md text-text-muted">Engineering</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-3">
+<div class="w-16 bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-[100%]"></div>
+</div>
+<span class="font-body-md text-text-main">1 / 1</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-status-error/10 text-status-error text-label-md font-semibold border border-status-error/20">High</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-body-md text-text-main">Interviewing</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<img alt="Zubair Ahmed" class="w-6 h-6 rounded-full border border-border-subtle" data-alt="A small circular avatar placeholder for an employee named Zubair Ahmed, featuring clear professional attire and a neutral grey studio background, modern LinkedIn style profile picture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBZOSC-65foW5Ot67yCuAOV9RwVVxoB5S_d_MJgoTyQiV6lXm6JapGPP_LLAtngqI6YtCE2e8J79CJqJyh0XIwIBIpVWcmne3AVtVS9yN0PH8Z50hPVxakwgy1Gz8PUp6Jet6AU9oXj_ySbdwr2f3MdxNgipqdtXISVCsqOMcttQRZRYF37hMyKLOa0BG1BcSDcOvV9XnPWi_Np531AgqwVyXG1-NLmnE8XbxmzAC3D_mUkZrpxyDbFCgmfDzbARuPHekvaTXd_OU"/>
+<span class="font-body-md text-text-main">Zubair Ahmed</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-status-success/10 text-status-success text-label-md font-semibold">Active</span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">visibility</span></button>
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">edit</span></button>
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-4 py-4 font-data-mono text-data-mono font-semibold text-primary">JR-1002</td>
+<td class="px-4 py-4 font-body-md font-semibold text-text-main">Product Manager</td>
+<td class="px-4 py-4 font-body-md text-text-muted">Product</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-3">
+<div class="w-16 bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-[0%]"></div>
+</div>
+<span class="font-body-md text-text-main">0 / 1</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-primary-fixed text-primary text-label-md font-semibold border border-primary/20">Medium</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="font-body-md text-text-main">PMO Review</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<img alt="Sara Khan" class="w-6 h-6 rounded-full border border-border-subtle" data-alt="A small circular avatar placeholder for an employee named Sara Khan, corporate style lighting, focused professional expression, clean minimalist background, matching high-end SaaS application styling." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-0UXLn4ZEiX1cABRzCth4tYTCtRjkcem4Szwul_3g9zntdtLWwLphmBsaJ0sPErjthLUZT_Z0gaK_sC5q4LDNYDClmWdLaSNdQSeYiX73_NkufB40oZyCZJ6DX2yuK3eNyUkmXxBRdBtY4q4njCG2Oj4rWVgHJuqBtHD-AeBO-a0eiZHVkBiLroEavFY6b_2xPDITYctc1ldSuvaCYs0Ckyl0ho_DB2jfasG0ptbeBDDgam4Y_Oss0pWuvRgxyMT2yZG_Q31IrQE"/>
+<span class="font-body-md text-text-main">Sara Khan</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-status-success/10 text-status-success text-label-md font-semibold">Active</span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">visibility</span></button>
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">edit</span></button>
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-4 py-4 font-data-mono text-data-mono font-semibold text-primary">JR-1003</td>
+<td class="px-4 py-4 font-body-md font-semibold text-text-main">QA Automation Lead</td>
+<td class="px-4 py-4 font-body-md text-text-muted">Engineering</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-3">
+<div class="w-16 bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-[0%]"></div>
+</div>
+<span class="font-body-md text-text-main">0 / 2</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-status-error/10 text-status-error text-label-md font-semibold border border-status-error/20">High</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="font-body-md text-text-main">Sourcing</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<img alt="Zubair Ahmed" class="w-6 h-6 rounded-full border border-border-subtle" data-alt="A small circular avatar placeholder for an employee named Zubair Ahmed, featuring clear professional attire and a neutral grey studio background, modern LinkedIn style profile picture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmwecDyKLEtF0WMmonfJpcpGKgOaI5JzxGlUXc7r8kkANMelaoViBsUOvDtVEYGQ2jTzGZW-s9vgc89odvZtlJnxUHeZvLZIN3Zio4h77T-JeJvvXs9ME8QPYvTs_8UwE9ySHH8TwQIR1-vvwPaHMOHf003067ySIsQCHiRrRq4zGu7a3EBKno5wsBLfwuCVbH6jawU0zD0hArSnNpKHZ-8TkzQU091Hv_ddd_toXqPDjZ5RwEAeG3N-LDUub1-NfNDupRARw7NNA"/>
+<span class="font-body-md text-text-main">Zubair Ahmed</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-secondary-container text-on-secondary-container text-label-md font-semibold">Draft</span>
+</td>
+<td class="px-4 py-4 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">visibility</span></button>
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">edit</span></button>
+<button class="p-1.5 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="p-4 bg-surface-container-low border-t border-border-subtle flex items-center justify-between">
+<p class="font-label-md text-label-md text-text-muted">Showing 1 to 3 of 12 entries</p>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 border border-border-subtle rounded-lg text-label-md font-semibold disabled:opacity-50 hover:bg-white transition-colors" disabled="">Previous</button>
+<button class="px-3 py-1.5 bg-primary text-white rounded-lg text-label-md font-semibold shadow-sm">1</button>
+<button class="px-3 py-1.5 border border-border-subtle rounded-lg text-label-md font-semibold hover:bg-white transition-colors">2</button>
+<button class="px-3 py-1.5 border border-border-subtle rounded-lg text-label-md font-semibold hover:bg-white transition-colors">3</button>
+<button class="px-3 py-1.5 border border-border-subtle rounded-lg text-label-md font-semibold hover:bg-white transition-colors">Next</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Micro-interactions for table rows and buttons
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('click', () => {
+                row.classList.toggle('bg-primary/5');
+            });
+        });
+
+        // Search highlight effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-[1.01]');
+            searchInput.parentElement.style.transition = 'transform 0.2s ease';
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-[1.01]');
+        });
+    </script>
+</body></html>

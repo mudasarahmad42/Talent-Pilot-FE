@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Recruitment Queue | Talent Pilot</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "text-main": "#111827",
+                    "surface-tint": "#005eb5",
+                    "on-tertiary-fixed-variant": "#773300",
+                    "on-surface": "#181c1e",
+                    "secondary-container": "#d8e0ef",
+                    "tertiary-fixed-dim": "#ffb68e",
+                    "surface-bright": "#f7fafc",
+                    "primary-fixed-dim": "#a8c8ff",
+                    "on-error-container": "#93000a",
+                    "surface-variant": "#e0e3e5",
+                    "status-error": "#C81E1E",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#d7dadc",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed-dim": "#bfc7d6",
+                    "on-secondary-fixed": "#141c27",
+                    "background": "#f7fafc",
+                    "on-surface-variant": "#414752",
+                    "tertiary-fixed": "#ffdbca",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary": "#575f6c",
+                    "nav-bg": "#1B232E",
+                    "border-subtle": "#E1E4E8",
+                    "surface-bg": "#FFFFFF",
+                    "error": "#ba1a1a",
+                    "secondary-fixed": "#dbe3f2",
+                    "surface": "#f7fafc",
+                    "on-primary-fixed-variant": "#00468a",
+                    "primary": "#004e99",
+                    "outline": "#727783",
+                    "tertiary": "#833900",
+                    "outline-variant": "#c1c6d4",
+                    "on-tertiary-fixed": "#331200",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#0a66c2",
+                    "tertiary-container": "#a94b00",
+                    "surface-container-low": "#f1f4f6",
+                    "surface-container-high": "#e5e9eb",
+                    "on-primary-fixed": "#001b3d",
+                    "on-secondary-container": "#5b6370",
+                    "status-success": "#057A55",
+                    "on-primary-container": "#dbe6ff",
+                    "inverse-surface": "#2d3133",
+                    "on-background": "#181c1e",
+                    "on-tertiary-container": "#ffe0d1",
+                    "text-muted": "#6B7280",
+                    "inverse-primary": "#a8c8ff",
+                    "inverse-on-surface": "#eef1f3",
+                    "on-secondary-fixed-variant": "#3f4753",
+                    "on-primary": "#ffffff",
+                    "status-warning": "#B45309",
+                    "surface-container": "#ebeef0",
+                    "surface-container-highest": "#e0e3e5",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#d6e3ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "base": "8px",
+                    "header-height": "64px",
+                    "gutter": "16px",
+                    "container-margin": "24px",
+                    "sidebar-width": "260px"
+            },
+            "fontFamily": {
+                    "label-md": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "data-mono": ["IBM Plex Mono"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-xl": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f4f6; }
+        ::-webkit-scrollbar-thumb { background: #c1c6d4; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8c8ff; }
+        .table-fixed-header thead th { position: sticky; top: 0; z-index: 10; }
+    </style>
+</head>
+<body class="bg-background font-body-md text-text-main min-h-screen">
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 left-0 w-full h-header-height z-50 flex items-center px-gutter justify-between bg-nav-bg border-b border-outline-variant shadow-none">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-white tracking-tight">Talent Pilot</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-secondary-fixed-dim hover:text-white transition-colors font-label-md text-label-md" href="#">Dashboard</a>
+<a class="text-white border-b-2 border-surface-tint pb-1 font-label-md text-label-md opacity-80 transition-opacity" href="#">Job Requests</a>
+<a class="text-secondary-fixed-dim hover:text-white transition-colors font-label-md text-label-md" href="#">Candidates</a>
+<a class="text-secondary-fixed-dim hover:text-white transition-colors font-label-md text-label-md" href="#">Admin Center</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative max-w-xs hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary-fixed-dim text-[20px]">search</span>
+<input class="bg-[#2d3a4b] border-none rounded-lg pl-10 pr-4 py-1.5 text-sm text-white placeholder-secondary-fixed-dim focus:ring-1 focus:ring-surface-tint w-64 transition-all" placeholder="Search across Talent Pilot..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-secondary-fixed-dim hover:text-white hover:bg-on-secondary-fixed-variant rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-secondary-fixed-dim hover:text-white hover:bg-on-secondary-fixed-variant rounded-full transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-secondary-fixed-dim hover:text-white hover:bg-on-secondary-fixed-variant rounded-full transition-all">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="ml-2 pl-4 border-l border-outline-variant/30">
+<img alt="Recruiter Profile" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A professional headshot of a recruitment executive with a focused and confident expression. He is wearing a dark charcoal blazer over a crisp light-blue shirt, positioned against a minimalist, high-key corporate office background with soft bokeh. The lighting is bright and even, reinforcing a light-mode enterprise aesthetic. The image conveys reliability, institutional strength, and modern professionalism in a B2B SaaS context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCln43SQa2aUjH58YJyKHuXpEVg3mhp0K0SxpMYjCEIAhT8XYOHw6R6ai2DVsuK9lze1Q6Ol9yIYKL3PXFPRz_vgR5bbxiqvR490VoJR61ZevDC_59f1a9SoCwZU0WV5-PuROHpYK7E3Y9E5bGz9BM6vEYDVhr_qMndhTI-y2fNCQwDQgZbqurL5TNHlcjToPqevAv9jylNdHwNMIES3DNtLlh0HSgobH7dWr33uci_-86lcN780-YB5ra_wJhMi41QyrCD0WZj8EU"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-header-height h-[calc(100vh-header-height)] w-sidebar-width z-40 flex flex-col p-base bg-surface-bg border-r border-border-subtle">
+<div class="mb-6 px-3">
+<h3 class="text-primary font-bold font-headline-md text-headline-md">Operations</h3>
+<p class="text-secondary text-[12px]">Recruitment Module</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container-low transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]">overview</span>
+                Overview
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 bg-secondary-container text-primary font-semibold rounded-lg scale-95 transition-transform font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+                Recruitment Queue
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container-low transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]">event_available</span>
+                Interview Scheduling
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container-low transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]">monetization_on</span>
+                Offers
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-secondary hover:bg-surface-container-low transition-colors rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]">groups</span>
+                Talent Pool
+            </a>
+</nav>
+<div class="mt-auto border-t border-border-subtle pt-4 px-3">
+<div class="bg-surface-container-low p-3 rounded-lg border border-border-subtle">
+<p class="text-[11px] font-bold text-secondary uppercase tracking-wider mb-2">Team Capacity</p>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mb-1">
+<div class="bg-primary h-1.5 rounded-full" style="width: 72%;"></div>
+</div>
+<p class="text-[11px] text-on-surface-variant">72% active utilization</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-sidebar-width mt-header-height p-container-margin min-h-[calc(100vh-header-height)]">
+<!-- Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-text-main">Recruitment Queue</h1>
+<p class="text-text-muted font-body-md text-body-md mt-1">Manage and track active recruitment requisitions across the organization.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-[10px] bg-white border border-border-subtle rounded-lg font-label-md text-label-md text-secondary hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    Filters
+                </button>
+<button class="flex items-center gap-2 px-4 py-[10px] bg-white border border-border-subtle rounded-lg font-label-md text-label-md text-secondary hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-[18px]">ios_share</span>
+                    Export
+                </button>
+<button class="flex items-center gap-2 px-4 py-[10px] bg-primary text-white rounded-lg font-label-md text-label-md hover:bg-primary-container transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    New Request
+                </button>
+</div>
+</div>
+<!-- Dashboard Cards / Stats -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-8">
+<div class="bg-white border border-border-subtle p-5 rounded-lg flex flex-col justify-between hover:border-surface-tint/30 transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-text-muted uppercase tracking-wider">Avg. Time to Fill</span>
+<span class="material-symbols-outlined text-surface-tint">speed</span>
+</div>
+<div class="mt-4">
+<h2 class="font-headline-lg text-headline-lg">18 Days</h2>
+<p class="text-status-success text-[12px] font-medium flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+                        12% from last month
+                    </p>
+</div>
+</div>
+<div class="bg-white border border-border-subtle p-5 rounded-lg flex flex-col justify-between hover:border-surface-tint/30 transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-text-muted uppercase tracking-wider">Open Positions</span>
+<span class="material-symbols-outlined text-surface-tint">work_outline</span>
+</div>
+<div class="mt-4">
+<h2 class="font-headline-lg text-headline-lg">42</h2>
+<p class="text-status-warning text-[12px] font-medium flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+                        4 new today
+                    </p>
+</div>
+</div>
+<div class="bg-white border border-border-subtle p-5 rounded-lg flex flex-col justify-between hover:border-surface-tint/30 transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-text-muted uppercase tracking-wider">Active Interviews</span>
+<span class="material-symbols-outlined text-surface-tint">group</span>
+</div>
+<div class="mt-4">
+<h2 class="font-headline-lg text-headline-lg">128</h2>
+<p class="text-text-muted text-[12px] font-medium flex items-center gap-1 mt-1">
+                        across 15 departments
+                    </p>
+</div>
+</div>
+<div class="bg-white border border-border-subtle p-5 rounded-lg flex flex-col justify-between hover:border-surface-tint/30 transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-text-muted uppercase tracking-wider">Offer Accept Rate</span>
+<span class="material-symbols-outlined text-surface-tint">handshake</span>
+</div>
+<div class="mt-4">
+<h2 class="font-headline-lg text-headline-lg">88.4%</h2>
+<p class="text-status-success text-[12px] font-medium flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+                        High efficiency
+                    </p>
+</div>
+</div>
+</div>
+<!-- Recruitment Tabs -->
+<div class="mb-0 border-b border-border-subtle flex gap-8">
+<button class="px-1 py-4 border-b-2 border-primary text-primary font-label-md text-label-md flex items-center gap-2">
+                Claimed by me <span class="bg-primary-container text-on-primary-container px-2 py-0.5 rounded-full text-[11px]">4</span>
+</button>
+<button class="px-1 py-4 border-b-2 border-transparent text-secondary hover:text-primary transition-colors font-label-md text-label-md flex items-center gap-2">
+                New to Recruitment <span class="bg-surface-container-high text-secondary px-2 py-0.5 rounded-full text-[11px]">12</span>
+</button>
+<button class="px-1 py-4 border-b-2 border-transparent text-secondary hover:text-primary transition-colors font-label-md text-label-md flex items-center gap-2">
+                Published Jobs <span class="bg-surface-container-high text-secondary px-2 py-0.5 rounded-full text-[11px]">8</span>
+</button>
+<button class="px-1 py-4 border-b-2 border-transparent text-secondary hover:text-primary transition-colors font-label-md text-label-md flex items-center gap-2">
+                Needs Candidates <span class="bg-surface-container-high text-secondary px-2 py-0.5 rounded-full text-[11px]">5</span>
+</button>
+<button class="px-1 py-4 border-b-2 border-transparent text-secondary hover:text-primary transition-colors font-label-md text-label-md flex items-center gap-2">
+                In Interviews <span class="bg-surface-container-high text-secondary px-2 py-0.5 rounded-full text-[11px]">15</span>
+</button>
+</div>
+<!-- Enterprise Table Container -->
+<div class="bg-white border border-border-subtle rounded-b-lg overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left table-auto border-collapse table-fixed-header">
+<thead>
+<tr class="bg-surface-container-low border-b border-border-subtle">
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[120px]">Request Code</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary">Title</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[140px]">Department</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[120px]">Positions</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[120px]">Published</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[100px]">Candidates</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[110px]">Priority</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[160px]">Owner</th>
+<th class="px-4 py-3 font-label-md text-label-md text-secondary w-[200px]">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-4 py-4 font-data-mono text-data-mono text-primary font-medium">JR-1025</td>
+<td class="px-4 py-4">
+<p class="font-body-md text-body-md font-semibold text-text-main">Senior .NET Developer</p>
+<p class="text-[11px] text-text-muted">Added 2h ago</p>
+</td>
+<td class="px-4 py-4 font-body-md text-body-md text-on-surface-variant">Engineering</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1.5">
+<span class="text-[11px] font-medium text-text-main">1 / 2</span>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 50%;"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-green-50 text-status-success text-[11px] font-bold border border-green-200 uppercase tracking-tight">Published</span>
+</td>
+<td class="px-4 py-4 text-center">
+<span class="font-label-md text-label-md text-text-main">14</span>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-red-50 text-status-error text-[11px] font-bold border border-red-100">HIGH</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<img alt="Zubair Ahmed" class="w-6 h-6 rounded-full" data-alt="A clean, minimalist portrait of a male professional in his late 30s. He is dressed in a smart casual light-colored linen shirt, set against a bright, softly blurred office environment with natural light streaming from the side. The overall aesthetic is clean, professional, and optimistic, perfectly suited for an executive recruitment platform dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp87YMXyMeZ2voW_zkWmfEs_H7sC53khrWjGBaD0xMyr9Z07K7_gCtZ31Wl-MYejPmBcrcsePWsXqj-p4dAeFMXLvalKHYKue3rzWxfvufFipzHQ9DOfXIMppKHEEvNB58IMPFD3zFrWYX8Owpes9nIwL1tc380Bx3q1qJiHGHqpHFShhZF-rahXveoNSMQ5YhbsP8JwRkKWEVnqnanGCX5xqYcvxqDCI7cz4gPP1J7cvatBHNjY16ah8cKf-oe_m1T-OvzkbcZTI"/>
+<span class="font-body-md text-body-md">Zubair Ahmed</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1 bg-white border border-border-subtle rounded text-[12px] font-semibold hover:bg-surface-container-low transition-colors">Pipeline</button>
+<button class="px-3 py-1 bg-primary text-white rounded text-[12px] font-semibold hover:bg-primary-container transition-colors">+ Add</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-4 py-4 font-data-mono text-data-mono text-primary font-medium">JR-1028</td>
+<td class="px-4 py-4">
+<p class="font-body-md text-body-md font-semibold text-text-main">Product Designer (UI/UX)</p>
+<p class="text-[11px] text-text-muted">Added 5h ago</p>
+</td>
+<td class="px-4 py-4 font-body-md text-body-md text-on-surface-variant">Design</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1.5">
+<span class="text-[11px] font-medium text-text-main">0 / 1</span>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 0%;"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container-high text-secondary text-[11px] font-bold border border-outline-variant uppercase tracking-tight">Draft</span>
+</td>
+<td class="px-4 py-4 text-center">
+<span class="font-label-md text-label-md text-text-main">8</span>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-amber-50 text-status-warning text-[11px] font-bold border border-amber-100">MEDIUM</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<img alt="Sarah Jenkins" class="w-6 h-6 rounded-full" data-alt="A sharp, clear professional profile of a woman in her 30s. She is wearing a professional white blouse and has a warm, confident smile. The background is a high-key, modern office space with clean lines and soft lighting, echoing a light-mode corporate design system. The photo radiates competence and executive presence for a recruitment leadership role." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3eRC47qtQBpiLHViIFi5sT7xqxQlHzI1L0oTuCn3uJS1V9vG3zFTB97nYNYZ-Y4DdQO2tqyFwZZYPgA60kuLHpHDHxsqhSFWHYCAiXmZeB3K0cvz5b-iP_HTSeKb7yF930dkZj8tpKGKB3qWzn785jmjVliMG3gkuagLyqR9AYL3xCwLCd3uy-nz5cjaeUylCigdzq9Ro0pWppnxaFOly9aU9lOihjjPJNIg4teE-IZuthc19_OuhcBf5Kvzg7vJ08IMEqvGr9v0"/>
+<span class="font-body-md text-body-md">Sarah Jenkins</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1 bg-surface-tint text-white rounded text-[12px] font-semibold hover:bg-primary-container transition-colors">Publish</button>
+<button class="px-3 py-1 bg-white border border-border-subtle rounded text-[12px] font-semibold hover:bg-surface-container-low transition-colors">Pipeline</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-4 py-4 font-data-mono text-data-mono text-primary font-medium">JR-1031</td>
+<td class="px-4 py-4">
+<p class="font-body-md text-body-md font-semibold text-text-main">QA Automation Lead</p>
+<p class="text-[11px] text-text-muted">Added yesterday</p>
+</td>
+<td class="px-4 py-4 font-body-md text-body-md text-on-surface-variant">QA Department</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1.5">
+<span class="text-[11px] font-medium text-text-main">1 / 1</span>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-status-success h-full" style="width: 100%;"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-green-50 text-status-success text-[11px] font-bold border border-green-200 uppercase tracking-tight">Published</span>
+</td>
+<td class="px-4 py-4 text-center">
+<span class="font-label-md text-label-md text-text-main">32</span>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-primary text-[11px] font-bold border border-blue-100">LOW</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<img alt="Michael Chen" class="w-6 h-6 rounded-full" data-alt="A professional headshot of an Asian male executive in a corporate setting. He is wearing a tailored navy suit and looks professional and approachable. The background features a bright, out-of-focus modern architecture with daylight tones, consistent with a premium enterprise B2B software aesthetic. High-quality professional lighting emphasizes clarity and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuANaleMeN9saCVf2Ls8BAseBtTIzy5cgC7jgB9Oc6nPBdtfqGfdixMOU7lPpU-bnwQZxYxrdf13wYDYTEBIsYk3EYs_wcaWU5sVxnivoJmoR64TKvSDTdZ1P5hOeD_l0PdH6dk7azHxeRzNJU_oyIy0U-DRLhY4qqWESXoC95sNxfdXtAGfEdCsw51eaYWQYt6cObwsNmueD8rBYiTryem77hJ05RMw9s_FFt9mUbyLcnVqypKUeNmW2wETBetAkLy9sA6BOQmjHKs"/>
+<span class="font-body-md text-body-md">Michael Chen</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1 bg-white border border-border-subtle rounded text-[12px] font-semibold hover:bg-surface-container-low transition-colors">Pipeline</button>
+<button class="px-3 py-1 bg-white border border-border-subtle rounded text-[12px] font-semibold hover:bg-surface-container-low transition-colors">Archive</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-4 py-4 font-data-mono text-data-mono text-primary font-medium">JR-1035</td>
+<td class="px-4 py-4">
+<p class="font-body-md text-body-md font-semibold text-text-main">Cloud Solution Architect</p>
+<p class="text-[11px] text-text-muted">Added yesterday</p>
+</td>
+<td class="px-4 py-4 font-body-md text-body-md text-on-surface-variant">Cloud Ops</td>
+<td class="px-4 py-4">
+<div class="flex flex-col gap-1.5">
+<span class="text-[11px] font-medium text-text-main">0 / 3</span>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 0%;"></div>
+</div>
+</div>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-green-50 text-status-success text-[11px] font-bold border border-green-200 uppercase tracking-tight">Published</span>
+</td>
+<td class="px-4 py-4 text-center">
+<span class="font-label-md text-label-md text-text-main">21</span>
+</td>
+<td class="px-4 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-red-50 text-status-error text-[11px] font-bold border border-red-100">HIGH</span>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2">
+<img alt="Elena Rodriguez" class="w-6 h-6 rounded-full" data-alt="A portrait of a confident woman executive with a friendly yet professional demeanor. She is wearing a dark, elegant blazer over a white top. The background is a bright, high-key workspace with natural lighting and soft focus, creating a clean and authoritative visual style aligned with modern B2B SaaS design standards. The mood is efficient and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByynVdh4zmSYm5v-vkjJYPUYFlGUPF-EZ3tba6vdBlJ6tRiAWznnaN4zXqrl3UGPj9iooIO6A_y9yKWcMkVgs3GDmSipzNmWG9Dv_o2x7otPllLhIoMIpatwE5vJfqu3Xlo01IuEaL3zDe0E4V8zjV6PjI3y9YQC5e44cPKax2iCgmoeSvd-6hqgcv9rDiYgHMV8F16HlICgDNY0e453csVknbz48Nj_Sjf9cC2mi2FxoLBfZdC3I0pZIoT6jfvo120XuRlSUAVcY"/>
+<span class="font-body-md text-body-md">Elena Rodriguez</span>
+</div>
+</td>
+<td class="px-4 py-4">
+<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-3 py-1 bg-white border border-border-subtle rounded text-[12px] font-semibold hover:bg-surface-container-low transition-colors">Pipeline</button>
+<button class="px-3 py-1 bg-primary text-white rounded text-[12px] font-semibold hover:bg-primary-container transition-colors">+ Add</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-4 py-4 bg-surface-container-low flex justify-between items-center border-t border-border-subtle">
+<span class="text-[12px] text-text-muted">Showing 1-4 of 4 results</span>
+<div class="flex gap-1">
+<button class="p-1 text-secondary border border-border-subtle rounded hover:bg-white transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center bg-primary text-white text-[12px] font-bold rounded">1</button>
+<button class="p-1 text-secondary border border-border-subtle rounded hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Micro-interaction JavaScript -->
+<script>
+        // Simple hover effect for table rows to enhance "locked-in" feel
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.boxShadow = 'inset 4px 0 0 0 #004e99';
+            });
+            row.addEventListener('mouseleave', () => {
+                row.style.boxShadow = 'none';
+            });
+        });
+
+        // Search Bar Focus Effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-[1.02]');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-[1.02]');
+        });
+    </script>
+</body></html>
