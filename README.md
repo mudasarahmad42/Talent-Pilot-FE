@@ -14,11 +14,26 @@ The frontend is a real application shell, not a design mock. Business data must 
 - npm 11.x
 - Node.js 22.12 or newer
 
-This repository follows the approved Talent Pilot frontend stack documented in the parent workspace under `TECH STACK DETAILS/frontend/README.md` when that workspace is available.
+## Dependency Policy
+
+- Prefer free, open-source, well-maintained libraries.
+- Do not add paid UI kits, paid SDKs, hosted SaaS dependencies, or closed-source packages without team approval.
+- Prefer Angular Material and small focused Angular/CDK utilities before introducing another UI framework.
+- Keep frontend state simple: Angular signals, RxJS, and focused services are enough for MVP.
+- Do not add global state libraries unless the team agrees the current state flow is no longer traceable.
+
+## Prerequisites
+
+- Node.js `22.12+`
+- npm `11+`
+- Backend API running at `http://localhost:5058`
+- SQL Server setup handled by the backend repository
 
 ## Setup
 
 ```powershell
+git clone https://github.com/mudasarahmad42/Talent-Pilot-FE.git
+cd Talent-Pilot-FE
 npm install
 ```
 
@@ -52,6 +67,19 @@ Deployed builds use relative `/api`.
 npm run build
 ```
 
+## Recommended Development Loop
+
+```powershell
+npm start -- --host 127.0.0.1 --port 4200
+npm run build
+```
+
+Use the browser at:
+
+```text
+http://127.0.0.1:4200/auth/login
+```
+
 ## Current Implemented Areas
 
 - Backend-backed card login at `/auth/login`.
@@ -71,6 +99,27 @@ npm run build
 - Buttons and form fields must call backend endpoints before becoming real user actions.
 - Endpoint names and schema notes belong in docs, not visible UI.
 - Permission checks must use backend-returned permission ids through `PermissionService`.
+
+## Frontend Guardrails
+
+- This is a production application, not a static design gallery.
+- Google Stitch references in `stitch-reference/selected/` are visual/layout references.
+- Backend APIs and knowledge-base documents are the source of truth for behavior and data.
+- Missing backend APIs should produce clear empty states, not frontend mock records.
+- Configurable settings must be editable controls with validation, save/reset behavior, and API calls.
+- Keep business logic out of components where practical; use focused services and typed models.
+- Keep routes permission-protected using backend-returned permissions.
+- Keep pages responsive and usable on mobile widths.
+
+## Design References
+
+Curated Google Stitch exports live in:
+
+```text
+stitch-reference/selected/
+```
+
+Commit curated `.png` and `.html` references that help developers match screens. Do not commit Chrome profiles, local QA screenshots, or transient API response dumps.
 
 ## Knowledge Base
 
@@ -121,3 +170,10 @@ Do not add active UI for:
 - PDF CV parsing
 
 AI is advisory only. Human users make recruitment decisions.
+
+## Before Opening A PR
+
+- Run `npm run build`.
+- Verify the changed route in the browser.
+- Update `knowledge-base/` or `API_CONTRACT.md` when changing behavior, permissions, endpoints, or missing API assumptions.
+- Do not commit generated folders such as `node_modules`, `dist`, `.angular/cache`, browser profiles, logs, or local secrets.
