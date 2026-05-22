@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { Notification } from './models';
 import { ApiService } from './services/api.service';
 
 export interface AdminUsersResponse {
@@ -155,6 +156,30 @@ export interface AdminAiGuardrailsResponse {
   decisionBoundary: string;
 }
 
+export interface AdminIntegrationStatusResponse {
+  readOnly: boolean;
+  totalCount: number;
+  items: AdminIntegrationStatusItem[];
+}
+
+export interface AdminIntegrationStatusItem {
+  id: string;
+  displayName: string;
+  category: string;
+  status: string;
+  enabled: boolean;
+  editable: boolean;
+  runtimeMode: string;
+  deliveryPath: string;
+  mvpContract: string;
+  metrics: AdminIntegrationMetric[];
+}
+
+export interface AdminIntegrationMetric {
+  name: string;
+  value: number;
+}
+
 export interface AdminAuditLogListResponse {
   summary: {
     eventsToday: number;
@@ -225,6 +250,10 @@ export class AdminCenterApiService {
     return firstValueFrom(this.api.get<NotificationTemplateSummary[]>('admin/notifications/templates'));
   }
 
+  sendTestNotification(): Promise<Notification> {
+    return firstValueFrom(this.api.post<Notification, Record<string, never>>('admin/notifications/test', {}));
+  }
+
   getAiRuntime(): Promise<AdminAiRuntimeResponse> {
     return firstValueFrom(this.api.get<AdminAiRuntimeResponse>('admin/ai-settings/runtime'));
   }
@@ -235,6 +264,10 @@ export class AdminCenterApiService {
 
   getAiGuardrails(): Promise<AdminAiGuardrailsResponse> {
     return firstValueFrom(this.api.get<AdminAiGuardrailsResponse>('admin/ai-settings/guardrails'));
+  }
+
+  getIntegrationsStatus(): Promise<AdminIntegrationStatusResponse> {
+    return firstValueFrom(this.api.get<AdminIntegrationStatusResponse>('admin/integrations/status'));
   }
 
   listAuditLogs(query = ''): Promise<AdminAuditLogListResponse> {

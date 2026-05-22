@@ -3043,22 +3043,32 @@ tr:last-child td {
 
 .integrations-table th:nth-child(1),
 .integrations-table td:nth-child(1) {
-  width: 18%;
+  width: 17%;
 }
 
 .integrations-table th:nth-child(2),
 .integrations-table td:nth-child(2) {
-  width: 42%;
+  width: 14%;
 }
 
 .integrations-table th:nth-child(3),
 .integrations-table td:nth-child(3) {
-  width: 24%;
+  width: 22%;
 }
 
 .integrations-table th:nth-child(4),
 .integrations-table td:nth-child(4) {
-  width: 16%;
+  width: 18%;
+}
+
+.integrations-table th:nth-child(5),
+.integrations-table td:nth-child(5) {
+  width: 18%;
+}
+
+.integrations-table th:nth-child(6),
+.integrations-table td:nth-child(6) {
+  width: 11%;
 }
 
 .integrations-table th,

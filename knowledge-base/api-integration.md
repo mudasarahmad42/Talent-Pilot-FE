@@ -22,18 +22,25 @@
 - `GET /api/admin/groups`
 - `GET` / `PUT /api/admin/access-policies/*`
 - `GET` / `PUT /api/admin/notifications/*`
+- `POST /api/admin/notifications/test`
 - `GET /api/admin/ai-settings/*`
+- `GET /api/admin/integrations/status`
 - `GET /api/admin/audit-logs`
-- `GET /api/talent-pilot/snapshot`
-- `POST /api/talent-pilot/job-requests`
-- `POST /api/talent-pilot/workflow-assignments/{assignmentId}/claim`
-- `PATCH /api/talent-pilot/notifications/*`
+- `GET /api/job-requests`
+- `POST /api/job-requests`
+- `GET /api/job-requests/{id}`
+- `GET /api/pmo/queue`
+- `POST /api/workflow-assignments/{assignmentId}/claim`
+- `GET /api/recruitment/queue`
+- `POST /api/job-requests/{jobRequestId}/forward-to-recruiter`
+- `GET /api/notifications`
+- `POST /api/notifications/{notificationId}/read`
+- `SignalR /hubs/notifications` receiving `NotificationReceived`
 
 ## Missing Frontend Contracts
 
 - Candidate job listing, job detail, apply, profile, applications, and interview APIs.
-- Recruiter candidate prospect, invite, job publishing, and hiring pipeline command APIs.
+- Recruiter candidate prospect, invite, job publishing, and candidate pipeline command APIs.
 - Interview scheduling and feedback APIs.
 - Hiring Manager final review and offer outcome APIs.
 - Lookup endpoints for departments, skills, locations, hiring managers, and workflow owners.
-- SignalR client connection for realtime notification refresh.

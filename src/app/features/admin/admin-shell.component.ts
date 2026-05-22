@@ -1,6 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { RealtimeNotificationService } from '../../core/services/realtime-notification.service';
+import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 import { ADMIN_NAV_GROUPS } from './admin-center.data';
 
 @Component({
@@ -22,9 +24,12 @@ import { ADMIN_NAV_GROUPS } from './admin-center.data';
         </nav>
 
         <div class="user-menu">
-          <button type="button" class="topbar-icon-button" aria-label="Notifications">
+          <a class="topbar-icon-button" routerLink="/app/notifications" [attr.aria-label]="unreadCount() + ' unread notifications'">
             <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
-          </button>
+            @if (unreadCount() > 0) {
+              <span class="notification-dot"></span>
+            }
+          </a>
           @if (currentUser(); as user) {
             <button type="button" class="avatar-button" [attr.aria-label]="'Sign out ' + user.name" (click)="auth.logout()">
               <span class="avatar small">{{ initials(user.name) }}</span>
@@ -59,8 +64,14 @@ import { ADMIN_NAV_GROUPS } from './admin-center.data';
 })
 export class AdminShellComponent {
   readonly auth = inject(AuthService);
+  private readonly realtimeNotifications = inject(RealtimeNotificationService);
+  private readonly store = inject(TalentPilotStoreService);
   readonly navGroups = ADMIN_NAV_GROUPS;
   readonly currentUser = computed(() => this.auth.currentUser());
+  readonly unreadCount = computed(() => {
+    const user = this.currentUser();
+    return user ? this.store.unreadCountForUser(user.id) : 0;
+  });
 
   initials(name: string): string {
     return name

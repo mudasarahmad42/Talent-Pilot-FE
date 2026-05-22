@@ -9,6 +9,7 @@ import {
   AdminAiAgentDefinition,
   AdminCenterApiService,
   AdminGroupListItem,
+  AdminIntegrationStatusItem,
   AdminNotificationEventListItem,
   AdminRoleListItem,
   NotificationTemplateSummary,
@@ -23,6 +24,7 @@ import { CandidateCvFormat, TenantCurrency, TenantProfileSettings, TenantStatus 
 import { Permission } from '../../core/permissions';
 import { NotificationService } from '../../core/services/notification.service';
 import { PermissionService } from '../../core/services/permission.service';
+import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 type TenantProfileTab = 'profile' | 'branding' | 'career-page' | 'security';
 type WorkflowTab = 'policies' | 'routing-rules' | 'transition-triggers';
@@ -1801,7 +1803,12 @@ function buildTimezoneOptions(currentTimezone: string): TimezoneOption[] {
                               @for (cell of row; track cellIndex; let cellIndex = $index) {
                                 <td>
                                   @if (isStatusValue(cell)) {
-                                    <span class="table-status" [class.success]="cell === 'Active'">
+                                    <span
+                                      class="table-status"
+                                      [class.success]="isSuccessStatus(cell)"
+                                      [class.warning]="isWarningStatus(cell)"
+                                      [class.custom]="isCustomStatus(cell)"
+                                    >
                                       {{ cell }}
                                     </span>
                                   } @else {
@@ -1995,7 +2002,12 @@ function buildTimezoneOptions(currentTimezone: string): TimezoneOption[] {
                                 </time>
                               } @else {
                                 @if (isStatusValue(cell)) {
-                                  <span class="table-status" [class.success]="cell === 'Active'">
+                                  <span
+                                    class="table-status"
+                                    [class.success]="isSuccessStatus(cell)"
+                                    [class.warning]="isWarningStatus(cell)"
+                                    [class.custom]="isCustomStatus(cell)"
+                                  >
                                     {{ cell }}
                                   </span>
                                 } @else if (cellIndex === 0 && isCodeLike(cell)) {
@@ -2168,6 +2180,7 @@ export class AdminPageComponent {
   private readonly adminCenterApi = inject(AdminCenterApiService);
   private readonly notifications = inject(NotificationService);
   private readonly permissionService = inject(PermissionService);
+  private readonly store = inject(TalentPilotStoreService);
   private readonly pageId = toSignal(this.route.paramMap.pipe(map((params) => params.get('pageId'))), {
     initialValue: 'tenant-profile',
   });
@@ -2248,6 +2261,7 @@ export class AdminPageComponent {
   readonly selectedRoleAction = signal<RoleActionContext | null>(null);
   readonly bulkAssignmentSelectedEmails = signal<Set<string>>(new Set());
   readonly selectedNotificationTemplate = signal<NotificationTemplateDefinition | null>(null);
+  readonly sendingTestNotification = signal(false);
   readonly activeTenantTab = signal<TenantProfileTab>('profile');
   readonly activeWorkflowTab = signal<WorkflowTab>('routing-rules');
   readonly activeAiSettingsTab = signal<AiSettingsTab>('runtime');
@@ -2379,6 +2393,12 @@ export class AdminPageComponent {
         ]);
         this.notificationTemplates = templates.map((template) => this.toNotificationTemplate(template));
         this.setBackendPageOverride(pageId, this.toNotificationsPage(events.items, events.summary));
+        return;
+      }
+
+      if (pageId === 'integrations') {
+        const response = await this.adminCenterApi.getIntegrationsStatus();
+        this.setBackendPageOverride(pageId, this.toIntegrationsPage(response.items, response.readOnly));
         return;
       }
 
@@ -2577,6 +2597,63 @@ export class AdminPageComponent {
       cards: [],
       guardrails: [],
     };
+  }
+
+  private toIntegrationsPage(integrations: AdminIntegrationStatusItem[], readOnly: boolean): AdminPage {
+    const base = getAdminPage('integrations');
+    const enabledCount = integrations.filter((integration) => integration.enabled).length;
+    const editableCount = integrations.filter((integration) => integration.editable).length;
+    const mockedCount = integrations.filter((integration) => integration.status === 'Mock Only').length;
+
+    return {
+      ...base,
+      status: readOnly ? 'Read-only' : 'Editable',
+      subtitle: 'Review local/free integration contracts used by the MVP. Delivery behavior is owned by backend code, not tenant configuration.',
+      metrics: [
+        { label: 'Integrations', value: String(integrations.length), note: 'MVP contracts' },
+        { label: 'Enabled', value: String(enabledCount), note: 'Active in backend' },
+        { label: 'Read-only', value: readOnly ? 'Yes' : 'No', note: 'No credentials required' },
+        { label: 'Mocked', value: String(mockedCount), note: 'Demo-only boundaries' },
+      ],
+      table: {
+        columns: ['Integration', 'Category', 'Runtime Mode', 'Delivery Path', 'Runtime Metrics', 'Status'],
+        rows: integrations.map((integration) => [
+          integration.displayName,
+          integration.category,
+          integration.runtimeMode,
+          integration.deliveryPath,
+          this.formatIntegrationMetrics(integration),
+          integration.status,
+        ]),
+      },
+      cards: [
+        {
+          title: 'MVP Boundary',
+          lines: [
+            'No paid providers, external credentials, or production job-board automation are required.',
+            'Notification transport is implemented in backend code and is not configurable from this screen.',
+            'LinkedIn publishing remains a mock demonstration until a real approved API path exists.',
+          ],
+        },
+        {
+          title: 'After MVP',
+          lines: [
+            'Add real provider credentials only when approval and security storage are available.',
+            'Add health checks for calendar, job-board, parser, and AI provider integrations.',
+            'Keep candidate-facing application capture inside Talent Pilot unless a partner API is approved.',
+          ],
+        },
+      ],
+      guardrails: [],
+    };
+  }
+
+  private formatIntegrationMetrics(integration: AdminIntegrationStatusItem): string {
+    if (!integration.metrics.length) {
+      return integration.editable ? 'Editable' : 'Not editable';
+    }
+
+    return integration.metrics.map((metric) => `${metric.name}: ${metric.value}`).join(', ');
   }
 
   private toAuditLogsPage(
@@ -2853,25 +2930,20 @@ export class AdminPageComponent {
     this.notifications.info(`${action} for ${itemName} saved.`);
   }
 
-  handlePageAction(): void {
+  async handlePageAction(): Promise<void> {
     if (!this.canRunPageAction()) {
       this.notifications.error('You do not have permission for this action.');
       return;
     }
 
     if (this.isNotificationsPage()) {
-      const [firstTemplate] = this.notificationTemplates;
-      if (firstTemplate) {
-        this.openNotificationTemplate(firstTemplate);
-      } else {
-        this.notifications.info('No email templates were returned by the backend.');
-      }
+      await this.sendTestNotification();
     }
   }
 
   canRunPageAction(): boolean {
     if (this.isNotificationsPage()) {
-      return this.canManageNotifications();
+      return this.canManageNotifications() && !this.sendingTestNotification();
     }
 
     if (this.isAuditLogsPage()) {
@@ -2879,6 +2951,26 @@ export class AdminPageComponent {
     }
 
     return this.canManageCurrentAdminPage();
+  }
+
+  async sendTestNotification(): Promise<void> {
+    if (!this.canManageNotifications()) {
+      this.notifications.error('You do not have permission to send test notifications.');
+      return;
+    }
+
+    this.sendingTestNotification.set(true);
+
+    try {
+      const notification = await this.adminCenterApi.sendTestNotification();
+      if (this.store.upsertNotification(notification)) {
+        this.notifications.showOperationalNotification(notification);
+      }
+    } catch (error) {
+      this.notifications.error(error instanceof Error ? error.message : 'Test notification could not be sent.');
+    } finally {
+      this.sendingTestNotification.set(false);
+    }
   }
 
   openNotificationTemplate(template: NotificationTemplateDefinition): void {
@@ -3206,7 +3298,7 @@ export class AdminPageComponent {
     }
 
     if (this.isIntegrationsPage()) {
-      return ['link_off', 'mark_email_unread', 'label', 'extension'][index] ?? 'insights';
+      return ['extension', 'check_circle', 'lock', 'edit_off'][index] ?? 'insights';
     }
 
     if (this.isAuditLogsPage()) {
@@ -3227,7 +3319,7 @@ export class AdminPageComponent {
       skills: 'Skill Dictionary',
       'hiring-pipeline': 'Interview Stage Templates',
       notifications: 'Notification Events',
-      integrations: 'Candidate Source Labels',
+      integrations: 'MVP Integration Status',
       'audit-logs': 'Audit Log Entries',
     };
 
@@ -3235,10 +3327,6 @@ export class AdminPageComponent {
   }
 
   adminDetailsStatus(): string {
-    if (this.isIntegrationsPage()) {
-      return '';
-    }
-
     return this.page().status ?? '';
   }
 
@@ -3252,7 +3340,7 @@ export class AdminPageComponent {
       departments: 'Add Department',
       skills: 'Add Skill',
       'hiring-pipeline': 'Create Template',
-      notifications: 'Edit Template',
+      notifications: this.sendingTestNotification() ? 'Sending...' : 'Send Test',
       'ai-settings': 'View Runtime',
       'audit-logs': 'Export Logs',
     };
@@ -3262,7 +3350,7 @@ export class AdminPageComponent {
 
   pageActionIcon(): string {
     const icons: Record<string, string> = {
-      notifications: 'edit',
+      notifications: 'send',
       'ai-settings': 'visibility',
       'audit-logs': 'download',
     };
@@ -3273,14 +3361,42 @@ export class AdminPageComponent {
   pageActionTooltip(): string {
     const tooltips: Record<string, string> = {
       'ai-settings': 'Shows the AI runtime currently configured in appsettings, including the LLM and embedding model. These values are read-only here.',
-      notifications: 'Open the first editable email template. All templates are listed below the notification event table.',
+      notifications: 'Send a backend-generated test notification to the current admin user.',
     };
 
     return tooltips[this.page().id] ?? '';
   }
 
   isStatusValue(value: string): boolean {
-    return ['Active', 'Inactive', 'Custom', 'Protected', 'Disabled', 'Enabled', 'Invited'].includes(value);
+    return [
+      'Active',
+      'Inactive',
+      'Custom',
+      'Protected',
+      'Disabled',
+      'Enabled',
+      'Invited',
+      'Available',
+      'Contracted',
+      'Mock Only',
+      'In-App Available',
+      'Degraded',
+      'Read-only',
+      'Not editable',
+      'Editable',
+    ].includes(value);
+  }
+
+  isSuccessStatus(value: string): boolean {
+    return ['Active', 'Enabled', 'Available', 'Contracted', 'In-App Available'].includes(value);
+  }
+
+  isWarningStatus(value: string): boolean {
+    return ['Degraded', 'Mock Only'].includes(value);
+  }
+
+  isCustomStatus(value: string): boolean {
+    return ['Custom', 'Protected', 'Read-only', 'Not editable', 'Editable', 'Invited'].includes(value);
   }
 
   isCodeLike(value: string): boolean {

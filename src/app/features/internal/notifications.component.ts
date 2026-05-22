@@ -18,14 +18,21 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
       </header>
 
       <section class="ops-panel">
-        @if (notifications().length > 0) {
+        @if (store.error(); as error) {
+          <div class="empty-state">{{ error }}</div>
+        }
+        @if (store.loading()) {
+          <div class="empty-state">Loading notifications from backend...</div>
+        } @else if (notifications().length > 0) {
           <div class="stack-list">
             @for (notification of notifications(); track notification.id) {
               <article class="notification-row" [class.unread]="!notification.readAt">
                 <div>
                   <strong>{{ notification.title }}</strong>
                   <p>{{ notification.message }}</p>
-                  <a [routerLink]="['/app/job-requests', notification.entityId]">Open request</a>
+                  @if (notification.entityType === 'JobRequest') {
+                    <a [routerLink]="['/app/job-requests', notification.entityId]">Open request</a>
+                  }
                 </div>
                 @if (!notification.readAt) {
                   <button type="button" class="btn compact secondary" (click)="markRead(notification.id)">Mark read</button>
@@ -44,7 +51,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 })
 export class NotificationsComponent {
   private readonly auth = inject(AuthService);
-  private readonly store = inject(TalentPilotStoreService);
+  readonly store = inject(TalentPilotStoreService);
 
   readonly currentUser = this.auth.currentUser;
   readonly notifications = computed(() => {

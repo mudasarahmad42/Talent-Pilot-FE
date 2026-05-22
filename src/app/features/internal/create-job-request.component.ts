@@ -82,6 +82,9 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                   <option [value]="manager.userId">{{ manager.displayName }}</option>
                 }
               </select>
+              @if (hiringManagers().length === 0) {
+                <small>Backend must return a hiring manager profile before this request can be submitted.</small>
+              }
             </label>
           </div>
         </section>
@@ -114,7 +117,12 @@ export class CreateJobRequestComponent {
   readonly saving = signal(false);
 
   readonly hiringManagers = computed(() =>
-    this.store.people().filter((user) => user.roleCodes.includes('HiringManager')),
+    this.auth.users()
+      .filter((user) => user.roles.some((role) => role.code === 'HiringManager'))
+      .map((user) => ({
+        userId: user.userId,
+        displayName: user.displayName,
+      })),
   );
 
   readonly form = this.fb.group({

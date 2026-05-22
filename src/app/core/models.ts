@@ -98,6 +98,58 @@ export interface CreateJobRequestResult {
   assignment: WorkflowAssignment;
 }
 
+export interface RecruitmentQueueItem {
+  assignment: WorkflowAssignment;
+  jobRequest: JobRequest;
+  candidateCount: number;
+}
+
+export interface ForwardToRecruiterResult {
+  jobRequest: JobRequest;
+  assignment: WorkflowAssignment;
+  candidateCount: number;
+}
+
+export interface OperationsBenchMatch {
+  employeeId: string;
+  employeeCode: string;
+  displayName: string;
+  email: string;
+  designation?: string;
+  department: string;
+  location: string;
+  skills: string[];
+  availabilityStatus: string;
+  benchStatus: string;
+  currentAllocationPercent: number;
+  matchScore: number;
+  matchExplanation: string;
+}
+
+export interface CreateInternalResourceReferralInput {
+  employeeIds: string[];
+  note?: string;
+}
+
+export interface InternalEmployeeReferral {
+  id: string;
+  jobRequestId: string;
+  employeeId: string;
+  employeeName: string;
+  employeeEmail: string;
+  status: string;
+  fitScore: number;
+  recommendationSummary: string;
+  referredByUserId: string;
+  presalesUserId?: string;
+  createdAt: string;
+}
+
+export interface CreateInternalResourceReferralResult {
+  jobRequest: JobRequest;
+  referrals: InternalEmployeeReferral[];
+}
+
 export interface JobRequest {
   id: string;
   code: string;
@@ -139,6 +191,7 @@ export interface WorkflowAssignment {
   entityId: string;
   stage: JobRequestStage;
   assignedToGroupId?: string;
+  assignedToGroupName?: string;
   assignedToUserId?: string;
   claimedByUserId?: string;
   status: AssignmentStatus;
@@ -150,7 +203,7 @@ export interface Notification {
   recipientUserId: string;
   title: string;
   message: string;
-  entityType: 'JobRequest' | 'WorkflowAssignment';
+  entityType: string;
   entityId: string;
   readAt?: string;
   createdAt: string;

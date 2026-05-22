@@ -70,7 +70,7 @@ export const routes: Routes = [
         canActivate: [permissionGuard],
         data: { screenId: 'bench-matching', requiredAnyPermissions: [Permission.ViewBenchMatches] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/bench-matching.component').then((component) => component.BenchMatchingComponent),
       },
       {
         path: 'internal-resource-referral',
@@ -89,7 +89,9 @@ export const routes: Routes = [
         canActivate: [permissionGuard],
         data: { screenId: 'recruitment-queue', requiredAnyPermissions: [Permission.ManageCandidates] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/recruitment-queue.component').then(
+            (component) => component.RecruitmentQueueComponent,
+          ),
       },
       {
         path: 'job-publishing',

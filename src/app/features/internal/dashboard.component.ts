@@ -66,7 +66,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
       </section>
 
       <section class="dashboard-grid">
-        <div class="dashboard-primary">
+        <aside class="dashboard-rail">
           <article class="ops-insight-card dark">
             <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
             <div>
@@ -83,6 +83,24 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
             </div>
           </article>
 
+          <article class="ops-panel interview-card">
+            <div class="panel-header">
+              <h2>Interviews</h2>
+              <a routerLink="/app/interview-scheduling">View all</a>
+            </div>
+            <div class="empty-state">Interview schedule endpoint is required for this panel.</div>
+          </article>
+
+          <article class="ops-panel at-risk-card">
+            <div class="panel-header">
+              <h2>At-risk Requests</h2>
+              <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+            </div>
+            <div class="empty-state">Risk scoring endpoint is required for this panel.</div>
+          </article>
+        </aside>
+
+        <div class="dashboard-primary">
           <article class="ops-panel chart-card">
             <div class="panel-header">
               <h2>Open Requests By Stage</h2>
@@ -127,24 +145,6 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
           </article>
         </div>
 
-        <aside class="dashboard-rail">
-          <article class="ops-panel interview-card">
-            <div class="panel-header">
-              <h2>Interviews</h2>
-              <a routerLink="/app/interview-scheduling">View all</a>
-            </div>
-            <div class="empty-state">Interview schedule endpoint is required for this panel.</div>
-          </article>
-
-          <article class="ops-panel at-risk-card">
-            <div class="panel-header">
-              <h2>At-risk Requests</h2>
-              <span class="material-symbols-outlined" aria-hidden="true">warning</span>
-            </div>
-            <div class="empty-state">Risk scoring endpoint is required for this panel.</div>
-          </article>
-        </aside>
-
         <aside class="dashboard-activity ops-panel">
           <h2>Recent Activity</h2>
           @if (recentActivity().length > 0) {
@@ -165,6 +165,49 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
       </section>
     </main>
   `,
+  styles: [
+    `
+      :host .dashboard-grid {
+        grid-template-columns: 300px minmax(420px, 1fr) 300px;
+        gap: 24px;
+      }
+
+      :host .dashboard-primary,
+      :host .dashboard-rail,
+      :host .dashboard-activity {
+        gap: 24px;
+      }
+
+      :host .ops-insight-card.dark {
+        border-radius: 8px;
+        padding: 24px;
+      }
+
+      :host .chart-card {
+        padding: 28px;
+      }
+
+      :host .bar-chart {
+        height: 220px;
+        justify-content: center;
+      }
+
+      :host .activity-feed {
+        margin-top: 18px;
+      }
+
+      :host .ops-work-row {
+        min-height: 64px;
+        padding: 14px 16px;
+      }
+
+      @media (max-width: 1180px) {
+        :host .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    `,
+  ],
 })
 export class DashboardComponent {
   readonly store = inject(TalentPilotStoreService);
@@ -182,11 +225,16 @@ export class DashboardComponent {
     }
 
     return this.store.pmoQueue().filter((item) => {
+      const assignedGroupKeys = new Set([
+        ...user.groups,
+        ...(user.groupDetails?.flatMap((group) => [group.groupId, group.name]) ?? []),
+      ]);
       const assignedToMyGroup = item.assignment.assignedToGroupId
-        ? user.groups.includes(item.assignment.assignedToGroupId)
+        ? assignedGroupKeys.has(item.assignment.assignedToGroupId)
         : false;
       const assignedToMe = item.assignment.assignedToUserId === user.id;
-      return assignedToMyGroup || assignedToMe;
+      const routeVisiblePmoWork = user.roles.includes('PMO') || user.roles.includes('TenantAdmin');
+      return assignedToMyGroup || assignedToMe || routeVisiblePmoWork;
     });
   });
 

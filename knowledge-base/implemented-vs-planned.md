@@ -20,8 +20,12 @@
   - my work / job request lists from operations snapshot
   - create job request
   - PMO queue claim action
+  - PMO forward-to-recruiter action
+  - recruitment queue view backed by the recruitment queue API
   - job request detail/activity
   - notifications read/read-all
+- SignalR notification hub client for internal/admin users.
+- Admin Center test notification action backed by `/api/admin/notifications/test`.
 - Backend-required empty states for screens whose APIs are not ready.
 
 ## Planned Next
@@ -30,7 +34,6 @@
 - Wire user add/edit/deactivate/resend invite actions fully to backend mutations.
 - Wire role create/edit/bulk user assignment and permission review flows.
 - Add notification template editor backed by backend templates API.
-- Add SignalR notification hub client.
 - Implement candidate job listing, job detail, apply, profile, application status, and interview schedule APIs.
 - Implement recruiter candidate prospect, invite link, job publishing, and pipeline management screens.
 - Implement interview scheduling/feedback and Hiring Manager final review screens.

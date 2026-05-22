@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Notification } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
@@ -17,6 +18,10 @@ export class NotificationService {
     this.open(message, 'info');
   }
 
+  showOperationalNotification(notification: Notification): void {
+    this.info(this.formatNotification(notification));
+  }
+
   private open(message: string, panelClass: string): void {
     this.snackBar.open(message, 'Dismiss', {
       duration: 3500,
@@ -24,5 +29,10 @@ export class NotificationService {
       verticalPosition: 'bottom',
       panelClass: [`talent-pilot-snackbar-${panelClass}`],
     });
+  }
+
+  private formatNotification(notification: Notification): string {
+    const message = notification.message ? `${notification.title}: ${notification.message}` : notification.title;
+    return message.length > 180 ? `${message.slice(0, 177)}...` : message;
   }
 }

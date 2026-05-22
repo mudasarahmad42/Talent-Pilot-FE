@@ -2,6 +2,18 @@
 
 ## 2026-05-22 - Branch: contributor-guardrails-docs
 
+- Commit summary: pending commit for real-time operational notifications frontend wiring.
+- Purpose: add SignalR notification delivery to internal/admin shells and Admin Center test notification action.
+- Files touched: package files, notification store/service, SignalR client service, Admin Center API/page/shell, app shell, frontend contract docs.
+- Screens/routes changed: `/app/notifications`, `/admin-center/notifications`, internal/admin topbar notification affordances.
+- API contracts changed: frontend consumes `POST /api/admin/notifications/test` and SignalR `/hubs/notifications` event `NotificationReceived`.
+- Schema changed: no frontend schema changes.
+- Tests/builds run: `npm run build` passed.
+- Known risks: backend hub and test endpoint still need to match the planned notification DTO shape at integration time.
+- AI assistance: Codex implemented and reviewed the changes.
+
+## 2026-05-22 - Branch: contributor-guardrails-docs
+
 - Commit summary: pending commit for Recruitment Queue frontend slice.
 - Purpose: replace the recruitment queue placeholder with backend-backed UI and wire PMO handoff into the store.
 - Files touched: `src/app/app.routes.ts`, `src/app/core/models.ts`, `src/app/core/talent-pilot-store.service.ts`, `src/app/features/internal/pmo-queue.component.ts`, `src/app/features/internal/recruitment-queue.component.ts`, knowledge-base docs.

@@ -539,6 +539,7 @@ Required backend endpoints:
 | `GET` | `/api/admin/notifications/events?page={page}&pageSize={pageSize}&search={search}` | Load notification events, recipients, template names, status, and summary metrics. | Backend |
 | `GET` | `/api/admin/notifications/events/{eventId}` | Load one notification event and linked templates. | Backend TODO |
 | `GET` | `/api/admin/notifications/templates` | Load editable email templates. | Backend |
+| `POST` | `/api/admin/notifications/test` | Send a backend-generated test notification to the current admin user and return the notification payload. | Backend TODO |
 | `PUT` | `/api/admin/notifications/templates/{templateId}` | Update template subject/body text. | Backend TODO |
 | `PATCH` | `/api/admin/notifications/events/{eventId}/status` | Enable or disable a notification event when allowed. | Backend TODO |
 
@@ -571,6 +572,7 @@ interface UpdateNotificationTemplateInput {
 Backend behavior:
 
 - Trigger notifications from workflow handoff events.
+- Expose SignalR hub `/hubs/notifications` and emit `NotificationReceived` with the same notification DTO shape returned by `GET /api/notifications`.
 - Send SignalR updates to online internal users for realtime in-app delivery.
 - Send email for async internal delivery and candidate-facing messages.
 - Keep event logic aligned with workflow routing rules.

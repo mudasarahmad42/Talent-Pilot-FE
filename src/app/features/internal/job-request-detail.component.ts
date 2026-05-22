@@ -101,7 +101,7 @@ export class JobRequestDetailComponent {
 
   constructor() {
     if (this.id) {
-      void this.store.loadActivityForEntity(this.id);
+      void this.store.loadJobRequest(this.id);
     }
   }
 }

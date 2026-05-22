@@ -2,6 +2,8 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { TalentPilotRole } from '../../core/models';
+import { Permission } from '../../core/permissions';
+import { RealtimeNotificationService } from '../../core/services/realtime-notification.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 interface NavItem {
@@ -52,10 +54,15 @@ const NAV_ITEMS: NavItem[] = [
 
         <div class="user-menu">
           @if (currentUser(); as user) {
-            <a class="btn primary compact topbar-create" routerLink="/app/job-requests/new">
-              <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              Create New
-            </a>
+            <label class="topbar-search">
+              <input type="search" placeholder="Search..." aria-label="Search Talent Pilot" />
+            </label>
+            @if (canCreateJobRequests()) {
+              <a class="btn primary compact topbar-create" routerLink="/app/job-requests/new">
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                Create New
+              </a>
+            }
             <a class="topbar-icon-button" routerLink="/app/notifications" [attr.aria-label]="unreadCount() + ' unread notifications'">
               <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
               @if (unreadCount() > 0) {
@@ -80,7 +87,7 @@ const NAV_ITEMS: NavItem[] = [
             </span>
           </div>
 
-          @for (item of visibleNavItems(); track item.route) {
+          @for (item of visibleNavItems(); track item.label) {
             <a
               [routerLink]="item.route"
               routerLinkActive="active"
@@ -109,9 +116,80 @@ const NAV_ITEMS: NavItem[] = [
       </div>
     </div>
   `,
+  styles: [
+    `
+      :host .stitch-app-shell .topbar {
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+        padding-inline: 24px;
+      }
+
+      :host .stitch-app-shell .brand {
+        min-width: 180px;
+      }
+
+      :host .stitch-app-shell .top-links a {
+        padding-top: 1px;
+      }
+
+      :host .topbar-search {
+        display: block;
+        margin-right: 4px;
+      }
+
+      :host .topbar-search input {
+        background: rgba(255, 255, 255, 0.1);
+        border: 0;
+        border-radius: 8px;
+        color: #fff;
+        font-size: 13px;
+        height: 34px;
+        outline: none;
+        padding: 0 12px;
+        width: 220px;
+      }
+
+      :host .topbar-search input::placeholder {
+        color: #c1c6d4;
+      }
+
+      :host .stitch-app-sidebar {
+        background: #fff;
+        border-right: 1px solid var(--border);
+      }
+
+      :host .sidebar-product {
+        margin-bottom: 18px;
+      }
+
+      :host .stitch-app-sidebar a,
+      :host .sidebar-footer button {
+        border-radius: 8px;
+        min-height: 38px;
+        padding: 9px 12px;
+      }
+
+      :host .stitch-app-sidebar a.active {
+        background: #d8e0ef;
+        color: #004e99;
+        font-weight: 800;
+        transform: translateX(2px);
+      }
+
+      :host .stitch-app-shell .content-shell {
+        padding: 24px;
+      }
+
+      @media (max-width: 1180px) {
+        :host .topbar-search {
+          display: none;
+        }
+      }
+    `,
+  ],
 })
 export class AppShellComponent {
   readonly auth = inject(AuthService);
+  private readonly realtimeNotifications = inject(RealtimeNotificationService);
   private readonly store = inject(TalentPilotStoreService);
 
   readonly currentUser = this.auth.currentUser;
@@ -122,6 +200,8 @@ export class AppShellComponent {
     const user = this.currentUser();
     return user ? this.store.unreadCountForUser(user.id) : 0;
   });
+  readonly canCreateJobRequests = computed(() => this.auth.hasPermission(Permission.CreateJobRequests));
+
   initials(name: string): string {
     return name
       .split(' ')

@@ -77,7 +77,7 @@ export const ADMIN_PAGES: AdminPage[] = [
   page('workflows', 'Configuration / Workflows', 'Workflows', 'Configure handoffs and baton routing for job requests.'),
   page('notifications', 'Configuration', 'Notifications', 'Review notification events and editable email templates.'),
   page('ai-settings', 'Configuration', 'AI Settings', 'Review AI runtime, agents, and guardrails.'),
-  page('integrations', 'Configuration', 'Integrations', 'Review manual sourcing and invite-link activity.'),
+  page('integrations', 'Configuration', 'Integrations', 'Review MVP integration contracts, local providers, and read-only runtime status.'),
   page('audit-logs', 'Governance', 'Audit Logs', 'Review tenant-scoped activity and configuration history.'),
 ];
 

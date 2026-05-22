@@ -71,11 +71,16 @@ export class MyWorkComponent {
     }
 
     return this.store.pmoQueue().filter((item) => {
+      const assignedGroupKeys = new Set([
+        ...user.groups,
+        ...(user.groupDetails?.flatMap((group) => [group.groupId, group.name]) ?? []),
+      ]);
       const assignedToMyGroup = item.assignment.assignedToGroupId
-        ? user.groups.includes(item.assignment.assignedToGroupId)
+        ? assignedGroupKeys.has(item.assignment.assignedToGroupId)
         : false;
       const assignedToMe = item.assignment.assignedToUserId === user.id;
-      return assignedToMyGroup || assignedToMe;
+      const routeVisiblePmoWork = user.roles.includes('PMO') || user.roles.includes('TenantAdmin');
+      return assignedToMyGroup || assignedToMe || routeVisiblePmoWork;
     });
   });
 }
