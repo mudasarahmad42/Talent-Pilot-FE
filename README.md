@@ -80,6 +80,31 @@ Use the browser at:
 http://127.0.0.1:4200/auth/login
 ```
 
+## Branch And PR Policy
+
+- Do not work directly on `main`.
+- Only the code owner, Mudasar Ahmad, is allowed to commit or push directly to `main`.
+- Every contributor, including AI-assisted contributors, must create their own separate branch and open a pull request into `main`.
+- Contributors and AI agents must not push automatically after making changes; push only when Mudasar Ahmad or the current user explicitly asks for it.
+- When a push is explicitly requested, push only the contributor's own branch and only the files that belong to the requested task.
+- GitHub branch protection should block direct pushes to `main` for everyone except the code owner.
+- This repo includes `.githooks/pre-push`; run `git config core.hooksPath .githooks` after cloning to block accidental local pushes to `main`.
+- Use descriptive owner-aware branch names such as `feature/<contributor-name>/admin-integrations-status`, `fix/<contributor-name>/pmo-queue-layout`, or `docs/<contributor-name>/contributor-guardrails`.
+- Keep pull requests focused. Do not mix unrelated visual, API, schema, and documentation changes in one PR unless they are required for the same feature.
+- PRs must include validation notes, changed screens/routes, touched files, and any known limitations.
+- Do not merge your own PR unless you are the code owner or have explicit approval from the code owner.
+- If an AI tool generated or edited code, the contributor remains responsible for reviewing, testing, and documenting the changes.
+- See `CONTRIBUTING.md` for branch protection, PR, and merge-conflict rules.
+
+## Contributor Logs
+
+- Each contributor must add or update a personal README under `contributors/<contributor-name>/README.md`.
+- The contributor README should be 10-20 lines per work session.
+- Include session date, branch name, commit summary, files touched, screens changed, API contracts changed, schema changes, tests run, and known risks.
+- If schema or backend contract changes affect the frontend, link the related backend PR or document the dependency clearly.
+- Contributors who are non-technical or AI-assisted should use `contributors/README.md` as the template.
+- Missing contributor logs are a PR review issue.
+
 ## Current Implemented Areas
 
 - Backend-backed card login at `/auth/login`.
@@ -103,6 +128,7 @@ http://127.0.0.1:4200/auth/login
 ## Frontend Guardrails
 
 - This is a production application, not a static design gallery.
+- AI agents must read `AGENTS.md` before editing frontend files.
 - Google Stitch references in `stitch-reference/selected/` are visual/layout references.
 - Backend APIs and knowledge-base documents are the source of truth for behavior and data.
 - Missing backend APIs should produce clear empty states, not frontend mock records.
@@ -110,6 +136,7 @@ http://127.0.0.1:4200/auth/login
 - Keep business logic out of components where practical; use focused services and typed models.
 - Keep routes permission-protected using backend-returned permissions.
 - Keep pages responsive and usable on mobile widths.
+- Follow `SECURITY_GUIDELINES.md` before adding dependencies, auth/session logic, API calls, forms, or file upload UI.
 
 ## Design References
 
@@ -132,6 +159,7 @@ Read these before changing frontend behavior:
 - `knowledge-base/implemented-vs-planned.md`
 - `API_CONTRACT.md`
 - `DATABASE_SCHEMA_NOTES.md`
+- `CONTRIBUTING.md`
 
 ## Login For MVP Testing
 
@@ -176,4 +204,5 @@ AI is advisory only. Human users make recruitment decisions.
 - Run `npm run build`.
 - Verify the changed route in the browser.
 - Update `knowledge-base/` or `API_CONTRACT.md` when changing behavior, permissions, endpoints, or missing API assumptions.
+- Update your contributor log in `contributors/<contributor-name>/README.md`.
 - Do not commit generated folders such as `node_modules`, `dist`, `.angular/cache`, browser profiles, logs, or local secrets.
