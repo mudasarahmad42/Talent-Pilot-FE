@@ -1,5 +1,29 @@
 # Codex Contributor Log
 
+## 2026-05-22 - Branch: mudasar-ahmad
+
+- Commit summary: pending frontend audit log Excel export wiring.
+- Purpose: connect the Admin Center Audit Logs export action to the backend `.xlsx` export endpoint.
+- Files touched: `src/app/core/services/api.service.ts`, `src/app/core/admin-center-api.service.ts`, `src/app/features/admin/admin-page.component.ts`, API docs, contributor log.
+- Screens/routes changed: `/admin-center/audit-logs`.
+- API contracts changed: consumes `GET /api/admin/audit-logs/export`.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed; browser check clicked Export Logs and showed success feedback.
+- Known risks: browser download contents were verified through backend API smoke test rather than full browser file inspection.
+- AI assistance: Codex implemented and reviewed the changes.
+
+## 2026-05-22 - Branch: mudasar-ahmad
+
+- Commit summary: pending documentation update for frontend engineering instructions.
+- Purpose: add pragmatic SOLID, Angular component separation, and service-owned data guidance.
+- Files touched: `AGENTS.md`, `CONTRIBUTING.md`, `README.md`, contributor log.
+- Screens/routes changed: none.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: not run; documentation-only update.
+- Known risks: none.
+- AI assistance: Codex implemented and reviewed the documentation.
+
 ## 2026-05-22 - Branch: contributor-guardrails-docs
 
 - Commit summary: pending commit for Recruitment Queue frontend slice.

@@ -2,6 +2,21 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './services/api.service';
 
+export interface FileDownload {
+  blob: Blob;
+  fileName: string;
+}
+
+export interface AdminListQuery {
+  search?: string;
+  roleId?: string;
+  groupId?: string;
+  accountStatus?: string;
+  page?: number;
+  pageSize?: number;
+  includeInactive?: boolean;
+}
+
 export interface AdminUsersResponse {
   summary: {
     internalUserCount: number;
@@ -30,16 +45,47 @@ export interface AdminUserListItem {
   highestPriorityRolePriority: number;
   groupIds: string[];
   groupNames: string[];
+  departmentId?: string | null;
+  departmentName?: string | null;
+  experienceYears?: number | null;
+  joiningDate?: string | null;
+  completedInterviewCount: number;
   accountStatus: string;
   lastActiveAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface AdminUserDetails {
+  id: string;
+  displayName: string;
+  email: string;
+  initials: string;
+  roleIds: string[];
+  groupIds: string[];
+  accountStatus: string;
+  lastActiveAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveAdminUserInput {
+  displayName: string;
+  email: string;
+  roleIds: string[];
+  groupIds: string[];
+  accountStatus: string;
+}
+
+export interface UpdateAdminUserStatusInput {
+  accountStatus: string;
+  reason: string | null;
+}
+
 export interface AdminRolesResponse {
   summary: {
     activeRoleCount: number;
-    protectedRoleCount: number;
+    tenantRoleCount: number;
     customRoleCount: number;
   };
   items: AdminRoleListItem[];
@@ -81,12 +127,132 @@ export interface AdminGroupsResponse {
   totalCount: number;
 }
 
+export interface AdminDepartmentsResponse {
+  summary: {
+    activeDepartmentCount: number;
+    totalEmployeeCount: number;
+    openJobRequestCount: number;
+    inactiveDepartmentCount: number;
+  };
+  items: AdminDepartmentListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface AdminDepartmentListItem {
+  departmentId: string;
+  code: string;
+  name: string;
+  leadName: string;
+  employeeCount: number;
+  openJobRequestCount: number;
+  status: string;
+}
+
+export interface CreateDepartmentInput {
+  code: string;
+  name: string;
+  status: string;
+}
+
 export interface AdminGroupListItem {
   groupId: string;
   name: string;
   purpose: string;
   status: string;
   memberCount: number;
+}
+
+export interface CreateGroupInput {
+  name: string;
+  purpose: string;
+  status: string;
+}
+
+export type GroupMembershipFilter = 'All' | 'Members' | 'Available';
+
+export interface AdminGroupMembershipQuery extends AdminListQuery {
+  membership?: GroupMembershipFilter;
+}
+
+export interface AdminGroupMembershipResponse {
+  group: AdminGroupListItem;
+  summary: {
+    memberCount: number;
+    availableUserCount: number;
+    filteredMemberCount: number;
+    filteredAvailableUserCount: number;
+  };
+  items: AdminGroupMembershipUser[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface AdminGroupMembershipUser {
+  userId: string;
+  displayName: string;
+  email: string;
+  initials: string;
+  roleNames: string[];
+  accountStatus: string;
+  isMember: boolean;
+  isDefaultAssignee: boolean;
+}
+
+export interface UpdateGroupMembersInput {
+  userIdsToAdd: string[];
+  userIdsToRemove: string[];
+  bulkSelection?: BulkGroupMembershipSelection | null;
+}
+
+export interface BulkGroupMembershipSelection {
+  mode: 'AddMatching' | 'RemoveMatching';
+  search?: string | null;
+  membership?: GroupMembershipFilter | null;
+}
+
+export interface UpdateGroupMembersResult {
+  addedCount: number;
+  removedCount: number;
+  memberCount: number;
+}
+
+export interface AdminSkillsResponse {
+  summary: {
+    activeSkillCount: number;
+    categoryCount: number;
+    aliasCount: number;
+  };
+  items: AdminSkillListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface AdminSkillListItem {
+  skillId: string;
+  name: string;
+  normalizedName: string;
+  category: string;
+  aliases: string[];
+  status: string;
+  updatedAtUtc: string;
+}
+
+export interface CreateSkillInput {
+  name: string;
+  category: string;
+  aliases: string[];
+  status: string;
+}
+
+export interface UpdateSkillInput {
+  name: string;
+  category: string;
+  aliases: string[];
+  status: string;
 }
 
 export interface AdminNotificationEventsResponse {
@@ -112,6 +278,14 @@ export interface AdminNotificationEventListItem {
   updatedAtUtc: string;
 }
 
+export interface AdminNotificationTemplatesResponse {
+  summary: AdminNotificationEventsResponse['summary'];
+  items: NotificationTemplateSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
 export interface NotificationTemplateSummary {
   templateId: string;
   eventCode: string;
@@ -123,6 +297,196 @@ export interface NotificationTemplateSummary {
   lifecycleStatus: string;
   updatedAtUtc: string;
   updatedByUserId: string;
+}
+
+export interface UpdateNotificationTemplateInput {
+  subject: string;
+  body: string;
+}
+
+export interface SendTestNotificationEmailInput {
+  toEmail: string;
+}
+
+export interface SendTestNotificationEmailResponse {
+  toEmail: string;
+  subject: string;
+  provider: string;
+  messageId: string;
+  submittedAtUtc: string;
+}
+
+export interface SendTestRealtimeNotificationResponse {
+  notificationId: string;
+  title: string;
+  message: string;
+  connectedClientCount: number;
+  sentAtUtc: string;
+}
+
+export interface NotificationRealtimeConnectionStatusResponse {
+  connectedClientCount: number;
+  checkedAtUtc: string;
+}
+
+export interface AdminCandidateSourcesResponse {
+  summary: {
+    activeSourceCount: number;
+    reportingCategoryCount: number;
+    inactiveSourceCount: number;
+  };
+  items: AdminCandidateSourceListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface AdminCandidateSourceListItem {
+  candidateSourceLabelId: string;
+  code: string;
+  displayName: string;
+  reportingCategory: string;
+  status: string;
+  updatedAtUtc: string;
+}
+
+export interface AdminWorkflowConfigurationResponse {
+  summary: {
+    workflowDefinitionCount: number;
+    activeStageCount: number;
+    activeTransitionCount: number;
+    activeRoutingRuleCount: number;
+    activeIntakeRoutingRuleCount: number;
+    departmentsNeedingIntakeRoutingCount: number;
+  };
+  definitions: AdminWorkflowDefinitionItem[];
+  stages: AdminWorkflowStageItem[];
+  routingRules: AdminWorkflowRoutingRuleItem[];
+  intakeRoutingRules: AdminWorkflowIntakeRoutingRuleItem[];
+}
+
+export interface AdminWorkflowDefinitionItem {
+  workflowDefinitionId: string;
+  code: string;
+  name: string;
+  entityType: string;
+  status: string;
+  updatedAtUtc: string;
+}
+
+export interface AdminWorkflowStageItem {
+  workflowStageId: string;
+  stageKey: string;
+  name: string;
+  stageOrder: number;
+  isTerminal: boolean;
+  status: string;
+}
+
+export interface AdminWorkflowRoutingRuleItem {
+  workflowRoutingRuleId: string;
+  workflowTransitionId: string;
+  actionKey: string;
+  actionName: string;
+  fromStage: string;
+  toStage: string;
+  assignmentType: string;
+  assignmentTarget: string;
+  resolverKey: string;
+  status: string;
+}
+
+export interface AdminWorkflowIntakeRoutingRuleItem {
+  jobRequestIntakeRoutingRuleId?: string | null;
+  departmentId: string;
+  departmentCode: string;
+  departmentName: string;
+  assignmentType: string;
+  targetUserId?: string | null;
+  targetGroupId?: string | null;
+  assignmentTarget: string;
+  status: string;
+  usesTenantAdminFallback: boolean;
+}
+
+export interface UpdateAdminWorkflowIntakeRoutingInput {
+  rules: UpdateAdminWorkflowIntakeRoutingItem[];
+}
+
+export interface UpdateAdminWorkflowIntakeRoutingItem {
+  departmentId: string;
+  assignmentType: string;
+  targetUserId?: string | null;
+  targetGroupId?: string | null;
+  status: string;
+}
+
+export interface AdminHiringPipelineTemplatesResponse {
+  summary: {
+    activeTemplateCount: number;
+    departmentSpecificTemplateCount: number;
+    activeRoundCount: number;
+    missingInterviewerRoundCount: number;
+  };
+  items: AdminHiringPipelineTemplateItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface AdminHiringPipelineTemplateItem {
+  interviewTemplateId: string;
+  name: string;
+  departmentName: string;
+  description: string;
+  stageFlow: string;
+  defaultInterviewers: string;
+  roundCount: number;
+  status: string;
+  updatedAtUtc: string;
+}
+
+export interface AdminHiringPipelineTemplateDetails {
+  interviewTemplateId: string;
+  departmentId?: string | null;
+  name: string;
+  departmentName: string;
+  description: string;
+  status: string;
+  updatedAtUtc: string;
+  rounds: AdminHiringPipelineTemplateRoundItem[];
+}
+
+export interface AdminHiringPipelineTemplateRoundItem {
+  interviewTemplateRoundId: string;
+  roundOrder: number;
+  name: string;
+  ownerRoleId?: string | null;
+  ownerRoleName: string;
+  ownerUserId?: string | null;
+  ownerUserName: string;
+  durationMinutes: number;
+  isRequired: boolean;
+  status: string;
+}
+
+export interface UpdateAdminHiringPipelineTemplateInput {
+  name: string;
+  departmentId?: string | null;
+  description?: string | null;
+  status: string;
+  rounds: UpdateAdminHiringPipelineTemplateRoundInput[];
+}
+
+export interface UpdateAdminHiringPipelineTemplateRoundInput {
+  interviewTemplateRoundId?: string | null;
+  roundOrder: number;
+  name: string;
+  ownerRoleId?: string | null;
+  ownerUserId?: string | null;
+  durationMinutes: number;
+  isRequired: boolean;
+  status: string;
 }
 
 export interface AdminAiRuntimeResponse {
@@ -153,6 +517,13 @@ export interface AdminAiGuardrailsResponse {
   humanReviewRequired: boolean;
   autoRejectEnabled: boolean;
   decisionBoundary: string;
+  items: AdminAiGuardrailItem[];
+}
+
+export interface AdminAiGuardrailItem {
+  name: string;
+  value: string;
+  reason: string;
 }
 
 export interface AdminAuditLogListResponse {
@@ -197,12 +568,34 @@ export interface RoleUserAssignmentPreviewItem {
 export class AdminCenterApiService {
   private readonly api = inject(ApiService);
 
-  listUsers(): Promise<AdminUsersResponse> {
-    return firstValueFrom(this.api.get<AdminUsersResponse>('admin/users?pageSize=100'));
+  listUsers(query: AdminListQuery = {}): Promise<AdminUsersResponse> {
+    return firstValueFrom(this.api.get<AdminUsersResponse>(`admin/users?${this.toQueryString(query)}`));
   }
 
-  listRoles(): Promise<AdminRolesResponse> {
-    return firstValueFrom(this.api.get<AdminRolesResponse>('admin/roles?pageSize=100'));
+  getUser(userId: string): Promise<AdminUserDetails> {
+    return firstValueFrom(this.api.get<AdminUserDetails>(`admin/users/${encodeURIComponent(userId)}`));
+  }
+
+  updateUser(userId: string, input: SaveAdminUserInput): Promise<AdminUserDetails> {
+    return firstValueFrom(
+      this.api.put<AdminUserDetails, SaveAdminUserInput>(`admin/users/${encodeURIComponent(userId)}`, input),
+    );
+  }
+
+  updateUserStatus(userId: string, input: UpdateAdminUserStatusInput): Promise<void> {
+    return firstValueFrom(
+      this.api.patch<void, UpdateAdminUserStatusInput>(`admin/users/${encodeURIComponent(userId)}/account-status`, input),
+    );
+  }
+
+  resendUserInvite(userId: string): Promise<void> {
+    return firstValueFrom(
+      this.api.post<void, Record<string, never>>(`admin/users/${encodeURIComponent(userId)}/invites/resend`, {}),
+    );
+  }
+
+  listRoles(query: AdminListQuery = {}): Promise<AdminRolesResponse> {
+    return firstValueFrom(this.api.get<AdminRolesResponse>(`admin/roles?${this.toQueryString(query)}`));
   }
 
   listPermissions(): Promise<PermissionCatalogItem[]> {
@@ -213,16 +606,105 @@ export class AdminCenterApiService {
     return firstValueFrom(this.api.get<PermissionResolutionPolicy>('admin/access-policies/permission-resolution'));
   }
 
-  listGroups(): Promise<AdminGroupsResponse> {
-    return firstValueFrom(this.api.get<AdminGroupsResponse>('admin/groups?pageSize=100'));
+  listGroups(query: AdminListQuery = {}): Promise<AdminGroupsResponse> {
+    return firstValueFrom(this.api.get<AdminGroupsResponse>(`admin/groups?${this.toQueryString(query)}`));
   }
 
-  listNotificationEvents(): Promise<AdminNotificationEventsResponse> {
-    return firstValueFrom(this.api.get<AdminNotificationEventsResponse>('admin/notifications/events?pageSize=100'));
+  listDepartments(query: AdminListQuery = {}): Promise<AdminDepartmentsResponse> {
+    return firstValueFrom(this.api.get<AdminDepartmentsResponse>(`admin/departments?${this.toQueryString(query)}`));
   }
 
-  listNotificationTemplates(): Promise<NotificationTemplateSummary[]> {
-    return firstValueFrom(this.api.get<NotificationTemplateSummary[]>('admin/notifications/templates'));
+  createDepartment(input: CreateDepartmentInput): Promise<AdminDepartmentListItem> {
+    return firstValueFrom(this.api.post<AdminDepartmentListItem, CreateDepartmentInput>('admin/departments', input));
+  }
+
+  createGroup(input: CreateGroupInput): Promise<AdminGroupListItem> {
+    return firstValueFrom(this.api.post<AdminGroupListItem, CreateGroupInput>('admin/groups', input));
+  }
+
+  listGroupMembership(groupId: string, query: AdminGroupMembershipQuery = {}): Promise<AdminGroupMembershipResponse> {
+    const params = new URLSearchParams(this.toQueryString(query));
+    params.set('membership', query.membership ?? 'All');
+    return firstValueFrom(
+      this.api.get<AdminGroupMembershipResponse>(
+        `admin/groups/${encodeURIComponent(groupId)}/membership?${params.toString()}`,
+      ),
+    );
+  }
+
+  updateGroupMembers(groupId: string, input: UpdateGroupMembersInput): Promise<UpdateGroupMembersResult> {
+    return firstValueFrom(
+      this.api.patch<UpdateGroupMembersResult, UpdateGroupMembersInput>(
+        `admin/groups/${encodeURIComponent(groupId)}/members`,
+        input,
+      ),
+    );
+  }
+
+  listSkills(query: AdminListQuery = {}): Promise<AdminSkillsResponse> {
+    return firstValueFrom(this.api.get<AdminSkillsResponse>(`admin/skills?${this.toQueryString(query)}`));
+  }
+
+  createSkill(input: CreateSkillInput): Promise<AdminSkillListItem> {
+    return firstValueFrom(this.api.post<AdminSkillListItem, CreateSkillInput>('admin/skills', input));
+  }
+
+  updateSkill(skillId: string, input: UpdateSkillInput): Promise<AdminSkillListItem> {
+    return firstValueFrom(
+      this.api.put<AdminSkillListItem, UpdateSkillInput>(`admin/skills/${encodeURIComponent(skillId)}`, input),
+    );
+  }
+
+  deleteSkill(skillId: string): Promise<void> {
+    return firstValueFrom(this.api.delete<void>(`admin/skills/${encodeURIComponent(skillId)}`));
+  }
+
+  listNotificationEvents(query: AdminListQuery = {}): Promise<AdminNotificationEventsResponse> {
+    return firstValueFrom(
+      this.api.get<AdminNotificationEventsResponse>(`admin/notifications/events?${this.toQueryString(query)}`),
+    );
+  }
+
+  listNotificationTemplates(query: AdminListQuery = {}): Promise<AdminNotificationTemplatesResponse> {
+    return firstValueFrom(
+      this.api.get<AdminNotificationTemplatesResponse>(`admin/notifications/templates?${this.toQueryString(query)}`),
+    );
+  }
+
+  updateNotificationTemplate(
+    templateId: string,
+    input: UpdateNotificationTemplateInput,
+  ): Promise<NotificationTemplateSummary> {
+    return firstValueFrom(
+      this.api.put<NotificationTemplateSummary, UpdateNotificationTemplateInput>(
+        `admin/notifications/templates/${encodeURIComponent(templateId)}`,
+        input,
+      ),
+    );
+  }
+
+  sendNotificationTestEmail(input: SendTestNotificationEmailInput): Promise<SendTestNotificationEmailResponse> {
+    return firstValueFrom(
+      this.api.post<SendTestNotificationEmailResponse, SendTestNotificationEmailInput>(
+        'admin/notifications/test-email',
+        input,
+      ),
+    );
+  }
+
+  sendNotificationRealtimeTest(): Promise<SendTestRealtimeNotificationResponse> {
+    return firstValueFrom(
+      this.api.post<SendTestRealtimeNotificationResponse, Record<string, never>>(
+        'admin/notifications/test-realtime',
+        {},
+      ),
+    );
+  }
+
+  getNotificationRealtimeConnectionStatus(): Promise<NotificationRealtimeConnectionStatusResponse> {
+    return firstValueFrom(
+      this.api.get<NotificationRealtimeConnectionStatusResponse>('admin/notifications/realtime/status'),
+    );
   }
 
   getAiRuntime(): Promise<AdminAiRuntimeResponse> {
@@ -237,9 +719,83 @@ export class AdminCenterApiService {
     return firstValueFrom(this.api.get<AdminAiGuardrailsResponse>('admin/ai-settings/guardrails'));
   }
 
+  listCandidateSources(query: AdminListQuery = {}): Promise<AdminCandidateSourcesResponse> {
+    return firstValueFrom(
+      this.api.get<AdminCandidateSourcesResponse>(`admin/candidate-sources?${this.toQueryString(query)}`),
+    );
+  }
+
+  getWorkflowConfiguration(): Promise<AdminWorkflowConfigurationResponse> {
+    return firstValueFrom(this.api.get<AdminWorkflowConfigurationResponse>('admin/workflows/configuration'));
+  }
+
+  updateWorkflowIntakeRouting(input: UpdateAdminWorkflowIntakeRoutingInput): Promise<AdminWorkflowConfigurationResponse> {
+    return firstValueFrom(
+      this.api.put<AdminWorkflowConfigurationResponse, UpdateAdminWorkflowIntakeRoutingInput>(
+        'admin/workflows/intake-routing',
+        input,
+      ),
+    );
+  }
+
+  listHiringPipelineTemplates(query: AdminListQuery = {}): Promise<AdminHiringPipelineTemplatesResponse> {
+    return firstValueFrom(
+      this.api.get<AdminHiringPipelineTemplatesResponse>(`admin/hiring-pipeline/templates?${this.toQueryString(query)}`),
+    );
+  }
+
+  getHiringPipelineTemplate(templateId: string): Promise<AdminHiringPipelineTemplateDetails> {
+    return firstValueFrom(
+      this.api.get<AdminHiringPipelineTemplateDetails>(
+        `admin/hiring-pipeline/templates/${encodeURIComponent(templateId)}`,
+      ),
+    );
+  }
+
+  createHiringPipelineTemplate(
+    input: UpdateAdminHiringPipelineTemplateInput,
+  ): Promise<AdminHiringPipelineTemplateDetails> {
+    return firstValueFrom(
+      this.api.post<AdminHiringPipelineTemplateDetails, UpdateAdminHiringPipelineTemplateInput>(
+        'admin/hiring-pipeline/templates',
+        input,
+      ),
+    );
+  }
+
+  updateHiringPipelineTemplate(
+    templateId: string,
+    input: UpdateAdminHiringPipelineTemplateInput,
+  ): Promise<AdminHiringPipelineTemplateDetails> {
+    return firstValueFrom(
+      this.api.put<AdminHiringPipelineTemplateDetails, UpdateAdminHiringPipelineTemplateInput>(
+        `admin/hiring-pipeline/templates/${encodeURIComponent(templateId)}`,
+        input,
+      ),
+    );
+  }
+
   listAuditLogs(query = ''): Promise<AdminAuditLogListResponse> {
-    const separator = query ? `?${query}&` : '?';
-    return firstValueFrom(this.api.get<AdminAuditLogListResponse>(`admin/audit-logs${separator}pageSize=100`));
+    const params = new URLSearchParams(query);
+    if (!params.has('page')) {
+      params.set('page', '1');
+    }
+
+    if (!params.has('pageSize')) {
+      params.set('pageSize', '25');
+    }
+
+    return firstValueFrom(this.api.get<AdminAuditLogListResponse>(`admin/audit-logs?${params.toString()}`));
+  }
+
+  async exportAuditLogs(query = ''): Promise<FileDownload> {
+    const params = new URLSearchParams(query);
+    const response = await firstValueFrom(this.api.download(`admin/audit-logs/export?${params.toString()}`));
+
+    return {
+      blob: response.body ?? new Blob(),
+      fileName: this.fileNameFromDisposition(response.headers.get('content-disposition')) ?? 'audit-logs.xlsx',
+    };
   }
 
   previewRoleAssignments(roleId: string): Promise<RoleUserAssignmentPreview> {
@@ -255,5 +811,46 @@ export class AdminCenterApiService {
         },
       ),
     );
+  }
+
+  private fileNameFromDisposition(disposition: string | null): string | null {
+    if (!disposition) {
+      return null;
+    }
+
+    const encodedMatch = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+    if (encodedMatch?.[1]) {
+      return decodeURIComponent(encodedMatch[1].replace(/"/g, ''));
+    }
+
+    const plainMatch = /filename="?([^";]+)"?/i.exec(disposition);
+    return plainMatch?.[1] ?? null;
+  }
+
+  private toQueryString(query: AdminListQuery): string {
+    const params = new URLSearchParams();
+
+    if (query.search?.trim()) {
+      params.set('search', query.search.trim());
+    }
+
+    if (query.roleId) {
+      params.set('roleId', query.roleId);
+    }
+
+    if (query.groupId) {
+      params.set('groupId', query.groupId);
+    }
+
+    if (query.accountStatus) {
+      params.set('accountStatus', query.accountStatus);
+    }
+
+    params.set('page', String(query.page ?? 1));
+    params.set('pageSize', String(query.pageSize ?? 25));
+    if (query.includeInactive !== undefined) {
+      params.set('includeInactive', String(query.includeInactive));
+    }
+    return params.toString();
   }
 }

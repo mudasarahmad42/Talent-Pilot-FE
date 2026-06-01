@@ -1,16 +1,18 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
 import { AuthResponse, BackendCurrentUserContext, CurrentUser, LoginOption, TalentPilotRole } from './models';
 import { PermissionId } from './permissions';
 import { ApiService } from './services/api.service';
-import { StorageService } from './services/storage.service';
+import { StorageArea, StorageService } from './services/storage.service';
 
 export const AUTH_ACCESS_TOKEN_KEY = 'talent-pilot.auth.access-token';
 
 const AUTH_REFRESH_TOKEN_KEY = 'talent-pilot.auth.refresh-token';
 const AUTH_EXPIRES_AT_KEY = 'talent-pilot.auth.expires-at';
 const AUTH_USER_KEY = 'talent-pilot.auth.current-user';
+const ADMIN_ROLES: readonly TalentPilotRole[] = ['TenantAdmin'];
+const AUTH_STORAGE_AREAS: readonly StorageArea[] = ['session', 'local'];
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -20,11 +22,15 @@ export class AuthService {
   private readonly loginOptionsSignal = signal<LoginOption[]>([]);
   private readonly currentUserSignal = signal<CurrentUser | null>(this.restoreUser());
   private readonly loginInProgressSignal = signal(false);
+  private readonly loginErrorSignal = signal('');
+  private readonly activeStorageAreaSignal = signal<StorageArea>(this.restoreStorageArea());
+  private refreshInProgress$: Observable<string> | null = null;
 
   readonly users = this.loginOptionsSignal.asReadonly();
   readonly currentUser = this.currentUserSignal.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUserSignal() !== null);
   readonly isLoggingIn = this.loginInProgressSignal.asReadonly();
+  readonly loginError = this.loginErrorSignal.asReadonly();
   readonly roleDisplayName = computed(() => this.currentUserSignal()?.roleDisplayName ?? 'Guest');
 
   constructor() {
@@ -38,24 +44,34 @@ export class AuthService {
     });
   }
 
-  login(userId: string): void {
-    const selectedUser = this.loginOptionsSignal().find((item) => item.userId === userId);
-    if (!selectedUser || this.loginInProgressSignal()) {
+  loginDemoUser(user: LoginOption, keepSignedIn = true): void {
+    this.loginWithCredentials(user.email, 'demo', keepSignedIn);
+  }
+
+  loginWithCredentials(email: string, password: string | null, keepSignedIn = true): void {
+    const normalizedEmail = email.trim();
+    const normalizedPassword = password?.trim() ?? '';
+    if (!normalizedEmail || !normalizedPassword || this.loginInProgressSignal()) {
       return;
     }
 
+    this.loginErrorSignal.set('');
     this.loginInProgressSignal.set(true);
+    const storageArea: StorageArea = keepSignedIn ? 'local' : 'session';
     this.api
-      .post<AuthResponse, { email: string; password: string | null }>('auth/login', {
-        email: selectedUser.email,
-        password: null,
+      .post<AuthResponse, { email: string; password: string }>('auth/login', {
+        email: normalizedEmail,
+        password: normalizedPassword,
       })
       .pipe(finalize(() => this.loginInProgressSignal.set(false)))
-      .subscribe((response) => this.applyAuthResponse(response));
+      .subscribe({
+        next: (response) => this.applyAuthResponse(response, storageArea),
+        error: (error) => this.loginErrorSignal.set(this.toLoginErrorMessage(error)),
+      });
   }
 
   logout(): void {
-    const refreshToken = this.storage.getString(AUTH_REFRESH_TOKEN_KEY);
+    const refreshToken = this.storage.getString(AUTH_REFRESH_TOKEN_KEY, this.activeStorageAreaSignal());
 
     if (refreshToken) {
       this.api.post<unknown, { refreshToken: string }>('auth/logout', { refreshToken }).subscribe({
@@ -67,13 +83,61 @@ export class AuthService {
     void this.router.navigateByUrl('/auth/login');
   }
 
-  hasAnyRole(roles: TalentPilotRole[]): boolean {
+  getAccessToken(): string | null {
+    return this.storage.getString(AUTH_ACCESS_TOKEN_KEY, this.activeStorageAreaSignal()) ?? this.findStoredString(AUTH_ACCESS_TOKEN_KEY);
+  }
+
+  refreshSession(): Observable<string> {
+    if (this.refreshInProgress$) {
+      return this.refreshInProgress$;
+    }
+
+    let storageArea = this.activeStorageAreaSignal();
+    let refreshToken = this.storage.getString(AUTH_REFRESH_TOKEN_KEY, storageArea);
+    if (!refreshToken) {
+      const storedRefreshToken = this.findStoredStringWithArea(AUTH_REFRESH_TOKEN_KEY);
+      refreshToken = storedRefreshToken?.value ?? null;
+      storageArea = storedRefreshToken?.area ?? storageArea;
+    }
+
+    if (!refreshToken) {
+      return throwError(() => new Error('Refresh token is missing.'));
+    }
+
+    this.refreshInProgress$ = this.api
+      .post<AuthResponse, { refreshToken: string }>('auth/refresh', { refreshToken })
+      .pipe(
+        tap((response) => this.applyAuthResponse(response, storageArea, false)),
+        map((response) => response.accessToken),
+        catchError((error) => {
+          this.clearSession();
+          return throwError(() => error);
+        }),
+        finalize(() => {
+          this.refreshInProgress$ = null;
+        }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+
+    return this.refreshInProgress$;
+  }
+
+  handleAuthExpired(): void {
+    this.clearSession();
+    void this.router.navigateByUrl('/auth/login');
+  }
+
+  hasAnyRole(roles: readonly TalentPilotRole[]): boolean {
     const user = this.currentUserSignal();
     if (!user) {
       return false;
     }
 
     return roles.some((role) => user.roles.includes(role));
+  }
+
+  isAdmin(): boolean {
+    return this.hasAnyRole(ADMIN_ROLES);
   }
 
   hasPermission(permission: PermissionId | string): boolean {
@@ -95,14 +159,20 @@ export class AuthService {
     return routes.some((allowedRoute) => route === allowedRoute || route.startsWith(`${allowedRoute}/`));
   }
 
-  private applyAuthResponse(response: AuthResponse): void {
-    this.storage.setString(AUTH_ACCESS_TOKEN_KEY, response.accessToken);
-    this.storage.setString(AUTH_REFRESH_TOKEN_KEY, response.refreshToken);
-    this.storage.setString(AUTH_EXPIRES_AT_KEY, response.expiresAtUtc);
+  private applyAuthResponse(response: AuthResponse, storageArea: StorageArea, navigate = true): void {
+    this.clearStoredAuth();
+    this.activeStorageAreaSignal.set(storageArea);
+    this.storage.setString(AUTH_ACCESS_TOKEN_KEY, response.accessToken, storageArea);
+    this.storage.setString(AUTH_REFRESH_TOKEN_KEY, response.refreshToken, storageArea);
+    this.storage.setString(AUTH_EXPIRES_AT_KEY, response.expiresAtUtc, storageArea);
 
     const user = this.toCurrentUser(response.user);
     this.currentUserSignal.set(user);
-    this.storage.setJson(AUTH_USER_KEY, user);
+    this.storage.setJson(AUTH_USER_KEY, user, storageArea);
+
+    if (!navigate) {
+      return;
+    }
 
     if (user.roles.includes('Candidate')) {
       void this.router.navigateByUrl('/candidate');
@@ -135,15 +205,52 @@ export class AuthService {
   }
 
   private clearSession(): void {
-    this.storage.remove(AUTH_ACCESS_TOKEN_KEY);
-    this.storage.remove(AUTH_REFRESH_TOKEN_KEY);
-    this.storage.remove(AUTH_EXPIRES_AT_KEY);
-    this.storage.remove(AUTH_USER_KEY);
+    this.clearStoredAuth();
     this.currentUserSignal.set(null);
   }
 
   private restoreUser(): CurrentUser | null {
-    return this.storage.getJson<CurrentUser | null>(AUTH_USER_KEY, null);
+    for (const area of AUTH_STORAGE_AREAS) {
+      const user = this.storage.getJson<CurrentUser | null>(AUTH_USER_KEY, null, area);
+      if (user) {
+        return user;
+      }
+    }
+
+    return null;
+  }
+
+  private restoreStorageArea(): StorageArea {
+    return this.storage.getString(AUTH_USER_KEY, 'session') ? 'session' : 'local';
+  }
+
+  private findStoredString(key: string): string | null {
+    return this.findStoredStringWithArea(key)?.value ?? null;
+  }
+
+  private findStoredStringWithArea(key: string): { area: StorageArea; value: string } | null {
+    for (const area of AUTH_STORAGE_AREAS) {
+      const value = this.storage.getString(key, area);
+      if (value) {
+        this.activeStorageAreaSignal.set(area);
+        return { area, value };
+      }
+    }
+
+    return null;
+  }
+
+  private clearStoredAuth(): void {
+    for (const area of AUTH_STORAGE_AREAS) {
+      this.storage.remove(AUTH_ACCESS_TOKEN_KEY, area);
+      this.storage.remove(AUTH_REFRESH_TOKEN_KEY, area);
+      this.storage.remove(AUTH_EXPIRES_AT_KEY, area);
+      this.storage.remove(AUTH_USER_KEY, area);
+    }
+  }
+
+  private toLoginErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Sign in failed. Check the email and password.';
   }
 }
 
@@ -154,6 +261,7 @@ function isTalentPilotRole(role: string): role is TalentPilotRole {
     'PMO',
     'Recruiter',
     'HiringManager',
+    'HOD',
     'Interviewer',
     'Employee',
     'Candidate',

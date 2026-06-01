@@ -37,6 +37,16 @@ This repository is the Angular frontend for Talent Pilot. AI agents working here
 - Do not infer permissions from display labels; use backend-returned permission ids.
 - Do not expose SQL table names, endpoint internals, or backend enum implementation details in visible UI.
 
+## Angular Architecture Rules
+
+- Follow SOLID principles pragmatically: components, services, guards, models, and utilities should each have a clear reason to change.
+- Keep pages composed from focused Angular components. Do not let one large component own a whole screen's data loading, form orchestration, tables, dialogs, action menus, and visual layout when those concerns can be separated cleanly.
+- Use services to manage API calls, shared state, caching, and cross-component workflows. Components should bind state, handle local UI events, and delegate business/data work to services.
+- Prefer feature-local services and components before introducing global state. Use Angular signals and RxJS intentionally; do not add a state library or generic store unless the existing flow has become untraceable.
+- Split components around real responsibilities: container/page components coordinate route state, presentational components render sections, form components own form controls and validation UI, and table/list components own row rendering and action events.
+- Keep inputs and outputs explicit. Avoid reaching across component trees through shared mutable objects when typed inputs, outputs, or a focused service would make ownership clearer.
+- Do not overcomplicate simple screens. Add a component or service only when it reduces meaningful clutter, isolates behavior for testing, or matches an established local pattern.
+
 ## Working With Backend Agents
 
 When a backend agent adds or changes an API:

@@ -1,19 +1,41 @@
 import { Injectable } from '@angular/core';
 
-type StorageArea = 'local' | 'session';
+export type StorageArea = 'local' | 'session';
 
 @Injectable({ providedIn: 'root' })
 export class StorageService {
+  private readonly fallbackStorage = new Map<StorageArea, Map<string, string>>([
+    ['local', new Map<string, string>()],
+    ['session', new Map<string, string>()],
+  ]);
+
   getString(key: string, area: StorageArea = 'local'): string | null {
-    return this.getStorage(area)?.getItem(key) ?? null;
+    const storage = this.getStorage(area);
+    if (!storage) {
+      return this.fallbackStorage.get(area)?.get(key) ?? null;
+    }
+
+    return storage.getItem(key);
   }
 
   setString(key: string, value: string, area: StorageArea = 'local'): void {
-    this.getStorage(area)?.setItem(key, value);
+    const storage = this.getStorage(area);
+    if (!storage) {
+      this.fallbackStorage.get(area)?.set(key, value);
+      return;
+    }
+
+    storage.setItem(key, value);
   }
 
   remove(key: string, area: StorageArea = 'local'): void {
-    this.getStorage(area)?.removeItem(key);
+    const storage = this.getStorage(area);
+    if (!storage) {
+      this.fallbackStorage.get(area)?.delete(key);
+      return;
+    }
+
+    storage.removeItem(key);
   }
 
   getJson<T>(key: string, fallback: T, area: StorageArea = 'local'): T {

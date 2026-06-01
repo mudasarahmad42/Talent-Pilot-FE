@@ -1,0 +1,128 @@
+<div class="admin-modal-backdrop" aria-hidden="true" (click)="close()"></div>
+<section class="admin-modal-panel group-membership-modal" role="dialog" aria-modal="true" aria-labelledby="groupMembershipTitle">
+  <header>
+    <div>
+      <h2 id="groupMembershipTitle">Manage Group Members</h2>
+      <p>{{ context()?.name }} - {{ context()?.purpose }}</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="close()" [disabled]="saving()">Cancel</button>
+  </header>
+
+  <section class="group-membership-summary">
+    <article>
+      <span>Current members</span>
+      <strong>{{ response()?.summary?.memberCount ?? context()?.memberCount ?? 0 }}</strong>
+    </article>
+    <article>
+      <span>Available users</span>
+      <strong>{{ response()?.summary?.availableUserCount ?? 0 }}</strong>
+    </article>
+    <article>
+      <span>Pending changes</span>
+      <strong>{{ pendingChangeCount() }}</strong>
+    </article>
+  </section>
+
+  <div class="admin-table-toolbar compact group-membership-toolbar">
+    <label>
+      <span class="material-symbols-outlined" aria-hidden="true">search</span>
+      <input
+        type="search"
+        placeholder="Search people"
+        aria-label="Search group membership users"
+        [value]="search()"
+        (input)="setSearch($event)"
+      />
+    </label>
+
+    <div class="membership-filter-tabs" aria-label="Membership filter">
+      @for (filter of membershipFilters; track filter) {
+        <button type="button" [class.active]="membershipFilter() === filter" (click)="setMembershipFilter(filter)">
+          {{ filter }}
+        </button>
+      }
+    </div>
+
+    <label class="page-size-field">
+      <span>Rows</span>
+      <select aria-label="Membership page size" [value]="pageSize()" (change)="setPageSize($event)">
+        @for (option of pageSizeOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <div class="group-bulk-selection-row">
+    <label class="bulk-select-all group-filter-membership-toggle">
+      <input
+        type="checkbox"
+        [checked]="selectAllChecked()"
+        [disabled]="loading() || matchingFilterCount() === 0"
+        (change)="toggleFilteredMembership($event)"
+      />
+      <span>Select All</span>
+    </label>
+    <small>{{ bulkSelectionCopy() }}</small>
+  </div>
+
+  <section class="group-membership-list" [class.loading]="loading()">
+    @if (loading()) {
+      <p>Loading members...</p>
+    } @else if (items().length === 0) {
+      <p>No users match this filter.</p>
+    } @else {
+      @for (user of items(); track user.userId) {
+        <article [class.selected]="isSelectedMember(user)" [class.pending]="hasPendingChange(user)">
+          <input
+            type="checkbox"
+            [checked]="isSelectedMember(user)"
+            [disabled]="!canToggleUser(user)"
+            (change)="toggleUserMembership(user, $event)"
+            [attr.aria-label]="'Set membership for ' + user.displayName"
+          />
+          <span class="user-avatar">{{ user.initials }}</span>
+          <div>
+            <strong>{{ user.displayName }}</strong>
+            <small>{{ user.email }}</small>
+            <small>{{ user.roleNames.join(', ') || 'No active role' }}</small>
+          </div>
+          <div class="group-membership-user-state">
+            @if (user.isDefaultAssignee) {
+              <span class="table-status custom">Default</span>
+            }
+            <span class="account-chip" [class.disabled]="user.accountStatus === 'Disabled'">
+              {{ user.accountStatus }}
+            </span>
+          </div>
+        </article>
+      }
+    }
+  </section>
+
+  <footer class="group-membership-footer">
+    <span>{{ listRangeLabel() }}</span>
+    <div class="admin-table-footer">
+      <button type="button" (click)="goToPage(page() - 1)" [disabled]="!canGoPrevious() || loading()">Previous</button>
+      @for (pageNumber of pageNumbers(); track pageNumber) {
+        <button type="button" [class.active]="pageNumber === page()" (click)="goToPage(pageNumber)" [disabled]="loading()">
+          {{ pageNumber }}
+        </button>
+      }
+      <button type="button" (click)="goToPage(page() + 1)" [disabled]="!canGoNext() || loading()">Next</button>
+    </div>
+  </footer>
+
+  <footer>
+    <span class="group-membership-pending-copy">
+      {{ pendingAddCount() }} to add - {{ pendingRemoveCount() }} to remove
+    </span>
+    <button mat-stroked-button type="button" (click)="clearPendingChanges()" [disabled]="saving() || pendingChangeCount() === 0">
+      Reset Changes
+    </button>
+    <button mat-flat-button class="stitch-primary-button" type="button" (click)="save()" [disabled]="saving() || pendingChangeCount() === 0">
+      {{ saving() ? 'Saving...' : 'Save Memberships' }}
+    </button>
+  </footer>
+</section>
+  

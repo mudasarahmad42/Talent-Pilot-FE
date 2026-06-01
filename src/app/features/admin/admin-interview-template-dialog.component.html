@@ -1,0 +1,306 @@
+<div class="admin-modal-backdrop" aria-hidden="true" (click)="close()"></div>
+<section
+  class="admin-modal-panel interview-template-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="interview-template-dialog-title"
+>
+  <header>
+    <div>
+      <p class="admin-breadcrumb">Configuration / Hiring Pipeline</p>
+      <h2 id="interview-template-dialog-title">
+        {{ isCreateMode() ? 'New Interview Template' : 'Edit Interview Template' }}
+      </h2>
+    </div>
+    <button
+      type="button"
+      class="icon-only-button"
+      aria-label="Close interview template"
+      (click)="close()"
+      [disabled]="saving()"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">close</span>
+    </button>
+  </header>
+
+  <div class="modal-form-grid compact">
+    <label class="stitch-field">
+      <span>Template Name</span>
+      <input
+        placeholder="e.g. Senior Software Engineer Interview"
+        aria-label="Template name"
+        [value]="name()"
+        (input)="setName($event)"
+        [disabled]="saving()"
+      />
+    </label>
+
+    <label class="stitch-field">
+      <span class="field-label-with-help">
+        Department
+        <span
+          class="material-symbols-outlined field-help-icon"
+          aria-label="Department template scope"
+          matTooltip="Use this to make the template department-specific. Recruiters see it when creating job posts for that department. All departments keeps it available for any department. This does not route Job Requests."
+          matTooltipPosition="above"
+        >
+          help
+        </span>
+      </span>
+      <select aria-label="Template department" [value]="departmentId() ?? ''" (change)="setDepartment($event)" [disabled]="saving()">
+        <option value="">All departments</option>
+        @for (department of departments; track department.id) {
+          <option [value]="department.id">{{ department.name }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="stitch-field full-span">
+      <span>Description</span>
+      <textarea
+        rows="3"
+        placeholder="Describe when this template should be selected."
+        aria-label="Template description"
+        [value]="description()"
+        (input)="setDescription($event)"
+        [disabled]="saving()"
+      ></textarea>
+    </label>
+
+    <label class="stitch-field">
+      <span>Status</span>
+      <select aria-label="Template status" [value]="status()" (change)="setStatus($event)" [disabled]="saving()">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+    </label>
+  </div>
+
+  <section class="interview-round-editor" aria-label="Interview rounds">
+    <header>
+      <div>
+        <h3>Interview Rounds</h3>
+        <p>Rounds run in the order shown here.</p>
+      </div>
+      <button type="button" mat-stroked-button class="stitch-secondary-button" (click)="addRound()" [disabled]="saving()">
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>
+        Add Round
+      </button>
+    </header>
+
+    <div class="interview-round-list">
+      @for (round of rounds(); track round.interviewTemplateRoundId ?? $index; let index = $index) {
+        <article class="interview-round-row">
+          <strong>{{ index + 1 }}</strong>
+          <label class="stitch-field">
+            <span>Round Name</span>
+            <input
+              aria-label="Round name"
+              [value]="round.name"
+              (input)="updateRoundName(index, $event)"
+              [disabled]="saving()"
+            />
+          </label>
+          <div class="stitch-field interviewer-field">
+            <span>Default Interviewer</span>
+            <div class="interviewer-selected-control" [class.empty]="!round.ownerUserId">
+              <div>
+                <strong>{{ selectedInterviewerName(round.ownerUserId) }}</strong>
+                <span>{{ selectedInterviewerContext(round.ownerUserId) }}</span>
+              </div>
+              <div class="interviewer-selected-actions">
+                <button
+                  type="button"
+                  class="picker-action-button"
+                  (click)="openInterviewerPicker(index)"
+                  [disabled]="saving()"
+                >
+                  {{ round.ownerUserId ? 'Change' : 'Choose' }}
+                </button>
+                @if (round.ownerUserId) {
+                  <button
+                    type="button"
+                    class="icon-only-button compact"
+                    aria-label="Clear default interviewer"
+                    (click)="clearRoundInterviewer(index)"
+                    [disabled]="saving()"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                  </button>
+                }
+              </div>
+            </div>
+            <small>{{ selectedInterviewerSummary(round.ownerUserId) }}</small>
+            @if (hodRecommendationMessage(index); as hodMessage) {
+              <div class="hod-recommendation-hint">
+                <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+                <span>{{ hodMessage }}</span>
+                @if (canApplyRecommendedHod(index, round.ownerUserId)) {
+                  <button type="button" (click)="applyRecommendedHod(index)" [disabled]="saving()">Use HOD</button>
+                }
+              </div>
+            }
+          </div>
+          <label class="stitch-field duration-field">
+            <span>Minutes</span>
+            <input
+              type="number"
+              min="15"
+              max="480"
+              step="15"
+              aria-label="Round duration minutes"
+              [value]="round.durationMinutes"
+              (input)="updateRoundDuration(index, $event)"
+              [disabled]="saving()"
+            />
+          </label>
+          <label class="stitch-field">
+            <span>Status</span>
+            <select aria-label="Round status" [value]="round.status" (change)="updateRoundStatus(index, $event)" [disabled]="saving()">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            class="icon-only-button"
+            aria-label="Remove round"
+            (click)="removeRound(index)"
+            [disabled]="saving() || rounds().length <= 1"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+          </button>
+        </article>
+      }
+    </div>
+  </section>
+
+  @if (errorMessage()) {
+    <p class="modal-error-message">{{ errorMessage() }}</p>
+  }
+
+  <footer>
+    <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="close()" [disabled]="saving()">
+      Cancel
+    </button>
+    <button mat-flat-button type="button" class="stitch-primary-button" (click)="submit()" [disabled]="!canSubmit()">
+      {{ saving() ? 'Saving...' : isCreateMode() ? 'Create Template' : 'Save Template' }}
+    </button>
+  </footer>
+</section>
+
+@if (interviewerPickerRoundIndex() !== null) {
+  <div class="employee-picker-backdrop" aria-hidden="true" (click)="closeInterviewerPicker()"></div>
+  <section
+    class="employee-picker-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="employee-picker-title"
+  >
+    <header>
+      <div>
+        <p class="admin-breadcrumb">Configuration / Hiring Pipeline</p>
+        <h2 id="employee-picker-title">Select Default Interviewer</h2>
+        <span>Choose one active user for {{ pickerRoundName() }}.</span>
+      </div>
+      <button type="button" class="icon-only-button" aria-label="Close employee picker" (click)="closeInterviewerPicker()">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </header>
+
+    <section class="employee-picker-filters" aria-label="Employee filters">
+      <label class="stitch-field employee-picker-search">
+        <span>Search</span>
+        <input
+          aria-label="Search employees"
+          placeholder="Search name, email, role, department, group, experience"
+          [value]="pickerSearch()"
+          (input)="setPickerSearch($event)"
+        />
+      </label>
+      <label class="stitch-field">
+        <span>Department</span>
+        <select aria-label="Filter by department" [value]="pickerDepartmentId()" (change)="setPickerDepartment($event)">
+          <option value="">All departments</option>
+          @for (department of pickerDepartmentOptions(); track department.id) {
+            <option [value]="department.id">{{ department.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="stitch-field">
+        <span>Role</span>
+        <select aria-label="Filter by role" [value]="pickerRoleId()" (change)="setPickerRole($event)">
+          <option value="">All roles</option>
+          @for (role of pickerRoleOptions(); track role.id) {
+            <option [value]="role.id">{{ role.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="stitch-field">
+        <span>Experience</span>
+        <select
+          aria-label="Filter by minimum experience"
+          [value]="pickerMinimumExperience()"
+          (change)="setPickerMinimumExperience($event)"
+        >
+          <option value="">Any experience</option>
+          <option value="3">3+ years</option>
+          <option value="5">5+ years</option>
+          <option value="8">8+ years</option>
+          <option value="10">10+ years</option>
+        </select>
+      </label>
+      <label class="stitch-field">
+        <span>Interviews</span>
+        <select aria-label="Filter by interview count" [value]="pickerInterviewCount()" (change)="setPickerInterviewCount($event)">
+          <option value="">Any count</option>
+          <option value="0">None taken</option>
+          <option value="1-5">1-5 taken</option>
+          <option value="6-15">6-15 taken</option>
+          <option value="16+">16+ taken</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="employee-picker-results" aria-label="Employee results">
+      @if (!pickerHasResults()) {
+        <p class="employee-picker-empty">No matching active users.</p>
+      }
+
+      @for (interviewer of filteredPickerInterviewers(); track interviewer.id) {
+        <article class="employee-picker-row" [class.selected]="isPickerSelection(interviewer.id)">
+          <span class="employee-avatar">{{ interviewer.initials }}</span>
+          <div class="employee-picker-main">
+            <strong>{{ interviewer.displayName }}</strong>
+            <small>{{ interviewer.email }}</small>
+            <p>{{ interviewerCardMeta(interviewer) }}</p>
+            @if (isRecommendedHod(interviewer, interviewerPickerRoundIndex()!)) {
+              <span class="recommended-hod-pill">Recommended HOD</span>
+            }
+          </div>
+          <dl>
+            <div>
+              <dt>Joining date</dt>
+              <dd>{{ formatJoiningDate(interviewer.joiningDate) }}</dd>
+            </div>
+            <div>
+              <dt>Time at {{ companyLabel() }}</dt>
+              <dd>{{ formatTimeAtCompany(interviewer.joiningDate) }}</dd>
+            </div>
+            <div>
+              <dt>Last active</dt>
+              <dd>{{ formatLastActive(interviewer.lastActiveAt) }}</dd>
+            </div>
+          </dl>
+          <button type="button" class="stitch-primary-button picker-select-button" (click)="selectPickerInterviewer(interviewer.id)">
+            Select
+          </button>
+        </article>
+      }
+    </section>
+
+    <footer>
+      <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="closeInterviewerPicker()">Cancel</button>
+    </footer>
+  </section>
+}

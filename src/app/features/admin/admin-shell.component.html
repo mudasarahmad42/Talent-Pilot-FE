@@ -1,0 +1,47 @@
+<div class="admin-shell">
+  <header class="topbar">
+    <a class="brand app-brand" routerLink="/admin-center/tenant-profile" aria-label="Talent Pilot Admin Center">
+      <img class="brand-ai-logo" src="/ai-unlimited-mark.png" alt="" aria-hidden="true" />
+      <strong>Talent Pilot</strong>
+    </a>
+
+    <nav class="top-links" aria-label="Global">
+      <a routerLink="/app/dashboard">Dashboard</a>
+      <a routerLink="/app/job-requests">Job Requests</a>
+      <a routerLink="/app/candidates">Candidates</a>
+      <a routerLink="/admin-center/tenant-profile" class="active">Admin Center</a>
+    </nav>
+
+    <div class="user-menu">
+      <app-notification-bell />
+      @if (currentUser(); as user) {
+        <button type="button" class="avatar-button" [attr.aria-label]="'Sign out ' + user.name" (click)="auth.logout()">
+          <span class="avatar small">{{ initials(user.name) }}</span>
+        </button>
+      }
+    </div>
+  </header>
+
+  <div class="workspace admin-workspace">
+    <aside class="sidebar admin-sidebar" aria-label="Admin Center navigation">
+      @for (group of navGroups; track group.title) {
+        <p class="sidebar-title">{{ group.title }}</p>
+        @for (item of group.items; track item.id) {
+          <a
+            [routerLink]="['/admin-center', item.id]"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+            {{ item.label }}
+          </a>
+        }
+      }
+    </aside>
+
+    <section class="content-shell">
+      <router-outlet />
+    </section>
+  </div>
+</div>
+  

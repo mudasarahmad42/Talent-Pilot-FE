@@ -1,0 +1,47 @@
+:host {
+  display: block;
+}
+
+.admin-table-toolbar {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.admin-table-toolbar.compact {
+  justify-content: flex-start;
+}
+
+.admin-table-toolbar label {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.admin-table-toolbar input,
+.admin-table-toolbar select {
+  background: #fff;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  min-width: 190px;
+  outline: 0;
+}
+
+.admin-table-toolbar .page-size-field {
+  min-width: 112px;
+}
+
+.admin-table-toolbar .page-size-field select {
+  min-width: 52px;
+}

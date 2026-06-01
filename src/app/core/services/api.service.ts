@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ConfigurationService } from './configuration.service';
@@ -26,6 +26,13 @@ export class ApiService {
 
   delete<TResponse>(path: string): Observable<TResponse> {
     return this.http.delete<TResponse>(this.url(path));
+  }
+
+  download(path: string): Observable<HttpResponse<Blob>> {
+    return this.http.get(this.url(path), {
+      observe: 'response',
+      responseType: 'blob',
+    });
   }
 
   private url(path: string): string {

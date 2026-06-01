@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
@@ -9,9 +10,9 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
     <main class="page ops-page">
       <header class="ops-page-header">
         <div>
-          <p class="eyebrow">Job Requests</p>
-          <h1>Resource demand</h1>
-          <p>Manage and monitor all recruitment requisitions across the organization.</p>
+          <p class="eyebrow">{{ pageTitle() }}</p>
+          <h1>{{ isPresalesOnly() ? 'My Job Requests' : 'Resource demand' }}</h1>
+          <p>{{ pageDescription() }}</p>
         </div>
         <a class="btn primary compact" routerLink="/app/job-requests/new">
           <span class="material-symbols-outlined" aria-hidden="true">add</span>
@@ -23,7 +24,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
         <article class="ops-stat-card">
           <span class="ops-stat-icon material-symbols-outlined" aria-hidden="true">assignment</span>
           <div>
-            <span>Total requests</span>
+            <span>{{ isPresalesOnly() ? 'My requests' : 'Total requests' }}</span>
             <strong>{{ store.jobRequests().length }}</strong>
             <small>Loaded from backend</small>
           </div>
@@ -105,9 +106,25 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
   `,
 })
 export class JobRequestsComponent {
+  private readonly auth = inject(AuthService);
+
   constructor(readonly store: TalentPilotStoreService) {}
 
   completedRequests(): number {
     return this.store.jobRequests().filter((request) => request.stage === 'Closed').length;
+  }
+
+  pageTitle(): string {
+    return this.isPresalesOnly() ? 'My Job Requests' : 'Job Requests';
+  }
+
+  pageDescription(): string {
+    return this.isPresalesOnly()
+      ? 'Track the Job Requests you created and their PMO/recruitment progress.'
+      : 'Manage and monitor all recruitment requisitions across the organization.';
+  }
+
+  isPresalesOnly(): boolean {
+    return this.auth.hasAnyRole(['Presales']) && !this.auth.isAdmin();
   }
 }

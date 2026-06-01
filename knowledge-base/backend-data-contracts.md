@@ -7,7 +7,8 @@
 - `AuthService.currentUser` stores the backend-resolved user context: display name, highest-priority role label, all roles, permissions, groups, tenant id, and route access.
 - Frontend permission checks use the backend `permissions` array only; do not infer authorization from display labels, cards, or local mock state.
 - Admin Center uses `/api/admin/*` endpoints. Tenant profile uses `/api/admin/tenant-profile`.
-- Talent Pilot internal operations use `/api/talent-pilot/*` endpoints.
+- Workflows uses `/api/admin/workflows/configuration` and `/api/admin/workflows/intake-routing`. The frontend edits department recipients only; backend owns action/stage keys and workflow action authorization.
+- Talent Pilot internal operations use `/api/talent-pilot/*` endpoints. Presales Job Request creation loads department, location, skill, hiring-manager, and routing-preview data from `GET /api/talent-pilot/job-requests/intake-options`, then posts ID-based payloads to `POST /api/talent-pilot/job-requests`.
 - Candidate Experience screens must not show fake jobs, applications, interviews, or profile data. If the backend contract is missing, show a backend-required empty state.
 - API endpoint names and schema notes must stay in `API_CONTRACT.md` or the knowledge base, never in visible product UI.
 - Timestamps from the backend are UTC ISO strings. UI converts them with `Intl.DateTimeFormat` and keeps the raw UTC value in `datetime`/tooltip where useful.
@@ -18,6 +19,6 @@
 
 - Admin read screens for users, roles, groups, notifications, AI settings, audit logs, and tenant profile are backend-backed.
 - Talent Pilot snapshot screens for dashboard, job requests, PMO queue, notifications, and request detail are backend-backed.
+- Create Job Request is backend-backed and uses tenant configuration data instead of free-text department/location/skill fields.
 - Candidate Experience and not-yet-built operational screens intentionally render backend-required empty states instead of local mock data.
-- Remaining command flows still need real mutation endpoints wired: add/edit/deactivate users, role creation/editing, bulk role assignment, notification template save, and generic row actions.
-- Create Job Request posts to backend, but department and skill lookup/autocomplete endpoints are still needed to replace free-text MVP fields.
+- Remaining command flows still need real mutation endpoints wired: add/edit/deactivate users, role creation/editing, bulk role assignment, and generic row actions.

@@ -57,7 +57,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { id: 'workflows', label: 'Workflows', icon: 'settings_applications' },
       { id: 'notifications', label: 'Notifications', icon: 'notifications_active' },
       { id: 'ai-settings', label: 'AI Settings', icon: 'smart_toy' },
-      { id: 'integrations', label: 'Integrations', icon: 'extension' },
+      { id: 'candidate-sources', label: 'Candidate Sources', icon: 'source_environment' },
     ],
   },
   {
@@ -73,11 +73,11 @@ export const ADMIN_PAGES: AdminPage[] = [
   page('groups', 'Access Control', 'Groups', 'Configure workflow routing groups and membership.'),
   page('departments', 'Configuration', 'Departments', 'Manage recruitment department lookups.'),
   page('skills', 'Configuration', 'Skills', 'Manage normalized skills used by parsing and matching.'),
-  page('hiring-pipeline', 'Configuration', 'Hiring Pipeline', 'Configure fixed interview stage templates.'),
-  page('workflows', 'Configuration / Workflows', 'Workflows', 'Configure handoffs and baton routing for job requests.'),
-  page('notifications', 'Configuration', 'Notifications', 'Review notification events and editable email templates.'),
+  page('hiring-pipeline', 'Configuration', 'Hiring Pipeline', 'Configure interview templates selected for job postings.'),
+  page('workflows', 'Configuration / Workflows', 'Workflows', 'Configure department routing for Presales-created Job Requests.'),
+  page('notifications', 'Configuration', 'Notifications', 'Manage editable email templates for system notifications.'),
   page('ai-settings', 'Configuration', 'AI Settings', 'Review AI runtime, agents, and guardrails.'),
-  page('integrations', 'Configuration', 'Integrations', 'Review manual sourcing and invite-link activity.'),
+  page('candidate-sources', 'Configuration', 'Candidate Sources', 'Manage source labels used for prospects, applications, and reporting.'),
   page('audit-logs', 'Governance', 'Audit Logs', 'Review tenant-scoped activity and configuration history.'),
 ];
 

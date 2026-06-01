@@ -61,111 +61,151 @@ export const routes: Routes = [
           import('./features/internal/pmo-queue.component').then((component) => component.PmoQueueComponent),
       },
       {
-        path: 'notifications',
+        path: 'pmo/review/:jobRequestId',
+        canActivate: [permissionGuard],
+        data: { requiredAnyPermissions: [Permission.ClaimWorkflowTasks] },
         loadComponent: () =>
-          import('./features/internal/notifications.component').then((component) => component.NotificationsComponent),
+          import('./features/internal/pmo-review.component').then((component) => component.PmoReviewComponent),
       },
+      { path: 'notifications', pathMatch: 'full', redirectTo: 'dashboard' },
       {
         path: 'bench-matching/:jobRequestId',
-        canActivate: [permissionGuard],
-        data: { screenId: 'bench-matching', requiredAnyPermissions: [Permission.ViewBenchMatches] },
-        loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
-      },
-      {
-        path: 'internal-resource-referral',
-        data: { screenId: 'internal-resource-referral' },
-        loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
-      },
-      {
-        path: 'presales-resource-review',
-        data: { screenId: 'presales-resource-review' },
-        loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+        redirectTo: 'pmo/review/:jobRequestId',
       },
       {
         path: 'recruitment/queue',
         canActivate: [permissionGuard],
         data: { screenId: 'recruitment-queue', requiredAnyPermissions: [Permission.ManageCandidates] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/recruitment-queue.component').then(
+            (component) => component.RecruitmentQueueComponent,
+          ),
+      },
+      {
+        path: 'recruitment/talent-rediscovery',
+        canActivate: [permissionGuard],
+        data: { screenId: 'candidate-rediscovery', requiredAnyPermissions: [Permission.ManageCandidates] },
+        loadComponent: () =>
+          import('./features/internal/candidate-rediscovery.component').then(
+            (component) => component.CandidateRediscoveryComponent,
+          ),
+      },
+      {
+        path: 'recruitment/sourcing/:jobRequestId',
+        canActivate: [permissionGuard],
+        data: { requiredAnyPermissions: [Permission.ManageCandidates] },
+        loadComponent: () =>
+          import('./features/internal/recruiter-sourcing.component').then(
+            (component) => component.RecruiterSourcingComponent,
+          ),
+      },
+      {
+        path: 'recruitment/applications/:jobApplicationId/history',
+        canActivate: [permissionGuard],
+        data: { requiredAnyPermissions: [Permission.ManageCandidates] },
+        loadComponent: () =>
+          import('./features/internal/historical-application-detail.component').then(
+            (component) => component.HistoricalApplicationDetailComponent,
+          ),
+      },
+      {
+        path: 'recruitment/candidates/:candidateId/profile',
+        canActivate: [permissionGuard],
+        data: { requiredAnyPermissions: [Permission.ManageCandidates] },
+        loadComponent: () =>
+          import('./features/internal/candidate-profile.component').then(
+            (component) => component.CandidateProfileComponent,
+          ),
       },
       {
         path: 'job-publishing',
         canActivate: [permissionGuard],
         data: { screenId: 'job-publishing', requiredAnyPermissions: [Permission.ManageCandidates] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/job-publishing.component').then((component) => component.JobPublishingComponent),
       },
       {
         path: 'candidates',
         canActivate: [permissionGuard],
         data: { screenId: 'candidates', requiredAnyPermissions: [Permission.ManageCandidates] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/candidates.component').then((component) => component.CandidatesComponent),
       },
       {
         path: 'candidates/new',
-        canActivate: [permissionGuard],
-        data: { screenId: 'manual-candidate-add', requiredAnyPermissions: [Permission.ManageCandidates] },
-        loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+        redirectTo: 'candidates',
       },
       {
         path: 'prospect-invite',
-        canActivate: [permissionGuard],
-        data: { screenId: 'prospect-invite', requiredAnyPermissions: [Permission.ManageCandidates] },
-        loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+        redirectTo: 'recruitment/talent-rediscovery',
       },
       {
         path: 'candidates/:id',
-        canActivate: [permissionGuard],
-        data: { screenId: 'candidate-profile-details', requiredAnyPermissions: [Permission.ManageCandidates] },
-        loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+        redirectTo: 'recruitment/candidates/:id/profile',
       },
       {
         path: 'candidate-pipeline',
         canActivate: [permissionGuard],
         data: { screenId: 'candidate-pipeline', requiredAnyPermissions: [Permission.ManageCandidates] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/candidate-pipeline.component').then(
+            (component) => component.CandidatePipelineComponent,
+          ),
       },
       {
         path: 'interview-scheduling',
         canActivate: [permissionGuard],
         data: { screenId: 'interview-scheduling', requiredAnyPermissions: [Permission.ManageInterviews] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/interview-scheduling.component').then(
+            (component) => component.InterviewSchedulingComponent,
+          ),
       },
       {
         path: 'interview-feedback',
         canActivate: [permissionGuard],
-        data: { screenId: 'interview-feedback', requiredAnyPermissions: [Permission.ManageInterviews] },
+        data: {
+          screenId: 'interview-feedback',
+          requiredAnyPermissions: [Permission.ManageInterviews, Permission.ManageCandidates, Permission.ManageHiringDecisions],
+        },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/interview-feedback.component').then(
+            (component) => component.InterviewFeedbackComponent,
+          ),
       },
       {
         path: 'hiring-manager/reviews',
         canActivate: [permissionGuard],
-        data: { screenId: 'hiring-manager-review', requiredAnyPermissions: [Permission.ManageHiringDecisions] },
+        data: { requiredAnyPermissions: [Permission.ManageHiringDecisions] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/hiring-manager-review.component').then(
+            (component) => component.HiringManagerReviewComponent,
+          ),
+      },
+      {
+        path: 'hiring-manager/reviews/:jobApplicationId',
+        canActivate: [permissionGuard],
+        data: { requiredAnyPermissions: [Permission.ManageHiringDecisions] },
+        loadComponent: () =>
+          import('./features/internal/hiring-manager-review.component').then(
+            (component) => component.HiringManagerReviewComponent,
+          ),
       },
       {
         path: 'offer-onboarding',
         canActivate: [permissionGuard],
-        data: { screenId: 'offer-onboarding', requiredAnyPermissions: [Permission.ManageHiringDecisions] },
+        data: { requiredAnyPermissions: [Permission.ManageHiringDecisions] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/hiring-manager-review.component').then(
+            (component) => component.HiringManagerReviewComponent,
+          ),
       },
       {
         path: 'reports',
-        data: { screenId: 'reports' },
+        canActivate: [permissionGuard],
+        data: { requiredAnyPermissions: [Permission.ManageAdminCenter] },
         loadComponent: () =>
-          import('./features/internal/internal-screen.component').then((component) => component.InternalScreenComponent),
+          import('./features/internal/reports.component').then((component) => component.ReportsComponent),
       },
     ],
   },
@@ -177,6 +217,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'tenant-profile' },
       { path: 'branding', pathMatch: 'full', redirectTo: 'tenant-profile' },
       { path: 'career-page', pathMatch: 'full', redirectTo: 'tenant-profile' },
+      { path: 'integrations', pathMatch: 'full', redirectTo: 'candidate-sources' },
       {
         path: ':pageId',
         canActivate: [permissionGuard],
@@ -187,7 +228,6 @@ export const routes: Routes = [
   },
   {
     path: 'candidate',
-    canActivate: [candidateGuard],
     loadComponent: () =>
       import('./features/candidate/candidate-shell.component').then((component) => component.CandidateShellComponent),
     children: [
@@ -206,48 +246,56 @@ export const routes: Routes = [
       },
       {
         path: 'apply/:jobId',
+        canActivate: [candidateGuard],
         data: { pageId: 'apply' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
         path: 'invite-registration',
+        canActivate: [candidateGuard],
         data: { pageId: 'invite-registration' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
         path: 'confirm-application',
+        canActivate: [candidateGuard],
         data: { pageId: 'confirm-application' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
         path: 'profile',
+        canActivate: [candidateGuard],
         data: { pageId: 'profile' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
         path: 'my-applications',
+        canActivate: [candidateGuard],
         data: { pageId: 'my-applications' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
         path: 'applications/:id/status',
+        canActivate: [candidateGuard],
         data: { pageId: 'application-status' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
         path: 'interviews',
+        canActivate: [candidateGuard],
         data: { pageId: 'interviews' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
         path: 'reapply-blocked',
+        canActivate: [candidateGuard],
         data: { pageId: 'reapply-blocked' },
         loadComponent: () =>
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),

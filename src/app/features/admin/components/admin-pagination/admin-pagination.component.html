@@ -1,0 +1,12 @@
+<footer [class.admin-table-footer]="variant === 'admin'" [class.users-table-footer]="variant === 'users'">
+  <span>{{ rangeLabel }}</span>
+  <div>
+    <button type="button" (click)="pageChange.emit(currentPage - 1)" [disabled]="!canGoPrevious">Previous</button>
+    @for (pageNumber of pageNumbers; track pageNumber) {
+      <button type="button" [class.active]="pageNumber === currentPage" (click)="pageChange.emit(pageNumber)">
+        {{ pageNumber }}
+      </button>
+    }
+    <button type="button" (click)="pageChange.emit(currentPage + 1)" [disabled]="!canGoNext">Next</button>
+  </div>
+</footer>

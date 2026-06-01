@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
@@ -11,8 +11,8 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
       <header class="ops-page-header">
         <div>
           <p class="eyebrow">PMO Queue</p>
-          <h1>Bench review work</h1>
-          <p>Claim ownership before running bench matching or forwarding to recruitment.</p>
+          <h1>PMO review work</h1>
+          <p>Claim group-routed Job Requests, recommend internal employees to Presales, or forward to recruiters.</p>
         </div>
       </header>
 
@@ -44,7 +44,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                 @for (item of store.pmoQueue(); track item.assignment.id) {
                   <tr>
                     <td>
-                      <a [routerLink]="['/app/job-requests', item.jobRequest.id]">
+                        <a [routerLink]="['/app/pmo/review', item.jobRequest.id]">
                         <strong>{{ item.jobRequest.code }}</strong>
                       </a>
                       <small>{{ item.jobRequest.title }}</small>
@@ -59,7 +59,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                           Claim ownership
                         </button>
                       } @else {
-                        <a [routerLink]="['/app/job-requests', item.jobRequest.id]">Open</a>
+                        <a [routerLink]="['/app/pmo/review', item.jobRequest.id]">Open review</a>
                       }
                     </td>
                   </tr>
@@ -75,17 +75,17 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
         <aside class="ops-side-rail">
           <article class="ops-panel">
-            <h2>PMO rule</h2>
-            <p class="muted">The recommendation agent checks current employees who are not working on any project before recruitment starts.</p>
+            <h2>PMO Review</h2>
+            <p class="muted">Claiming only assigns ownership. The Job Request stays in PMO Review until you recommend employees or forward it to recruiters.</p>
             @if (store.pmoQueue()[0]; as nextItem) {
-              <a class="btn primary full" [routerLink]="['/app/bench-matching', nextItem.jobRequest.id]">Open Bench Matching</a>
+              <a class="btn primary full" [routerLink]="['/app/pmo/review', nextItem.jobRequest.id]">Open PMO Review</a>
             } @else {
               <button class="btn primary full" type="button" disabled>No PMO request selected</button>
             }
           </article>
           <article class="scope-soft-note">
-            <strong>MVP boundary</strong>
-            <p>PMO suggests benched employees without automating internal employee interviews.</p>
+            <strong>AI support</strong>
+            <p>After claiming a request, PMO can rank benched employees with AI and still chooses who to recommend.</p>
           </article>
         </aside>
       </section>
@@ -96,6 +96,7 @@ export class PmoQueueComponent {
   constructor(
     readonly store: TalentPilotStoreService,
     private readonly auth: AuthService,
+    private readonly router: Router,
   ) {}
 
   async claim(assignmentId: string): Promise<void> {
@@ -105,5 +106,9 @@ export class PmoQueueComponent {
     }
 
     await this.store.claimAssignment(assignmentId);
+    const item = this.store.pmoQueue().find((entry) => entry.assignment.id === assignmentId);
+    if (item) {
+      await this.router.navigate(['/app/pmo/review', item.jobRequest.id]);
+    }
   }
 }

@@ -1,0 +1,63 @@
+<button
+  type="button"
+  class="topbar-icon-button notification-bell-button"
+  [attr.aria-label]="unreadCount() + ' unread notifications'"
+  (click)="toggleDrawer()"
+>
+  <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+  @if (unreadCount() > 0) {
+    <span class="notification-count-badge">{{ unreadCountLabel() }}</span>
+  }
+</button>
+
+@if (drawerOpen()) {
+  <button type="button" class="notification-drawer-backdrop" aria-label="Close notifications" (click)="closeDrawer()"></button>
+  <aside class="notification-drawer" aria-label="Notifications">
+    <header>
+      <div>
+        <h2>Notifications</h2>
+      </div>
+      <button type="button" class="icon-only-button" aria-label="Close notifications" (click)="closeDrawer()">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </header>
+
+    <div class="notification-drawer-actions">
+      <span>{{ unreadCount() }} unread</span>
+      <button type="button" [disabled]="unreadCount() === 0" (click)="markAllRead()">Mark all read</button>
+    </div>
+
+    @if (notificationGroups().length > 0) {
+      <div class="notification-drawer-list">
+        @for (group of notificationGroups(); track group.key) {
+          <section>
+            <h3>{{ group.label }}</h3>
+            @for (notification of group.items; track notification.id) {
+              <article class="drawer-notification-row" [class.unread]="!notification.readAt">
+                <div>
+                  <strong>{{ notification.title }}</strong>
+                  <p>{{ notification.message }}</p>
+                  <small>{{ formatTime(notification.createdAt) }}</small>
+                </div>
+                <div class="drawer-notification-actions">
+                  @if (notification.entityType === 'JobRequest' && notification.entityId) {
+                    <a [routerLink]="['/app/job-requests', notification.entityId]" (click)="closeDrawer()">Open</a>
+                  }
+                  @if (!notification.readAt) {
+                    <button type="button" (click)="markRead(notification.id)">Mark read</button>
+                  }
+                </div>
+              </article>
+            }
+          </section>
+        }
+      </div>
+    } @else {
+      <div class="notification-drawer-empty">
+        <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+        <p>No notifications yet.</p>
+      </div>
+    }
+  </aside>
+}
+  

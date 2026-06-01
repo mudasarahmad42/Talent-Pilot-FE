@@ -102,6 +102,8 @@ Then ask the code owner or coordinating contributor for help.
 
 - Each AI agent must be assigned an explicit file/folder scope.
 - AI agents must read `AGENTS.md`, `SECURITY_GUIDELINES.md`, and this file before editing.
+- AI agents must follow SOLID principles pragmatically while avoiding unnecessary abstractions or overengineered designs.
+- Angular work must keep components focused and move API/data/shared state concerns into services instead of cluttering page components.
 - AI agents must not overwrite unrelated user or agent work.
 - AI agents must report files changed, tests run, and unresolved risks.
 - Contributors are responsible for reviewing AI-generated code before opening a PR.
