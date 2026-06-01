@@ -1,0 +1,41 @@
+.group-naming-guide {
+  align-items: flex-start;
+  background: #f2f8ff;
+  border: 1px solid #c7ddf7;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.group-naming-guide > .material-symbols-outlined {
+  align-items: center;
+  background: #ffffff;
+  border-radius: 6px;
+  color: #0a66c2;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.group-naming-guide strong,
+.group-naming-guide p {
+  margin: 0;
+}
+
+.group-naming-guide strong {
+  color: #111827;
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.group-naming-guide p {
+  color: #43556b;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 3px;
+}

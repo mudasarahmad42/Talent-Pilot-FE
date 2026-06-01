@@ -1,0 +1,66 @@
+<div class="admin-modal-backdrop" aria-hidden="true" (click)="close()"></div>
+<section class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="create-group-title">
+  <header>
+    <div>
+      <p class="admin-breadcrumb">Access Control</p>
+      <h2 id="create-group-title">Create Group</h2>
+    </div>
+    <button type="button" class="icon-only-button" aria-label="Close create group" (click)="close()" [disabled]="saving()">
+      <span class="material-symbols-outlined" aria-hidden="true">close</span>
+    </button>
+  </header>
+
+  <div class="modal-form-grid compact">
+    <label class="stitch-field">
+      <span>Group Name</span>
+      <input
+        placeholder="e.g. PMO - Engineering"
+        aria-label="Group name"
+        [value]="name()"
+        (input)="setName($event)"
+        [disabled]="saving()"
+      />
+      <small>Use role + department names for routing groups, such as PMO - Engineering or Recruiting - Sales.</small>
+    </label>
+
+    <label class="stitch-field">
+      <span>Routing Purpose</span>
+      <select aria-label="Routing purpose" [value]="purpose()" (change)="setPurpose($event)" [disabled]="saving()">
+        <option value="WorkflowRouting">Workflow routing</option>
+      </select>
+    </label>
+
+    <label class="stitch-field">
+      <span>Status</span>
+      <select aria-label="Group status" [value]="status()" (change)="setStatus($event)" [disabled]="saving()">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+    </label>
+  </div>
+
+  <section class="group-naming-guide" aria-label="Group naming guide">
+    <span class="material-symbols-outlined" aria-hidden="true">tips_and_updates</span>
+    <div>
+      <strong>Naming convention</strong>
+      <p>
+        Create specific workflow groups so dropdowns stay clear: PMO - Engineering, PMO - Sales,
+        Recruiting - Engineering, or Interview Panel - QA.
+      </p>
+    </div>
+  </section>
+
+  @if (errorMessage()) {
+    <p class="modal-error-message">{{ errorMessage() }}</p>
+  }
+
+  <footer>
+    <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="close()" [disabled]="saving()">
+      Cancel
+    </button>
+    <button mat-flat-button type="button" class="stitch-primary-button" (click)="submit()" [disabled]="!canSubmit()">
+      {{ saving() ? 'Creating...' : 'Create Group' }}
+    </button>
+  </footer>
+</section>
+  

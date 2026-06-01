@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
+import { WorkflowAssignment } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
@@ -12,7 +12,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
         <div>
           <p class="eyebrow">Assigned request</p>
           <h1>My Work</h1>
-          <p>Requests assigned directly to you or to one of your groups.</p>
+          <p>Requests assigned directly to you or claimed by you.</p>
         </div>
       </header>
 
@@ -46,7 +46,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                     </td>
                     <td>{{ item.jobRequest.client }}</td>
                     <td><span class="status-badge">{{ item.jobRequest.stage }}</span></td>
-                    <td>{{ store.getUserName(item.assignment.claimedByUserId) }}</td>
+                    <td>{{ ownerName(item.assignment) }}</td>
                     <td><a [routerLink]="['/app/job-requests', item.jobRequest.id]">Open</a></td>
                   </tr>
                 }
@@ -62,20 +62,10 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 })
 export class MyWorkComponent {
   readonly store = inject(TalentPilotStoreService);
-  private readonly auth = inject(AuthService);
 
-  readonly workItems = computed(() => {
-    const user = this.auth.currentUser();
-    if (!user) {
-      return [];
-    }
+  readonly workItems = computed(() => this.store.myWork());
 
-    return this.store.pmoQueue().filter((item) => {
-      const assignedToMyGroup = item.assignment.assignedToGroupId
-        ? user.groups.includes(item.assignment.assignedToGroupId)
-        : false;
-      const assignedToMe = item.assignment.assignedToUserId === user.id;
-      return assignedToMyGroup || assignedToMe;
-    });
-  });
+  ownerName(assignment: WorkflowAssignment): string {
+    return this.store.getUserName(assignment.claimedByUserId ?? assignment.assignedToUserId);
+  }
 }

@@ -1,0 +1,20 @@
+<div class="admin-table-toolbar compact">
+  <label>
+    <span class="material-symbols-outlined" aria-hidden="true">search</span>
+    <input
+      type="search"
+      [placeholder]="searchPlaceholder"
+      [attr.aria-label]="searchAriaLabel"
+      [value]="search"
+      (input)="setSearch($event)"
+    />
+  </label>
+  <label class="page-size-field">
+    <span>Rows</span>
+    <select [attr.aria-label]="pageSizeAriaLabel" [value]="pageSize" (change)="setPageSize($event)">
+      @for (option of pageSizeOptions; track option) {
+        <option [value]="option">{{ option }}</option>
+      }
+    </select>
+  </label>
+</div>

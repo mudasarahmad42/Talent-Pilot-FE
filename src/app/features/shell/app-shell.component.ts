@@ -1,8 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { NotificationBellComponent } from '../../core/components/notification-bell.component';
 import { TalentPilotRole } from '../../core/models';
-import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
+import { RealtimeNotificationService } from '../../core/services/realtime-notification.service';
 
 interface NavItem {
   label: string;
@@ -10,62 +11,78 @@ interface NavItem {
   icon: string;
   roles?: TalentPilotRole[];
   disabled?: boolean;
+  adminSection?: AdminNavSection;
+}
+
+type AdminNavSection = 'adminTasks' | 'operationalAccess';
+
+interface NavGroup {
+  id: AdminNavSection;
+  label: string;
+  items: NavItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', route: '/app/dashboard', icon: 'dashboard' },
-  { label: 'My Work', route: '/app/my-work', icon: 'inbox' },
-  { label: 'Job Requests', route: '/app/job-requests', icon: 'assignment' },
-  { label: 'Create Job Request', route: '/app/job-requests/new', icon: 'add_circle', roles: ['Presales', 'PMO', 'TenantAdmin'] },
-  { label: 'PMO Queue', route: '/app/pmo/queue', icon: 'groups', roles: ['PMO', 'TenantAdmin'] },
-  { label: 'Bench Matching', route: '/app/pmo/queue', icon: 'manage_search', roles: ['PMO', 'TenantAdmin'] },
-  { label: 'Internal Referral', route: '/app/internal-resource-referral', icon: 'send', roles: ['PMO', 'TenantAdmin'] },
-  { label: 'Presales Review', route: '/app/presales-resource-review', icon: 'fact_check', roles: ['Presales', 'TenantAdmin'] },
-  { label: 'Recruitment Queue', route: '/app/recruitment/queue', icon: 'queue', roles: ['Recruiter', 'TenantAdmin'] },
-  { label: 'Job Publishing', route: '/app/job-publishing', icon: 'campaign', roles: ['Recruiter', 'TenantAdmin'] },
-  { label: 'Candidates', route: '/app/candidates', icon: 'badge', roles: ['Recruiter', 'TenantAdmin'] },
-  { label: 'Candidate Pipeline', route: '/app/candidate-pipeline', icon: 'account_tree', roles: ['Recruiter', 'TenantAdmin'] },
-  { label: 'Interview Scheduling', route: '/app/interview-scheduling', icon: 'event', roles: ['Recruiter', 'TenantAdmin'] },
-  { label: 'Interview Feedback', route: '/app/interview-feedback', icon: 'rate_review', roles: ['Interviewer', 'Recruiter', 'TenantAdmin'] },
-  { label: 'Hiring Manager Review', route: '/app/hiring-manager/reviews', icon: 'approval_delegation', roles: ['HiringManager', 'TenantAdmin'] },
-  { label: 'Offer Outcome', route: '/app/offer-onboarding', icon: 'handshake', roles: ['HiringManager', 'Recruiter', 'TenantAdmin'] },
-  { label: 'Reports', route: '/app/reports', icon: 'analytics', roles: ['TenantAdmin', 'Recruiter', 'PMO'] },
-  { label: 'Notifications', route: '/app/notifications', icon: 'notifications' },
+  { label: 'Dashboard', route: '/app/dashboard', icon: 'dashboard', adminSection: 'adminTasks' },
+  { label: 'My Work', route: '/app/my-work', icon: 'inbox', roles: ['Presales', 'PMO', 'HiringManager', 'HOD', 'Interviewer', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Job Requests', route: '/app/job-requests', icon: 'assignment', roles: ['Presales', 'PMO', 'HiringManager', 'HOD', 'Interviewer', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'PMO Queue', route: '/app/pmo/queue', icon: 'groups', roles: ['PMO', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Recruitment Queue', route: '/app/recruitment/queue', icon: 'queue', roles: ['Recruiter', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Candidate Rediscovery', route: '/app/recruitment/talent-rediscovery', icon: 'person_search', roles: ['Recruiter', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Job Publishing', route: '/app/job-publishing', icon: 'campaign', roles: ['Recruiter', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Candidates', route: '/app/candidates', icon: 'badge', roles: ['TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Candidate Pipeline', route: '/app/candidate-pipeline', icon: 'account_tree', roles: ['TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Interview Scheduling', route: '/app/interview-scheduling', icon: 'event', roles: ['TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Interview Feedback', route: '/app/interview-feedback', icon: 'rate_review', roles: ['HOD', 'Interviewer', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Hiring Manager Review', route: '/app/hiring-manager/reviews', icon: 'approval_delegation', roles: ['HiringManager', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Offer Outcome', route: '/app/offer-onboarding', icon: 'handshake', roles: ['HiringManager', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Reports', route: '/app/reports', icon: 'analytics', roles: ['TenantAdmin'], adminSection: 'adminTasks' },
+];
+
+const ADMIN_NAV_GROUPS: ReadonlyArray<{ id: AdminNavSection; label: string }> = [
+  { id: 'adminTasks', label: 'Admin Tasks' },
+  { id: 'operationalAccess', label: 'Operational Access' },
 ];
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, NotificationBellComponent],
   template: `
     <div class="app-shell stitch-app-shell">
       <header class="topbar">
-        <a class="brand" routerLink="/app/dashboard">
-          <strong>Talent Pilot</strong>
+        <a class="brand app-brand" routerLink="/app/dashboard" aria-label="Talent Pilot dashboard">
+          <span class="talent-pilot-logo app-brand-icon" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+          <span class="app-brand-copy">
+            <img class="brand-ai-logo" src="/ai-unlimited-mark.png" alt="" aria-hidden="true" />
+            <strong>Talent Pilot</strong>
+          </span>
         </a>
 
         <nav class="top-links" aria-label="Global">
-          <a routerLink="/app/dashboard" routerLinkActive="active">Dashboard</a>
-          <a routerLink="/app/job-requests" routerLinkActive="active">Job Requests</a>
-          <a routerLink="/app/candidates" routerLinkActive="active">Candidates</a>
-          <a routerLink="/admin-center" routerLinkActive="active">Admin Center</a>
+          @if (!isRecruiterOnly()) {
+            <a routerLink="/app/dashboard" [class.active]="isActive('/app/dashboard', true)">Dashboard</a>
+            <a routerLink="/app/job-requests" [class.active]="isJobRequestsActive()">{{ jobRequestsLabel() }}</a>
+            <a routerLink="/app/candidates" [class.active]="isActive('/app/candidates')">Candidates</a>
+            @if (auth.isAdmin()) {
+              <a routerLink="/admin-center" [class.active]="isActive('/admin-center')">Admin Center</a>
+            }
+          }
         </nav>
 
         <div class="user-menu">
           @if (currentUser(); as user) {
-            <a class="btn primary compact topbar-create" routerLink="/app/job-requests/new">
-              <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              Create New
-            </a>
-            <a class="topbar-icon-button" routerLink="/app/notifications" [attr.aria-label]="unreadCount() + ' unread notifications'">
-              <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
-              @if (unreadCount() > 0) {
-                <span class="notification-dot"></span>
-              }
-            </a>
+            <app-notification-bell />
             <button type="button" class="topbar-icon-button" aria-label="Settings">
               <span class="material-symbols-outlined" aria-hidden="true">settings</span>
             </button>
-            <span class="avatar small">{{ initials(user.name) }}</span>
+            <button type="button" class="avatar-button" [attr.aria-label]="'Sign out ' + user.name" (click)="auth.logout()">
+              <span class="avatar small">{{ initials(user.name) }}</span>
+            </button>
           }
         </div>
       </header>
@@ -80,15 +97,31 @@ const NAV_ITEMS: NavItem[] = [
             </span>
           </div>
 
-          @for (item of visibleNavItems(); track item.route) {
-            <a
-              [routerLink]="item.route"
-              routerLinkActive="active"
-              [routerLinkActiveOptions]="{ exact: item.route === '/app/dashboard' }"
-            >
-              <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
-              {{ item.label }}
-            </a>
+          @if (isAdminSidebar()) {
+            @for (group of visibleNavGroups(); track group.id) {
+              <section class="sidebar-nav-group" [attr.aria-label]="group.label">
+                <p class="sidebar-nav-group-title">{{ group.label }}</p>
+                @for (item of group.items; track item.label) {
+                  <a
+                    [routerLink]="item.route"
+                    [class.active]="isNavItemActive(item)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+                    {{ navItemLabel(item) }}
+                  </a>
+                }
+              </section>
+            }
+          } @else {
+            @for (item of visibleNavItems(); track item.label) {
+              <a
+                [routerLink]="item.route"
+                [class.active]="isNavItemActive(item)"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+                {{ navItemLabel(item) }}
+              </a>
+            }
           }
 
           <div class="sidebar-footer">
@@ -112,16 +145,19 @@ const NAV_ITEMS: NavItem[] = [
 })
 export class AppShellComponent {
   readonly auth = inject(AuthService);
-  private readonly store = inject(TalentPilotStoreService);
+  private readonly realtimeNotifications = inject(RealtimeNotificationService);
+  private readonly router = inject(Router);
 
   readonly currentUser = this.auth.currentUser;
   readonly visibleNavItems = computed(() =>
     NAV_ITEMS.filter((item) => !item.roles || this.auth.hasAnyRole(item.roles)),
   );
-  readonly unreadCount = computed(() => {
-    const user = this.currentUser();
-    return user ? this.store.unreadCountForUser(user.id) : 0;
-  });
+  readonly visibleNavGroups = computed<NavGroup[]>(() =>
+    ADMIN_NAV_GROUPS.map((group) => ({
+      ...group,
+      items: this.visibleNavItems().filter((item) => (item.adminSection ?? 'operationalAccess') === group.id),
+    })).filter((group) => group.items.length > 0),
+  );
   initials(name: string): string {
     return name
       .split(' ')
@@ -129,5 +165,47 @@ export class AppShellComponent {
       .join('')
       .slice(0, 2)
       .toUpperCase();
+  }
+
+  navItemLabel(item: NavItem): string {
+    return item.route === '/app/job-requests' ? this.jobRequestsLabel() : item.label;
+  }
+
+  jobRequestsLabel(): string {
+    return this.isPresalesOnly() ? 'My Job Requests' : 'Job Requests';
+  }
+
+  isNavItemActive(item: NavItem): boolean {
+    if (item.route === '/app/job-requests') {
+      return this.isJobRequestsActive();
+    }
+
+    if (item.route === '/app/job-requests/new' || item.route === '/app/dashboard') {
+      return this.isActive(item.route, true);
+    }
+
+    return this.isActive(item.route);
+  }
+
+  isJobRequestsActive(): boolean {
+    const currentUrl = this.router.url.split('?')[0].split('#')[0];
+    return currentUrl.startsWith('/app/job-requests') && currentUrl !== '/app/job-requests/new';
+  }
+
+  isActive(route: string, exact = false): boolean {
+    const currentUrl = this.router.url.split('?')[0].split('#')[0];
+    return exact ? currentUrl === route : currentUrl === route || currentUrl.startsWith(`${route}/`);
+  }
+
+  private isPresalesOnly(): boolean {
+    return this.auth.hasAnyRole(['Presales']) && !this.auth.isAdmin();
+  }
+
+  isRecruiterOnly(): boolean {
+    return this.auth.hasAnyRole(['Recruiter']) && !this.auth.isAdmin();
+  }
+
+  isAdminSidebar(): boolean {
+    return this.auth.isAdmin();
   }
 }

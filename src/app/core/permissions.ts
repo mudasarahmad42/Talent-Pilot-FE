@@ -28,6 +28,7 @@ export const AdminPagePermissions: Record<string, readonly PermissionId[]> = {
   workflows: [Permission.ManageAdminCenter],
   notifications: [Permission.ManageNotifications, Permission.ManageAdminCenter],
   'ai-settings': [Permission.ViewAiSettings, Permission.ManageAdminCenter],
+  'candidate-sources': [Permission.ManageAdminCenter],
   integrations: [Permission.ManageAdminCenter],
   'audit-logs': [Permission.ViewAuditLogs],
 };

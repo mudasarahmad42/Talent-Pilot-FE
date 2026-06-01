@@ -1,0 +1,58 @@
+<div class="admin-modal-backdrop" aria-hidden="true" (click)="close()"></div>
+<section class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="create-department-title">
+  <header>
+    <div>
+      <p class="admin-breadcrumb">Configuration</p>
+      <h2 id="create-department-title">Add Department</h2>
+    </div>
+    <button type="button" class="icon-only-button" aria-label="Close add department" (click)="close()" [disabled]="saving()">
+      <span class="material-symbols-outlined" aria-hidden="true">close</span>
+    </button>
+  </header>
+
+  <div class="modal-form-grid compact">
+    <label class="stitch-field">
+      <span>Department Name</span>
+      <input
+        placeholder="e.g. Data Engineering"
+        aria-label="Department name"
+        [value]="name()"
+        (input)="setName($event)"
+        [disabled]="saving()"
+      />
+    </label>
+
+    <label class="stitch-field">
+      <span>Department Code</span>
+      <input
+        placeholder="e.g. DATA_ENG"
+        aria-label="Department code"
+        [value]="code()"
+        (input)="setCode($event)"
+        [disabled]="saving()"
+      />
+    </label>
+
+    <label class="stitch-field">
+      <span>Status</span>
+      <select aria-label="Department status" [value]="status()" (change)="setStatus($event)" [disabled]="saving()">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+    </label>
+  </div>
+
+  @if (errorMessage()) {
+    <p class="modal-error-message">{{ errorMessage() }}</p>
+  }
+
+  <footer>
+    <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="close()" [disabled]="saving()">
+      Cancel
+    </button>
+    <button mat-flat-button type="button" class="stitch-primary-button" (click)="submit()" [disabled]="!canSubmit()">
+      {{ saving() ? 'Adding...' : 'Add Department' }}
+    </button>
+  </footer>
+</section>
+  

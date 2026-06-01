@@ -21,7 +21,7 @@ export class NotificationService {
     this.snackBar.open(message, 'Dismiss', {
       duration: 3500,
       horizontalPosition: 'right',
-      verticalPosition: 'bottom',
+      verticalPosition: 'top',
       panelClass: [`talent-pilot-snackbar-${panelClass}`],
     });
   }

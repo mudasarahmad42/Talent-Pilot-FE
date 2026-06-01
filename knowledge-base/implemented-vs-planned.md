@@ -21,6 +21,12 @@
   - create job request
   - PMO queue claim action
   - job request detail/activity
+  - recruiter sourcing queue and sourcing workspace
+  - recruiter Talent Rediscovery tab with advisory warm-candidate ranking
+  - recruiter Job Post draft/update/publish/close screens
+  - recruiter manual candidate add/invite action for published Job Posts
+  - public candidate portal published job list/detail
+  - candidate-authenticated apply and My Applications/status views
   - notifications read/read-all
 - Backend-required empty states for screens whose APIs are not ready.
 
@@ -31,15 +37,15 @@
 - Wire role create/edit/bulk user assignment and permission review flows.
 - Add notification template editor backed by backend templates API.
 - Add SignalR notification hub client.
-- Implement candidate job listing, job detail, apply, profile, application status, and interview schedule APIs.
-- Implement recruiter candidate prospect, invite link, job publishing, and pipeline management screens.
+- Implement candidate profile editing and interview schedule views.
+- Implement recruiter candidate pipeline management screens.
 - Implement interview scheduling/feedback and Hiring Manager final review screens.
 - Add focused Angular tests around auth, permissions, date formatting, and critical save flows.
 
 ## Do Not Add As Active MVP UI
 
 - Finance or budget approvals.
-- HOD approvals.
+- HOD approval workflows. HOD/department head can appear only as an interviewer user/group.
 - Generic workflow designer.
 - Formal offer approval/signoff workflow.
 - Onboarding, payroll, orientation, or IT equipment tracking.

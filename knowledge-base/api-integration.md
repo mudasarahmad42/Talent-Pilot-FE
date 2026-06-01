@@ -24,7 +24,9 @@
 - `GET` / `PUT /api/admin/notifications/*`
 - `GET /api/admin/ai-settings/*`
 - `GET /api/admin/audit-logs`
+- `GET /api/admin/audit-logs/export`
 - `GET /api/talent-pilot/snapshot`
+- `GET /api/talent-pilot/job-requests/intake-options`
 - `POST /api/talent-pilot/job-requests`
 - `POST /api/talent-pilot/workflow-assignments/{assignmentId}/claim`
 - `PATCH /api/talent-pilot/notifications/*`
@@ -35,5 +37,4 @@
 - Recruiter candidate prospect, invite, job publishing, and hiring pipeline command APIs.
 - Interview scheduling and feedback APIs.
 - Hiring Manager final review and offer outcome APIs.
-- Lookup endpoints for departments, skills, locations, hiring managers, and workflow owners.
 - SignalR client connection for realtime notification refresh.

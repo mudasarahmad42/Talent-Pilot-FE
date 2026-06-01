@@ -4,6 +4,8 @@ Angular frontend for the Talent Pilot TKXEL AI Unlimited MVP.
 
 The frontend is a real application shell, not a design mock. Business data must come from backend APIs. If an endpoint is not ready, render a backend-required empty state and document the missing contract.
 
+For cross-system HTTP, SignalR, email, worker, and AI flows, keep the root workspace architecture reference updated: `../../ARCHITECTURE.md`.
+
 ## Stack
 
 - Angular 21
@@ -137,6 +139,8 @@ http://127.0.0.1:4200/auth/login
 - Keep routes permission-protected using backend-returned permissions.
 - Keep pages responsive and usable on mobile widths.
 - Follow `SECURITY_GUIDELINES.md` before adding dependencies, auth/session logic, API calls, forms, or file upload UI.
+- Follow SOLID principles pragmatically. Split large pages into focused components and services when it makes ownership clearer, but avoid speculative abstractions.
+- Use services for API integration, shared state, caching, and cross-component workflows; keep components focused on rendering, local UI state, and event delegation.
 
 ## Design References
 
@@ -185,7 +189,7 @@ This is intentionally easy for demo/testing, but it still exercises backend auth
 
 Do not add active UI for:
 
-- HOD approval
+- HOD approval workflows; HOD/department head can appear only as an interviewer user/group
 - finance/budget approval
 - offer signoff approval chains
 - onboarding operations

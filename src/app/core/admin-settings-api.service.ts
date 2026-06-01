@@ -3,6 +3,9 @@ import { firstValueFrom } from 'rxjs';
 import { TenantProfileSettings, UpdateTenantProfileSettingsInput } from './models';
 import { ApiService } from './services/api.service';
 
+const SUPPORTED_LOGO_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+const MAX_LOGO_BYTES = 512 * 1024;
+
 function isValidTimeZone(timeZone: string): boolean {
   try {
     new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
@@ -33,6 +36,9 @@ const EMPTY_TENANT_PROFILE: TenantProfileSettings = {
   setupComplete: false,
   configuredLlmModel: '',
   configuredEmbeddingModel: '',
+  logoFileName: null,
+  logoContentType: null,
+  logoContentBase64: null,
   updatedAt: '',
 };
 
@@ -107,6 +113,29 @@ export class AdminSettingsApiService {
 
     if (input.reapplyCooldownDays < 1 || input.reapplyCooldownDays > 365) {
       throw new Error('Reapply cooldown must be between 1 and 365 days.');
+    }
+
+    if (!input.logoContentBase64) {
+      return;
+    }
+
+    if (!input.logoFileName?.trim()) {
+      throw new Error('Logo file name is required when a logo is uploaded.');
+    }
+
+    if (input.logoFileName.trim().length > 260) {
+      throw new Error('Logo file name cannot exceed 260 characters.');
+    }
+
+    if (!input.logoContentType || !SUPPORTED_LOGO_CONTENT_TYPES.has(input.logoContentType)) {
+      throw new Error('Logo must be a PNG, JPEG, WebP, or SVG image.');
+    }
+
+    const normalizedLogo = input.logoContentBase64.replace(/\s/g, '');
+    const padding = normalizedLogo.endsWith('==') ? 2 : normalizedLogo.endsWith('=') ? 1 : 0;
+    const logoBytes = Math.floor((normalizedLogo.length * 3) / 4) - padding;
+    if (logoBytes > MAX_LOGO_BYTES) {
+      throw new Error('Logo image cannot exceed 512 KB.');
     }
   }
 

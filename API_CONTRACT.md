@@ -79,9 +79,9 @@ Required backend endpoints:
 | --- | --- | --- | --- |
 | `GET` | `/api/admin/tenant-profile` | Load tenant identity, branding defaults, candidate defaults, and summary counts for the current tenant. | Backend |
 | `PUT` | `/api/admin/tenant-profile` | Save editable tenant profile, branding, localization, and candidate default settings. | Backend |
-| `GET` | `/api/admin/tenant-profile/slug-availability?slug={slug}` | Validate tenant slug uniqueness before save or on blur. | Backend TODO |
-| `POST` | `/api/admin/tenant-profile/logo` | Upload or replace tenant logo/brand asset. | Backend TODO |
+| `GET` | `/api/admin/tenant-profile/slug-availability?slug={slug}` | Validate tenant slug uniqueness before save or on blur. | Backend |
 | `GET` | `/api/admin/audit-logs?entityType=Tenant&entityId={tenantId}` | Open audit history for tenant profile changes. | Backend |
+| `GET` | `/api/admin/audit-logs/export?entityType=Tenant&entityId={tenantId}` | Export tenant audit history as an `.xlsx` workbook. | Backend |
 
 `GET /api/admin/tenant-profile` response shape:
 
@@ -107,6 +107,9 @@ interface TenantProfileSettings {
   setupComplete: boolean;
   configuredLlmModel: string;
   configuredEmbeddingModel: string;
+  logoFileName?: string | null;
+  logoContentType?: string | null;
+  logoContentBase64?: string | null;
   updatedAt: string; // UTC ISO timestamp.
 }
 ```
@@ -129,6 +132,9 @@ interface UpdateTenantProfileSettingsInput {
   publicJobsEnabled: boolean;
   inviteExpiryDays: number;
   reapplyCooldownDays: number;
+  logoFileName?: string | null;
+  logoContentType?: string | null;
+  logoContentBase64?: string | null;
 }
 ```
 
@@ -144,11 +150,13 @@ Validation expected from backend:
 - `primaryColor`: required hex color.
 - `inviteExpiryDays`: 1 to 30.
 - `reapplyCooldownDays`: 1 to 365.
+- Optional logo payload: PNG, JPEG, WebP, or SVG base64 content, maximum 512 KB.
 
 Backend side effects:
 
 - Persist tenant identity fields on `Tenants`.
 - Persist candidate defaults on `TenantRecruitmentSettings`.
+- Persist tenant branding logo metadata and binary payload on `TenantRecruitmentSettings`.
 - Store tenant status on `Tenants.Status`.
 - Store tenant timezone as an IANA id such as `Asia/Karachi`; do not store a fixed offset because daylight-saving rules can change.
 - Return AI runtime values from backend configuration/appsettings; these are read-only on the Tenant Profile screen.
@@ -215,6 +223,11 @@ interface AdminUserListItem {
   highestPriorityRolePriority: number;
   groupIds: string[];
   groupNames: string[];
+  departmentId: string | null;
+  departmentName: string | null;
+  experienceYears: number | null;
+  joiningDate: string | null; // Date-only value, yyyy-MM-dd.
+  completedInterviewCount: number;
   accountStatus: 'Active' | 'Disabled' | 'Invited';
   lastActiveAt: string | null; // UTC ISO timestamp.
   createdAt: string; // UTC ISO timestamp.
@@ -340,6 +353,8 @@ interface RoleSummary {
 
 Role lifecycle status is only `Active` or `Inactive`. `Protected` is not a status; it is an editability flag for application-owned roles. `Custom` is not a status; it is a role type/source.
 
+Only `System Admin` is a platform/system role, and it is not managed from tenant Admin Center. Seeded default tenant roles such as Tenant Admin, PMO, Presales, Recruiter, Hiring Manager, HOD / Department Head, Interviewer, Employee, and Candidate are tenant-scoped roles. Tenant-created custom roles are tenant-scoped too.
+
 `POST /api/admin/roles` and `PUT /api/admin/roles/{roleId}` request shape:
 
 ```ts
@@ -399,9 +414,10 @@ Backend behavior:
 - Role priority remains stored on role records. Priority `1` is highest priority, but this is not a separate Tenant Permission Resolution setting.
 - Permission display role is derived by backend when returning user/profile summaries and is not a separate tenant setting.
 - Role list UI must keep lifecycle status separate from role type and editability. Do not return `Protected` or `Custom` as lifecycle statuses.
-- System/protected roles are read-only from tenant Admin Center UI. Their grants can be reviewed, but not changed by tenant admins.
+- System Admin is read-only and outside tenant Admin Center management.
+- Seeded tenant roles and custom tenant roles can be assigned to users from Admin Center.
 - Custom/tenant roles can be created and edited from Admin Center with a permission multi-select.
-- Bulk role assignment is allowed only for tenant-managed roles that the current admin can manage. Do not allow bulk assignment for platform, portal, or protected system roles.
+- Bulk role assignment is allowed only for tenant-managed roles that the current admin can manage.
 - Bulk role assignment can apply to all filtered users or to explicit selected users from the preview. When `selectionMode` is `SelectedUsers`, backend must assign only `selectedUserIds`.
 - Bulk role assignment adds the role to selected/matched users; it must not remove existing roles.
 - Recalculate and return effective permissions/highest-priority role after assignments according to the tenant permission-resolution policy.
@@ -455,25 +471,54 @@ Backend behavior:
 
 ### Admin Hiring Pipeline
 
-Hiring Pipeline stores fixed interview stage templates that recruiters select when creating a job post. Candidate applications inherit the selected template stages. Per-candidate custom stage flows are not primary MVP behavior.
+Hiring Pipeline stores reusable interview templates that recruiters can select when creating a job post. A job post starts from the selected template, then recruiters can customize the ordered interview rounds for that job post before candidate interview tasks are scheduled. Candidate applications follow the job-post-specific round plan.
 
 Required backend endpoints:
 
 | Method | Endpoint | Purpose | Implementation Status |
 | --- | --- | --- | --- |
-| `GET` | `/api/admin/hiring-pipeline/templates?page={page}&pageSize={pageSize}&search={search}` | Load interview stage templates, stage flow, default owner roles, active job count, and status. | Backend |
-| `GET` | `/api/admin/hiring-pipeline/templates/{templateId}` | Load one template for edit/details. | Backend TODO |
-| `POST` | `/api/admin/hiring-pipeline/templates` | Create an interview stage template. | Backend TODO |
-| `PUT` | `/api/admin/hiring-pipeline/templates/{templateId}` | Update template name, stages, owner roles, and status. | Backend TODO |
+| `GET` | `/api/admin/hiring-pipeline/templates?page={page}&pageSize={pageSize}&search={search}` | Load interview templates, round flow, default interviewers, round count, and status. | Backend |
+| `GET` | `/api/admin/hiring-pipeline/templates/{templateId}` | Load one template for edit/details. | Backend |
+| `POST` | `/api/admin/hiring-pipeline/templates` | Create an interview stage template with at least one active required round. | Backend |
+| `PUT` | `/api/admin/hiring-pipeline/templates/{templateId}` | Update template name, rounds, default interviewers, duration, and status. All active rounds are required. | Backend |
 | `PATCH` | `/api/admin/hiring-pipeline/templates/{templateId}/status` | Activate or deactivate a template. | Backend TODO |
 
 Backend behavior:
 
-- Store ordered stages for each template.
-- Let job posts reference one selected template.
-- Copy or snapshot the selected stage flow onto the job post/application pipeline when needed for history.
-- Validate that each stage has a valid owner role or assignment rule.
+- Store ordered rounds for each reusable interview template.
+- Let job posts reference one selected template as the starting point.
+- Copy or snapshot the selected round flow onto the job post so recruiters can add, remove, reorder, or reassign rounds without mutating the original template.
+- Treat every active configured round as required. Existing `isRequired` fields remain in the wire contract for compatibility but backend should return and persist them as `true`.
+- Validate that each active job-post round has a valid interviewer user/group/role assignment before interviews are started.
 - Write audit events for template and stage changes.
+
+### Candidate Interview Actions
+
+Candidate interview APIs are planned operational endpoints. They use the job-post-specific round plan created from the selected hiring pipeline template.
+
+Required backend endpoints:
+
+| Method | Endpoint | Purpose | Implementation Status |
+| --- | --- | --- | --- |
+| `PATCH` | `/api/interviews/{interviewId}/skip` | Mark one scheduled interview as skipped with an audited reason and return the candidate application to recruiter review for the next-step decision. | Backend TODO |
+
+`PATCH /api/interviews/{interviewId}/skip` request shape:
+
+```ts
+interface SkipInterviewRequest {
+  reason: string;
+}
+```
+
+Backend behavior:
+
+- Only Recruiter and Tenant Admin users can skip interviews.
+- `reason` is required and stored with skipped actor and UTC timestamp.
+- `Skipped` is separate from `Cancelled` and `NoShow`.
+- Skipped interviews do not require feedback.
+- When an interviewer submits feedback and completes a round, the candidate application returns to Recruiter review; the interviewer does not directly pass the candidate to the next interviewer.
+- Recruiter reviews feedback and explicitly moves the candidate to the next configured round, hold/reject when allowed, or Hiring Manager Review after all rounds are completed/skipped.
+- Hiring Manager Review becomes available only after every configured round is completed with feedback or skipped with a reason, and Recruiter sends the application forward.
 
 ### Admin Groups
 
@@ -495,52 +540,67 @@ Backend behavior:
 - Route workflow baton assignments to the configured group for each handoff.
 - If a routing group has no active members, fall back to Tenant Admins unless backend configuration says otherwise.
 - Keep group membership separate from role permission assignments.
+- Prefer clear routing group names in admin UX using `Role - Department` or `Role - Scope`, such as `PMO - Engineering`, `PMO - Sales`, `Recruiting - Engineering`, and `Interview Panel - QA`.
 - Write audit events for group membership, routing purpose, default owner, and fallback policy changes.
 
 ### Admin Workflows
 
-The Admin Center Workflows screen is configuration UI for active MVP handoffs. It has three sections only:
+The Admin Center Workflows screen configures active Job Request recipient rules. Backend action keys, stage keys, transition semantics, and workflow action authorization are code-owned; Tenant Admins configure recipients only.
 
-- Global Policies
-- Routing Rules
-- Transition Triggers
+Visible configuration area:
 
-Do not expose a `Later Phase` workflow tab. Routing to Hiring Manager after final interview is part of the MVP flow.
+- Department Routing: editable department-to-user/group routing for Presales-created Job Requests.
 
-Visible workflow target labels should be user-facing, such as `Hiring Manager`, while backend payloads may still store resolver keys such as `JobRequestHiringManager`.
+Business behavior:
+
+- Presales-created Job Requests enter PMO Review and use department intake routing.
+- PMO-created Job Requests enter PMO Review assigned to the PMO creator.
+- Missing or inactive department intake routing falls back to Tenant Admins.
+- HOD/department head routing belongs to interview tasks or job-post interview rounds, not a Job Request approval workflow.
+- Notification delivery is not configurable from Workflows. Workflow handoffs emit backend events; backend notification handlers send Email and SignalR updates automatically.
 
 Required backend endpoints:
 
 | Method | Endpoint | Purpose | Implementation Status |
 | --- | --- | --- | --- |
-| `GET` | `/api/admin/workflows/policies` | Load tenant-level workflow fallback and routing policies. | Backend |
-| `GET` | `/api/admin/workflows/routing-rules` | Load active routing rules for Presales, PMO, Recruiter, Interviewer, and Hiring Manager handoffs. | Backend |
-| `POST` | `/api/admin/workflows/routing-rules` | Create a routing rule. | Backend TODO |
-| `PUT` | `/api/admin/workflows/routing-rules/{ruleId}` | Update a routing rule. | Backend TODO |
-| `GET` | `/api/admin/workflows/transition-triggers` | Load workflow transition events and handoff semantics. | Backend |
+| `GET` | `/api/admin/workflows/configuration` | Load workflow definitions, stages, system transition rows, and intake routing rows. | Backend |
+| `PUT` | `/api/admin/workflows/intake-routing` | Upsert tenant department intake routing. | Backend |
 
-Notification delivery is not configurable from Workflows. Workflow handoffs should emit backend events; backend notification handlers send Email and SignalR updates automatically.
+`PUT /api/admin/workflows/intake-routing` request shape:
+
+```ts
+interface UpdateAdminWorkflowIntakeRoutingInput {
+  rules: Array<{
+    departmentId: string;
+    assignmentType: 'User' | 'Group';
+    targetUserId?: string | null;
+    targetGroupId?: string | null;
+    status: 'Active' | 'Inactive';
+  }>;
+}
+```
 
 ### Admin Notifications
 
-Admin Notifications exposes workflow-driven notification events and editable email templates. Delivery logic is event-driven and should be described in product terms, not as backend-owned or code-owned UI labels.
+Admin Notifications exposes editable email templates linked to system-defined notification events. Event codes are backend-owned constants; the UI should not present events as tenant-created configuration.
 
 Notification delivery rule:
 
 - `Email` is the async email delivery channel.
 - `SignalR` is the realtime in-app delivery channel for online users.
 - Do not model `In-app` as a separate third channel.
-- Do not expose Email/SignalR channel controls on the Workflows routing table or Notifications event table.
+- Do not expose Email/SignalR channel controls on the Workflows routing table or Notifications template table.
 
 Required backend endpoints:
 
 | Method | Endpoint | Purpose | Implementation Status |
 | --- | --- | --- | --- |
-| `GET` | `/api/admin/notifications/events?page={page}&pageSize={pageSize}&search={search}` | Load notification events, recipients, template names, status, and summary metrics. | Backend |
-| `GET` | `/api/admin/notifications/events/{eventId}` | Load one notification event and linked templates. | Backend TODO |
-| `GET` | `/api/admin/notifications/templates` | Load editable email templates. | Backend |
-| `PUT` | `/api/admin/notifications/templates/{templateId}` | Update template subject/body text. | Backend TODO |
-| `PATCH` | `/api/admin/notifications/events/{eventId}/status` | Enable or disable a notification event when allowed. | Backend TODO |
+| `GET` | `/api/admin/notifications/templates?page={page}&pageSize={pageSize}&search={search}` | Load editable email templates with summary metrics. | Backend |
+| `PUT` | `/api/admin/notifications/templates/{templateId}` | Update template subject/body text. | Backend |
+| `POST` | `/api/admin/notifications/test-email` | Send a standalone Resend test email to a test recipient. Tenant Admin only. | Backend |
+| `POST` | `/api/admin/notifications/test-realtime` | Broadcast a SignalR test notification to connected clients in the current tenant. Tenant Admin only. | Backend |
+| `GET` | `/api/admin/notifications/events?page={page}&pageSize={pageSize}&search={search}` | Load the system event catalog for diagnostics/linking, not primary UI configuration. | Backend |
+| `GET` | `/api/admin/notifications/events/{eventId}` | Load one notification event and linked templates. | Backend |
 
 `GET /api/admin/notifications/templates` response shape:
 
@@ -557,6 +617,19 @@ interface NotificationTemplateSummary {
   updatedAtUtc: string;
   updatedByUserId: string;
 }
+
+interface AdminNotificationTemplatesResponse {
+  summary: {
+    activeEventCount: number;
+    editableTemplateCount: number;
+    pendingOutboxCount: number;
+    failedOutboxCount: number;
+  };
+  items: NotificationTemplateSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
 ```
 
 `PUT /api/admin/notifications/templates/{templateId}` request shape:
@@ -568,6 +641,59 @@ interface UpdateNotificationTemplateInput {
 }
 ```
 
+`POST /api/admin/notifications/test-email` request and response shape:
+
+```ts
+interface SendTestNotificationEmailInput {
+  toEmail: string;
+}
+
+interface SendTestNotificationEmailResponse {
+  toEmail: string;
+  subject: string;
+  provider: 'Resend';
+  messageId: string;
+  submittedAtUtc: string;
+}
+```
+
+`POST /api/admin/notifications/test-realtime` response shape:
+
+```ts
+interface SendTestRealtimeNotificationResponse {
+  notificationId: string;
+  title: string;
+  message: string;
+  connectedClientCount: number;
+  sentAtUtc: string;
+}
+```
+
+Realtime client contract:
+
+- Authenticated clients connect to `/hubs/notifications` with the same JWT access token.
+- Clients listen for `NotificationReceived`.
+- Backend publishes the same realtime message shape through the injectable `IRealtimeNotificationPublisher`.
+- Tenant/user realtime sends are persisted to `NotificationRecipients` before SignalR delivery.
+- Tenant-scoped broadcasts use the current tenant group; user-targeted workflow messages should use the tenant + user group.
+- Topbar bells read unread counts from the persisted notification snapshot and open a drawer grouped by sent date.
+
+```ts
+interface RealtimeNotification {
+  notificationId: string;
+  tenantId: string;
+  recipientUserId?: string | null;
+  title: string;
+  message: string;
+  category: string;
+  severity: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  createdAtUtc: string;
+  metadata?: Record<string, string>;
+}
+```
+
 Backend behavior:
 
 - Trigger notifications from workflow handoff events.
@@ -576,7 +702,10 @@ Backend behavior:
 - Keep event logic aligned with workflow routing rules.
 - Store email template subject/body in the database. Frontend owns only the editing UI and must use the allowed variables returned by the template API.
 - Validate that edited subject/body only use variables supported by the template.
-- Write audit events for template and event status changes.
+- Test email sends require the `TenantAdmin` role, use a standalone Resend delivery-check message instead of stored templates, and write `NotificationTestEmailSent` audit events.
+- Realtime test sends require the `TenantAdmin` role, broadcast through SignalR to connected clients in the current tenant, and write `NotificationRealtimeTestSent` audit events.
+- Store `Resend:ApiKey` in user-secrets, environment variables, or deployment secrets only. Do not commit it.
+- Write audit events for template, event status, and test email changes.
 
 ### Admin AI Settings
 
@@ -613,8 +742,8 @@ MVP agent definitions expected by the frontend:
 
 - Requirement Parser: extracts structured hiring requirements from resource requests and job descriptions.
 - CV Parser: parses DOCX resumes into candidate profile and matching evidence.
-- Bench Matching: recommends currently benched employees to PMO.
-- Talent Rediscovery: prioritizes previous similar-job candidates before external sourcing.
+- Bench Matching: ranks eligible internal employees for PMO Review using skill coverage, vector similarity, experience, availability, project evidence, and optional Tavily recent/live public context when the request needs it. Web search is backend-capped at 60 requests per UTC day, and PMO still decides who to recommend.
+- Talent Rediscovery: ranks previous warm candidates before external sourcing using candidate skills, historical applications, interview feedback, outcomes, and vector similarity. This agent never uses web search for candidate data and cannot contact candidates or move workflow stages.
 - Fit Explanation: explains why an employee or candidate was recommended.
 - Hiring Manager Decision Brief: summarizes interview feedback and candidate context for final human review.
 
@@ -655,8 +784,8 @@ Required backend endpoints:
 | Method | Endpoint | Purpose | Implementation Status |
 | --- | --- | --- | --- |
 | `GET` | `/api/admin/audit-logs?page={page}&pageSize={pageSize}&area={area}&actorId={actorId}&search={search}` | Load audit log rows, summary counts, and filters for Admin Center. | Backend |
-| `GET` | `/api/admin/audit-logs/{auditLogId}` | Load full audit detail including entity type, entity id, before/after values, correlation id, and metadata. | Backend TODO |
-| `GET` | `/api/admin/audit-logs/export?area={area}&from={from}&to={to}` | Export filtered audit history. | Backend TODO |
+| `GET` | `/api/admin/audit-logs/{auditLogId}` | Load full audit detail including entity type, entity id, and metadata. | Backend |
+| `GET` | `/api/admin/audit-logs/export?area={area}&actorId={actorId}&search={search}&entityType={entityType}&entityId={entityId}` | Export filtered audit history as an `.xlsx` workbook. | Backend |
 
 `GET /api/admin/audit-logs` response shape:
 
@@ -710,5 +839,27 @@ Admin UI copy rules for backend-facing configuration:
 | `GET` | `/api/job-requests/{id}` | Load job request detail. |
 | `GET` | `/api/pmo/queue` | Load PMO group work queue. |
 | `POST` | `/api/workflow-assignments/{assignmentId}/claim` | Claim a workflow assignment. |
+| `GET` | `/api/talent-pilot/job-requests/{id}/pmo-review` | Load PMO Review summary, assignment state, existing referrals, eligible benched employees, latest Bench Matching results, Presales recipients, and recruiter handoff preview. |
+| `POST` | `/api/talent-pilot/job-requests/{id}/bench-matches/rank` | Run the advisory Bench Matching Agent after PMO claim and persist latest ranked employee fit explanations. |
+| `POST` | `/api/talent-pilot/job-requests/{id}/employee-referrals` | PMO recommends selected internal employees to Presales and moves the request to Presales Review. |
+| `POST` | `/api/talent-pilot/job-requests/{id}/employee-referrals/decision` | Presales accepts/rejects PMO recommendations; accepted employees count toward fulfillment. |
+| `POST` | `/api/talent-pilot/job-requests/{id}/forward-to-recruiters` | PMO forwards the request to backend-owned recruiter sourcing routing. |
+| `GET` | `/api/talent-pilot/recruitment/queue` | Load recruiter-visible `Recruiter Sourcing` assignments and current Job Post state. |
+| `GET` | `/api/talent-pilot/job-requests/{id}/recruiter-sourcing` | Load the recruiter sourcing workspace: request summary, assignment, existing Job Post, linked applications, latest Talent Rediscovery rankings, interview templates, and active skills. |
+| `POST` | `/api/talent-pilot/job-requests/{id}/talent-rediscovery/rank` | Run the advisory Talent Rediscovery Agent after recruiter claim and persist latest ranked warm-candidate evidence. |
+| `GET` | `/api/talent-pilot/job-posts` | Load recruiter-visible draft/published/closed Job Posts for Job Publishing. |
+| `POST` | `/api/talent-pilot/job-requests/{id}/job-posts` | Create a draft Job Post linked to the Job Request from recruiter edits and selected interview template rounds. |
+| `PUT` | `/api/talent-pilot/job-posts/{id}` | Update a draft Job Post's content, skills, and post-specific interview rounds. |
+| `POST` | `/api/talent-pilot/job-posts/{id}/publish` | Publish a draft Job Post to the Talent Pilot candidate portal. |
+| `POST` | `/api/talent-pilot/job-posts/{id}/close` | Close a draft/published Job Post without closing the parent Job Request. |
+| `POST` | `/api/talent-pilot/job-posts/{id}/manual-candidates` | Recruiter/Tenant Admin adds or reuses a sourced candidate for a published job post, creates an invited application, stores source metadata, and queues an invitation email. |
+| `POST` | `/api/talent-pilot/job-applications/{id}/screening-decision` | Recruiter/Tenant Admin moves a job-post application to screening, hold, or rejected. |
+| `POST` | `/api/talent-pilot/job-applications/{id}/interviews` | Recruiter/Tenant Admin schedules an interview task for the candidate from a Job Post interview round, using the round default interviewer when no override is supplied. Prior rounds must be completed or skipped first. |
+| `GET` | `/api/talent-pilot/interviews/my-tasks` | Interviewer/Tenant Admin loads assigned scheduled/completed interview tasks. |
+| `POST` | `/api/talent-pilot/interviews/{id}/feedback` | Assigned interviewer/Tenant Admin submits scores, recommendation, and required feedback comments. Completing feedback marks the interview completed and queues recruiter notification. |
+| `GET` | `/api/talent-pilot/portal/job-posts` | Public candidate-safe list of published Job Posts only. |
+| `GET` | `/api/talent-pilot/portal/job-posts/{id}` | Public candidate-safe detail for one published Job Post. |
+| `POST` | `/api/talent-pilot/portal/job-posts/{id}/applications` | Candidate-authenticated apply endpoint. Creates or returns the active application linked to Candidate, Job Post, and Job Request. |
+| `GET` | `/api/talent-pilot/portal/my-applications` | Candidate-authenticated application history/status list for the signed-in Candidate. |
 | `GET` | `/api/notifications` | Load notifications for current user. |
 | `POST` | `/api/notifications/{notificationId}/read` | Mark notification as read. |

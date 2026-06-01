@@ -1,0 +1,2168 @@
+<main
+  class="page admin-page"
+  [class.roles-permissions-page]="isRolesPage()"
+  [class.groups-page]="isGroupsPage()"
+  [class.departments-page]="isDepartmentsPage()"
+  [class.skills-page]="isSkillsPage()"
+  [class.hiring-pipeline-page]="isHiringPipelinePage()"
+  [class.workflows-page]="isWorkflowsPage()"
+  [class.notifications-page]="isNotificationsPage()"
+  [class.ai-settings-page]="isAiSettingsPage()"
+  [class.integrations-page]="isIntegrationsPage()"
+  [class.audit-logs-page]="isAuditLogsPage()"
+>
+  @if (isTenantProfile()) {
+    <form [formGroup]="tenantProfileForm" (ngSubmit)="saveTenantProfile()">
+      <header class="stitch-page-header">
+        <div>
+          <h1>Tenant Profile</h1>
+          <p>Manage company details and brand identity</p>
+        </div>
+        <div class="header-actions">
+          <button
+            mat-stroked-button
+            class="stitch-secondary-button"
+            type="button"
+            (click)="resetTenantProfileForm()"
+            [disabled]="saving() || !canManageTenantProfile()"
+            [matTooltip]="permissionTooltip(canManageTenantProfile())"
+          >
+            Reset
+          </button>
+          <button
+            mat-flat-button
+            class="stitch-primary-button"
+            type="submit"
+            [disabled]="!canSaveTenantProfile()"
+            [matTooltip]="permissionTooltip(canManageTenantProfile())"
+          >
+            {{ saving() ? 'Saving...' : 'Save Changes' }}
+          </button>
+        </div>
+      </header>
+
+      @if (formMessage()) {
+        <p class="form-message" [class.error]="formMessageIsError()">{{ formMessage() }}</p>
+      }
+
+      <nav class="stitch-tabs" aria-label="Tenant profile sections">
+        @for (tab of tenantTabs; track tab.id) {
+          <button
+            type="button"
+            class="stitch-tab"
+            [class.active]="activeTenantTab() === tab.id"
+            [attr.aria-selected]="activeTenantTab() === tab.id"
+            (click)="setActiveTenantTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </nav>
+
+      <section class="stitch-profile-layout">
+        <div class="stitch-main-column">
+          @switch (activeTenantTab()) {
+            @case ('profile') {
+              <section class="stitch-card">
+                <div class="stitch-card-heading">
+                  <span class="heading-title">
+                    <span class="material-symbols-outlined" aria-hidden="true">fingerprint</span>
+                    <h2>Tenant Identity</h2>
+                  </span>
+                  <label class="stitch-field compact status-field">
+                    <span>Tenant Status</span>
+                    <select
+                      formControlName="status"
+                      aria-label="Tenant status"
+                      [class.inactive]="tenantDraft().status === 'Inactive'"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="stitch-form-grid">
+                  <label class="stitch-field">
+                    <span>Tenant Name</span>
+                    <input formControlName="displayName" aria-label="Tenant name" />
+                    @if (tenantProfileForm.controls.displayName.invalid && tenantProfileForm.controls.displayName.touched) {
+                      <em>Tenant name is required.</em>
+                    }
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Tenant Slug</span>
+                    <input formControlName="slug" aria-label="Tenant slug" />
+                    @if (tenantProfileForm.controls.slug.invalid && tenantProfileForm.controls.slug.touched) {
+                      <em>Use lowercase letters, numbers, and hyphens.</em>
+                    }
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Company Domain</span>
+                    <input formControlName="domain" aria-label="Company domain" />
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Admin Contact Email</span>
+                    <input formControlName="adminContactEmail" type="email" aria-label="Admin contact email" />
+                    @if (
+                      tenantProfileForm.controls.adminContactEmail.invalid &&
+                      tenantProfileForm.controls.adminContactEmail.touched
+                    ) {
+                      <em>Use a valid email address.</em>
+                    }
+                  </label>
+                </div>
+              </section>
+
+              <section class="stitch-card">
+                <div class="stitch-card-heading">
+                  <span class="heading-title">
+                    <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+                    <h2>Tenant Defaults</h2>
+                  </span>
+                </div>
+
+                <div class="candidate-settings-grid">
+                  <label class="stitch-field">
+                    <span class="setting-label">
+                      Default Timezone
+                      <button
+                        type="button"
+                        class="inline-info-button"
+                        matTooltip="Stored in the database as an IANA timezone id such as Asia/Karachi. Offsets are derived at runtime because daylight saving rules can change."
+                        matTooltipPosition="above"
+                        aria-label="How tenant timezone is stored"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                      </button>
+                    </span>
+                    <select formControlName="defaultTimezone" aria-label="Default timezone">
+                      @for (timezone of timezoneOptions; track timezone.value) {
+                        <option [value]="timezone.value">{{ timezone.label }}</option>
+                      }
+                    </select>
+                    @if (tenantProfileForm.controls.defaultTimezone.invalid && tenantProfileForm.controls.defaultTimezone.touched) {
+                      <em>Select a valid IANA timezone.</em>
+                    }
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Default Currency</span>
+                    <select formControlName="defaultCurrency" aria-label="Default currency">
+                      <option value="PKR">PKR (Rs)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+            }
+
+            @case ('branding') {
+              <section class="stitch-card">
+                <div class="stitch-card-heading">
+                  <span class="heading-title">
+                    <span class="material-symbols-outlined" aria-hidden="true">brush</span>
+                    <h2>Branding</h2>
+                  </span>
+                </div>
+
+                <div class="branding-form-grid">
+                  <label class="logo-upload-box" [class.has-logo]="companyLogoPreviewUrl()">
+                    @if (companyLogoPreviewUrl(); as logoPreviewUrl) {
+                      <img class="logo-upload-preview" [src]="logoPreviewUrl" alt="Company logo preview" />
+                      <strong>{{ companyLogoFileName() || 'Company Logo' }}</strong>
+                      <small>Click to replace logo</small>
+                    } @else {
+                      <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+                      <strong>Company Logo</strong>
+                      <small>Click to upload or drop here</small>
+                    }
+                    <input type="file" aria-label="Company logo" accept="image/*" (change)="setCompanyLogo($event)" />
+                  </label>
+
+                  <div class="brand-fields">
+                    <label class="stitch-field">
+                      <span>Company Display Name</span>
+                      <input formControlName="careerDisplayName" aria-label="Company display name" />
+                    </label>
+
+                    <label class="stitch-field">
+                      <span>Primary Color</span>
+                      <span class="color-control">
+                        <input
+                          class="color-picker"
+                          type="color"
+                          [value]="previewColor()"
+                          aria-label="Primary color picker"
+                          (input)="setPrimaryColor($event)"
+                        />
+                        <input formControlName="primaryColor" aria-label="Primary color hex value" />
+                      </span>
+                      @if (tenantProfileForm.controls.primaryColor.invalid && tenantProfileForm.controls.primaryColor.touched) {
+                        <em>Use a hex color such as #0A66C2.</em>
+                      }
+                    </label>
+                  </div>
+                </div>
+
+                <div class="visual-preview">
+                  <span class="preview-label">Visual Preview</span>
+                  <div class="preview-frame">
+                    <div class="preview-topbar" [style.background]="previewColor()">
+                      <span class="preview-logo" [class.has-logo]="companyLogoPreviewUrl()">
+                        @if (companyLogoPreviewUrl(); as logoPreviewUrl) {
+                          <img [src]="logoPreviewUrl" alt="" />
+                        } @else {
+                          {{ tenantLogoText() }}
+                        }
+                      </span>
+                      <strong>{{ tenantDraft().careerDisplayName }}</strong>
+                      <i></i>
+                      <i></i>
+                    </div>
+                    <div class="preview-body">
+                      <div>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                      <button type="button" [style.background]="previewColor()">View Open Roles</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            }
+
+            @case ('career-page') {
+              <section class="stitch-card">
+                <div class="stitch-card-heading">
+                  <span class="heading-title">
+                    <span class="material-symbols-outlined" aria-hidden="true">web</span>
+                    <h2>Career Page</h2>
+                  </span>
+                </div>
+
+                <div class="candidate-settings-grid">
+                  <div class="toggle-stack">
+                    <span class="setting-label">
+                      Public Jobs Enabled
+                      <button
+                        type="button"
+                        class="inline-info-button"
+                        matTooltip="When enabled, published job posts are visible on the candidate-facing careers page. When disabled, candidates can only apply through direct invite links."
+                        matTooltipPosition="above"
+                        aria-label="What public jobs enabled means"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                      </button>
+                    </span>
+                    <mat-slide-toggle
+                      formControlName="publicJobsEnabled"
+                      aria-label="Public jobs enabled"
+                    ></mat-slide-toggle>
+                  </div>
+
+                  <label class="stitch-field">
+                    <span>Candidate CV Format</span>
+                    <span class="select-leading-icon cv-format-control">
+                      <span class="material-symbols-outlined docx-format-icon" aria-hidden="true">description</span>
+                      <select formControlName="candidateCvFormat" aria-label="Allowed CV format">
+                        <option value="DOCX">DOCX</option>
+                      </select>
+                    </span>
+                    <em matTooltip="PDF parsing can be added later. The current CV parser expects DOCX.">DOCX parser active.</em>
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Reapply Cooldown Days</span>
+                    <input formControlName="reapplyCooldownDays" type="number" min="1" max="365" />
+                  </label>
+                </div>
+              </section>
+            }
+
+            @case ('security') {
+              <section class="stitch-card">
+                <div class="stitch-card-heading">
+                  <span class="heading-title">
+                    <span class="material-symbols-outlined" aria-hidden="true">shield</span>
+                    <h2>Security</h2>
+                  </span>
+                </div>
+
+                <div class="candidate-settings-grid">
+                  <div class="toggle-stack">
+                    <span>Candidate Login Required</span>
+                    <mat-slide-toggle
+                      formControlName="candidateLoginRequired"
+                      aria-label="Candidate login required"
+                    ></mat-slide-toggle>
+                  </div>
+
+                  <label class="stitch-field">
+                    <span>Invite Expiry Days</span>
+                    <input formControlName="inviteExpiryDays" type="number" min="1" max="30" />
+                  </label>
+                </div>
+              </section>
+            }
+          }
+
+        </div>
+
+        <aside class="tenant-summary-column">
+          <section class="tenant-summary-card">
+            <div class="tenant-summary-header">
+              <h2>Tenant Summary</h2>
+              <span class="summary-badge">
+                <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+                {{ tenantDraft().setupComplete ? 'Setup Complete' : 'Needs Setup' }}
+              </span>
+            </div>
+
+            <div class="summary-stat-grid">
+              <div>
+                <span>Status</span>
+                <strong
+                  [class.success]="tenantDraft().status === 'Active'"
+                  [class.inactive]="tenantDraft().status === 'Inactive'"
+                >
+                  {{ tenantDraft().status }}
+                </strong>
+              </div>
+              <div>
+                <span>Users</span>
+                <strong>{{ tenantDraft().userCount }}</strong>
+              </div>
+              <div>
+                <span>Roles</span>
+                <strong>{{ tenantDraft().roleCount }}</strong>
+              </div>
+              <div>
+                <span>Career Page</span>
+                <span class="summary-status-chip" [class.inactive]="!tenantDraft().publicJobsEnabled">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ tenantDraft().publicJobsEnabled ? 'check_circle' : 'visibility_off' }}
+                  </span>
+                  {{ tenantDraft().publicJobsEnabled ? 'Published' : 'Hidden' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="summary-list">
+              <span>AI Runtime</span>
+              <p><strong>Configured model</strong><em>{{ tenantDraft().configuredLlmModel }}</em></p>
+              <p><strong>Embedding model</strong><em>{{ tenantDraft().configuredEmbeddingModel }}</em></p>
+            </div>
+
+            <a
+              mat-stroked-button
+              class="audit-button"
+              [routerLink]="['/admin-center/audit-logs']"
+              [queryParams]="tenantAuditQueryParams()"
+              [disabled]="!canViewAuditLogs() || !tenantDraft().tenantId"
+              [matTooltip]="permissionTooltip(canViewAuditLogs())"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">history</span>
+              View Tenant Audit Logs
+            </a>
+          </section>
+
+          <section class="help-card">
+            <span class="material-symbols-outlined" aria-hidden="true">contact_support</span>
+            <div>
+              <strong>Need assistance?</strong>
+              <p>Contact your dedicated success manager for enterprise configuration support.</p>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <footer class="tenant-info-footer" role="note">
+        <div>
+          <span class="material-symbols-outlined" aria-hidden="true">info</span>
+          <strong>Implementation notes</strong>
+        </div>
+        <ul>
+          <li>{{ guardrailSummary() }}</li>
+          <li>Tenant status is stored on the tenant record as Active or Inactive.</li>
+          <li>Timezone is stored as an IANA timezone id; timestamps stay UTC and render in the client timezone.</li>
+        </ul>
+      </footer>
+    </form>
+  } @else {
+    @if (isUsersPage()) {
+      <header class="stitch-page-header users-page-header">
+        <div>
+          <h1>{{ page().title }}</h1>
+          <p>{{ page().subtitle }}</p>
+        </div>
+        <div class="header-actions">
+          <button
+            mat-flat-button
+            type="button"
+            class="stitch-primary-button"
+            (click)="openAddUserDialog()"
+            [disabled]="!canManageUsers()"
+            [matTooltip]="permissionTooltip(canManageUsers())"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>
+            Add Internal User
+          </button>
+        </div>
+      </header>
+
+      <section class="users-metrics-grid">
+        @for (metric of page().metrics; track metric.label; let index = $index) {
+          <article class="users-metric-card">
+            <div class="users-metric-copy">
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+              <small>{{ metric.note }}</small>
+              @if (metric.configureRoute) {
+                <a class="users-metric-action" [routerLink]="metric.configureRoute">
+                  {{ metric.configureLabel ?? 'Configure' }}
+                </a>
+              }
+            </div>
+          </article>
+        }
+      </section>
+
+      @if (page().table; as table) {
+        <section class="users-table-card">
+          <app-admin-table-toolbar
+            searchPlaceholder="Search users"
+            searchAriaLabel="Search users"
+            pageSizeAriaLabel="Users page size"
+            [search]="listState().search"
+            [pageSize]="listState().pageSize"
+            [pageSizeOptions]="adminListPageSizeOptions"
+            (searchChange)="setListSearchValue($event)"
+            (pageSizeChange)="setListPageSizeValue($event)"
+          />
+          <div class="table-wrap">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  @for (column of table.columns; track column) {
+                    <th>{{ column }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of table.rows; track row.join('|')) {
+                  <tr>
+                    <td>
+                      <div class="user-cell">
+                        <span class="user-avatar">{{ userInitials(row[0]) }}</span>
+                        <div>
+                          <strong>{{ row[0] }}</strong>
+                          <small>{{ row[1] }}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span class="user-role-pill">{{ row[2] }}</span></td>
+                    <td><span class="account-chip">{{ row[3] }}</span></td>
+                    <td>{{ row[4] }}</td>
+                    <td class="actions-cell">
+                      <div class="row-action-buttons" aria-label="Actions for {{ row[0] }}">
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="Edit access"
+                          matTooltipPosition="above"
+                          aria-label="Edit access for {{ row[0] }}"
+                          (click)="openUserAction('edit-access', row)"
+                          [disabled]="!canManageUsers()"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="Resend invite"
+                          matTooltipPosition="above"
+                          aria-label="Resend invite for {{ row[0] }}"
+                          (click)="openUserAction('resend-invite', row)"
+                          [disabled]="!canManageUsers()"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">forward_to_inbox</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="Deactivate user"
+                          matTooltipPosition="above"
+                          aria-label="Deactivate {{ row[0] }}"
+                          (click)="openUserAction('deactivate-user', row)"
+                          [disabled]="!canManageUsers() || row[3] === 'Disabled'"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">person_off</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="Audit history"
+                          matTooltipPosition="above"
+                          aria-label="View audit history for {{ row[0] }}"
+                          (click)="openUserAction('audit-history', row)"
+                          [disabled]="!canViewAuditLogs()"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-admin-pagination
+            variant="users"
+            [rangeLabel]="listRangeLabel('users')"
+            [pageNumbers]="listPageNumbers()"
+            [currentPage]="listState().page"
+            [canGoPrevious]="canGoToPreviousListPage()"
+            [canGoNext]="canGoToNextListPage()"
+            (pageChange)="goToListPage($event)"
+          />
+        </section>
+      }
+
+      @if (addUserDialogOpen()) {
+        <div class="admin-modal-backdrop" aria-hidden="true" (click)="closeAddUserDialog()"></div>
+        <section
+          class="admin-modal-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-internal-user-title"
+        >
+          <header>
+            <div>
+              <p class="admin-breadcrumb">Access Control</p>
+              <h2 id="add-internal-user-title">Add Internal User</h2>
+            </div>
+            <button type="button" class="icon-only-button" aria-label="Close add internal user" (click)="closeAddUserDialog()">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </header>
+
+          <div class="modal-form-grid">
+            <label class="stitch-field">
+              <span>Full Name</span>
+              <input placeholder="e.g. Amina Shah" aria-label="Internal user full name" />
+            </label>
+            <label class="stitch-field">
+              <span>Work Email</span>
+              <input type="email" placeholder="name@tkxel.com" aria-label="Internal user work email" />
+            </label>
+            <fieldset class="checkbox-group-field">
+              <legend>Assigned Roles</legend>
+              <div class="checkbox-card-grid">
+                @for (role of userRoleOptions; track role) {
+                  <label class="checkbox-card">
+                    <input type="checkbox" [checked]="role === 'Presales'" />
+                    <span>{{ role }}</span>
+                  </label>
+                }
+              </div>
+              <em>Users can have multiple roles. The list view shows the highest-priority assigned role.</em>
+            </fieldset>
+            <fieldset class="checkbox-group-field">
+              <legend>Routing Groups</legend>
+              <div class="checkbox-card-grid">
+                @for (group of routingGroupOptions; track group) {
+                  <label class="checkbox-card">
+                    <input type="checkbox" [checked]="group === 'Presales Team'" />
+                    <span>{{ group }}</span>
+                  </label>
+                }
+              </div>
+              <em>Users can belong to multiple workflow routing groups.</em>
+            </fieldset>
+            <label class="stitch-field">
+              <span>Account Status</span>
+              <select aria-label="Internal user account status">
+                <option>Invited</option>
+                <option>Active</option>
+                <option>Disabled</option>
+              </select>
+            </label>
+          </div>
+
+          <footer>
+            <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="closeAddUserDialog()">
+              Cancel
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              class="stitch-primary-button"
+              (click)="submitInternalUserInvite()"
+              [disabled]="!canManageUsers()"
+            >
+              Send Invite
+            </button>
+          </footer>
+        </section>
+      }
+
+      @if (selectedUserAction(); as userAction) {
+        <div class="admin-modal-backdrop" aria-hidden="true" (click)="closeUserAction()"></div>
+        <section
+          class="admin-modal-panel user-action-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="user-action-title"
+        >
+          <header>
+            <div>
+              <p class="admin-breadcrumb">Access Control / Users</p>
+              <h2 id="user-action-title">{{ userActionTitle(userAction) }}</h2>
+            </div>
+            <button type="button" class="icon-only-button" aria-label="Close user action" (click)="closeUserAction()">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </header>
+
+          <section class="user-action-summary" aria-label="Selected user">
+            <span class="user-avatar">{{ userInitials(userAction.displayName) }}</span>
+            <div>
+              <strong>{{ userAction.displayName }}</strong>
+              <span>{{ userAction.email }}</span>
+            </div>
+            <span class="account-chip">{{ userAction.accountStatus }}</span>
+          </section>
+
+          @switch (userAction.action) {
+            @case ('edit-access') {
+              <div class="modal-form-grid">
+                <fieldset class="checkbox-group-field">
+                  <legend>Assigned Roles</legend>
+                  <div class="checkbox-card-grid">
+                    @for (role of userRoleChoices; track role.id) {
+                      <label class="checkbox-card">
+                        <input
+                          type="checkbox"
+                          [checked]="userAction.roleIds.includes(role.id)"
+                          (change)="toggleUserActionRole(role.id, $event)"
+                        />
+                        <span>{{ role.name }}</span>
+                      </label>
+                    }
+                  </div>
+                  <em>The user list displays the highest-priority assigned role.</em>
+                </fieldset>
+
+                <fieldset class="checkbox-group-field">
+                  <legend>Routing Groups</legend>
+                  <div class="checkbox-card-grid">
+                    @for (group of routingGroupChoices; track group.id) {
+                      <label class="checkbox-card">
+                        <input
+                          type="checkbox"
+                          [checked]="userAction.groupIds.includes(group.id)"
+                          (change)="toggleUserActionGroup(group.id, $event)"
+                        />
+                        <span>{{ group.name }}</span>
+                      </label>
+                    }
+                  </div>
+                  <em>Groups route work only; permissions stay role based.</em>
+                </fieldset>
+
+                <label class="stitch-field">
+                  <span>Account Status</span>
+                  <select aria-label="Account status" [value]="userAction.accountStatus" (change)="setUserActionStatus($event)">
+                    @for (status of accountStatusOptions; track status) {
+                      <option [value]="status">{{ status }}</option>
+                    }
+                  </select>
+                </label>
+              </div>
+            }
+
+            @case ('resend-invite') {
+              <div class="confirmation-copy">
+                <span class="material-symbols-outlined" aria-hidden="true">forward_to_inbox</span>
+                <div>
+                  <strong>Send a fresh invitation link?</strong>
+                  <p>A fresh invitation link will be sent and the action will be recorded in audit history.</p>
+                  <dl>
+                    <div>
+                      <dt>Recipient</dt>
+                      <dd>{{ userAction.email }}</dd>
+                    </div>
+                    <div>
+                      <dt>Current role</dt>
+                      <dd>{{ userAction.roleName }}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            }
+
+            @case ('deactivate-user') {
+              <div class="confirmation-copy warning">
+                <span class="material-symbols-outlined" aria-hidden="true">person_off</span>
+                <div>
+                  <strong>Deactivate this user?</strong>
+                  <p>Deactivation blocks login and removes the user from active assignment lists. Existing audit history is preserved.</p>
+                </div>
+              </div>
+
+              <label class="stitch-field">
+                <span>Reason</span>
+                <textarea
+                  rows="3"
+                  placeholder="Optional reason for audit history"
+                  aria-label="Deactivation reason"
+                  [value]="userAction.deactivationReason"
+                  (input)="setUserActionDeactivationReason($event)"
+                ></textarea>
+              </label>
+            }
+
+            @case ('audit-history') {
+              <section class="user-audit-panel">
+                <header>
+                  <h3>Recent User Audit Events</h3>
+                  <span class="table-status custom">UTC stored, local display</span>
+                </header>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Local Time</th>
+                      <th>Actor</th>
+                      <th>Event</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (event of userAuditEvents(userAction); track event.occurredAtUtc + event.event) {
+                      <tr>
+                        <td>
+                          <time [attr.datetime]="event.occurredAtUtc" [matTooltip]="auditTimestampTooltip(event.occurredAtUtc)">
+                            {{ formatAuditTimestamp(event.occurredAtUtc) }}
+                          </time>
+                        </td>
+                        <td>{{ event.actor }}</td>
+                        <td>{{ event.event }}</td>
+                      </tr>
+                    }
+                    @empty {
+                      <tr>
+                        <td colspan="3">No audit events returned by the backend.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </section>
+            }
+          }
+
+          <footer>
+            <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="closeUserAction()">
+              {{ userAction.action === 'audit-history' ? 'Close' : 'Cancel' }}
+            </button>
+            @if (userAction.action !== 'audit-history') {
+              <button
+                mat-flat-button
+                type="button"
+                class="stitch-primary-button"
+                [class.danger-action]="userAction.action === 'deactivate-user'"
+                (click)="confirmUserAction(userAction)"
+                [disabled]="!canConfirmUserAction(userAction) || userActionSaving()"
+              >
+                {{ userActionSaving() ? 'Saving...' : userActionPrimaryLabel(userAction) }}
+              </button>
+            }
+          </footer>
+        </section>
+      }
+    } @else if (isRolesPage()) {
+      <header class="admin-stitch-header">
+        <div>
+          <h1>{{ page().title }}</h1>
+          <p>{{ page().subtitle }}</p>
+        </div>
+        <button
+          mat-flat-button
+          type="button"
+          class="stitch-primary-button"
+          (click)="openAddRoleDialog()"
+          [disabled]="!canManageRoles()"
+          [matTooltip]="permissionTooltip(canManageRoles())"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>
+          Create Role
+        </button>
+      </header>
+
+      <section class="admin-stitch-metrics three-up">
+        @for (metric of page().metrics; track metric.label; let index = $index) {
+          <article class="admin-stitch-metric">
+            <p>{{ metric.label }}</p>
+            <div>
+              <strong>{{ metric.value }}</strong>
+              <span class="material-symbols-outlined" aria-hidden="true">{{ roleMetricIcon(index) }}</span>
+            </div>
+            <small>{{ metric.note }}</small>
+          </article>
+        }
+      </section>
+
+      <section class="admin-settings-card">
+        <header class="permission-resolution-header">
+          <span class="heading-title">
+            <span class="material-symbols-outlined" aria-hidden="true">settings_applications</span>
+            <h2>Tenant Permission Resolution</h2>
+          </span>
+          <button
+            mat-stroked-button
+            type="button"
+            class="stitch-secondary-button"
+            (click)="savePermissionResolutionPolicy()"
+            [disabled]="!canManageRoles()"
+            [matTooltip]="permissionTooltip(canManageRoles())"
+          >
+            Save Policy
+          </button>
+        </header>
+        <div class="permission-resolution-grid">
+          <label class="permission-resolution-field">
+            <span>Role Conflict Resolution</span>
+            <select
+              [value]="permissionResolutionMode()"
+              (change)="setPermissionResolutionMode($event)"
+              matTooltip="When highest-priority mode is selected, permissions resolve by the role priority stored on role records."
+              matTooltipPosition="above"
+              aria-label="Role conflict resolution mode"
+            >
+              <option value="merge">Merge permissions from all assigned roles</option>
+              <option value="highest-priority">Use highest-priority role only</option>
+            </select>
+            <small>
+              This controls how effective permissions are calculated when one user has multiple roles.
+            </small>
+          </label>
+        </div>
+      </section>
+
+      @if (page().table; as table) {
+        <section class="admin-data-card">
+          <app-admin-table-toolbar
+            searchPlaceholder="Search roles"
+            searchAriaLabel="Search roles"
+            pageSizeAriaLabel="Roles page size"
+            [search]="listState().search"
+            [pageSize]="listState().pageSize"
+            [pageSizeOptions]="adminListPageSizeOptions"
+            (searchChange)="setListSearchValue($event)"
+            (pageSizeChange)="setListPageSizeValue($event)"
+          />
+          <div class="table-wrap">
+            <table class="admin-stitch-table roles-table">
+              <thead>
+                <tr>
+                  @for (column of table.columns; track column) {
+                    <th
+                      [matTooltip]="column === 'Lifecycle' ? 'Lifecycle is Active or Inactive. System Admin is the only system-owned role and is not managed from this tenant screen.' : ''"
+                      matTooltipPosition="above"
+                    >
+                      {{ column }}
+                    </th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of table.rows; track row.join('|')) {
+                  <tr>
+                    <td><strong>{{ row[0] }}</strong></td>
+                    <td>
+                      <span
+                        class="type-chip"
+                        [class.custom]="row[1] === 'Custom'"
+                        [matTooltip]="roleTypeTooltip(row[1], row[2])"
+                        matTooltipPosition="above"
+                      >
+                        {{ row[1] }}
+                      </span>
+                    </td>
+                    <td>{{ row[2] }}</td>
+                    <td class="mono-cell">{{ row[3] }}</td>
+                    <td>{{ row[4] }}</td>
+                    <td>
+                      <span
+                        class="table-status"
+                        [class.success]="row[5] === 'Active'"
+                        matTooltip="Role lifecycle state from the database."
+                        matTooltipPosition="above"
+                      >
+                        {{ row[5] }}
+                      </span>
+                    </td>
+                    <td class="actions-cell">
+                      <div class="row-action-buttons" aria-label="Actions for {{ row[0] }}">
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="Edit role"
+                          matTooltipPosition="above"
+                          aria-label="Edit role {{ row[0] }}"
+                          (click)="openRoleAction('edit-role', row)"
+                          [disabled]="!canManageRoles()"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="Assign users"
+                          matTooltipPosition="above"
+                          aria-label="Bulk assign users to {{ row[0] }}"
+                          (click)="openRoleAction('bulk-assign-users', row)"
+                          [disabled]="!canManageRoles()"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">group_add</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="View permissions"
+                          matTooltipPosition="above"
+                          aria-label="View permissions for {{ row[0] }}"
+                          (click)="openRoleAction('view-permissions', row)"
+                          [disabled]="!canManageRoles()"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-only-button"
+                          matTooltip="Audit history"
+                          matTooltipPosition="above"
+                          aria-label="View audit history for {{ row[0] }}"
+                          (click)="openRoleAction('audit-history', row)"
+                          [disabled]="!canViewAuditLogs()"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-admin-pagination
+            [rangeLabel]="listRangeLabel('roles')"
+            [pageNumbers]="listPageNumbers()"
+            [currentPage]="listState().page"
+            [canGoPrevious]="canGoToPreviousListPage()"
+            [canGoNext]="canGoToNextListPage()"
+            (pageChange)="goToListPage($event)"
+          />
+        </section>
+      }
+
+      @if (addRoleDialogOpen()) {
+        <div class="admin-modal-backdrop" aria-hidden="true" (click)="closeAddRoleDialog()"></div>
+        <section class="admin-modal-panel role-action-modal" role="dialog" aria-modal="true" aria-labelledby="add-role-title">
+          <header>
+            <div>
+              <p class="admin-breadcrumb">Access Control / Roles & Permissions</p>
+              <h2 id="add-role-title">Add Role</h2>
+            </div>
+            <button type="button" class="icon-only-button" aria-label="Close add role" (click)="closeAddRoleDialog()">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </header>
+
+          <div class="modal-form-grid">
+            <label class="stitch-field">
+              <span>Role Name</span>
+              <input placeholder="e.g. Recruitment Coordinator" aria-label="Role name" />
+            </label>
+            <label class="stitch-field">
+              <span>Lifecycle Status</span>
+              <select aria-label="Role status">
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </label>
+            <label class="stitch-field">
+              <span>Scope</span>
+              <input value="Tenant" aria-label="Role scope" disabled />
+            </label>
+            <label class="stitch-field">
+              <span>Priority</span>
+              <input type="number" min="1" value="20" aria-label="Role priority" />
+            </label>
+            <fieldset class="checkbox-group-field">
+              <legend>Permission Grants</legend>
+              <div class="permission-checkbox-grid">
+                @for (permission of rolePermissionOptions; track permission.id) {
+                  <label class="checkbox-card permission-checkbox-card">
+                    <input type="checkbox" [checked]="defaultNewRolePermissions.includes(permission.id)" />
+                    <span>
+                      <strong>{{ permission.label }}</strong>
+                      <small>{{ permission.description }}</small>
+                    </span>
+                  </label>
+                }
+              </div>
+              <em>Roles grant permissions. Workflow groups only route work.</em>
+            </fieldset>
+          </div>
+
+          <footer>
+            <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="closeAddRoleDialog()">
+              Cancel
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              class="stitch-primary-button"
+              (click)="submitRole()"
+              [disabled]="!canManageRoles()"
+            >
+              Save Role
+            </button>
+          </footer>
+        </section>
+      }
+
+      @if (selectedRoleAction(); as roleAction) {
+        <div class="admin-modal-backdrop" aria-hidden="true" (click)="closeRoleAction()"></div>
+        <section
+          class="admin-modal-panel role-action-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="role-action-title"
+        >
+          <header>
+            <div>
+              <p class="admin-breadcrumb">Access Control / Roles & Permissions</p>
+              <h2 id="role-action-title">{{ roleActionTitle(roleAction) }}</h2>
+            </div>
+            <button type="button" class="icon-only-button" aria-label="Close role action" (click)="closeRoleAction()">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </header>
+
+          <section class="role-action-summary" aria-label="Selected role">
+            <span class="material-symbols-outlined" aria-hidden="true">security</span>
+            <div>
+              <strong>{{ roleAction.name }}</strong>
+              <span>{{ roleAction.scope }} scope - {{ roleAction.userCount }} assigned users</span>
+            </div>
+            <span
+              class="table-status"
+              [class.success]="roleAction.status === 'Active'"
+              matTooltip="Role lifecycle state."
+              matTooltipPosition="above"
+            >
+              {{ roleAction.status }}
+            </span>
+          </section>
+
+          @switch (roleAction.action) {
+            @case ('edit-role') {
+              @if (roleAction.protectedRole) {
+                <div class="confirmation-copy">
+                  <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                  <div>
+                    <strong>System Admin role</strong>
+                    <p>This role is platform-owned and cannot be edited from tenant Admin Center.</p>
+                  </div>
+                </div>
+              }
+
+              <div class="modal-form-grid">
+                <label class="stitch-field">
+                  <span>Role Name</span>
+                  <input [value]="roleAction.name" aria-label="Role name" [disabled]="roleAction.protectedRole" />
+                </label>
+                <label class="stitch-field">
+                  <span>Lifecycle Status</span>
+                  <select aria-label="Role status" [disabled]="roleAction.protectedRole">
+                    <option [selected]="roleAction.status === 'Active'">Active</option>
+                    <option [selected]="roleAction.status === 'Inactive'">Inactive</option>
+                  </select>
+                </label>
+                <label class="stitch-field">
+                  <span>Scope</span>
+                  <input [value]="roleAction.scope" aria-label="Role scope" disabled />
+                </label>
+                <label class="stitch-field">
+                  <span>Assigned Users</span>
+                  <input [value]="roleAction.userCount" aria-label="Assigned users" disabled />
+                </label>
+                <fieldset class="checkbox-group-field">
+                  <legend>Permission Grants</legend>
+                  <div class="permission-checkbox-grid">
+                    @for (permission of rolePermissionOptions; track permission.id) {
+                      <label class="checkbox-card permission-checkbox-card">
+                        <input
+                          type="checkbox"
+                          [checked]="roleHasPermission(roleAction, permission)"
+                          [disabled]="roleAction.protectedRole"
+                        />
+                        <span>
+                          <strong>{{ permission.label }}</strong>
+                          <small>{{ permission.description }}</small>
+                        </span>
+                      </label>
+                    }
+                  </div>
+                </fieldset>
+              </div>
+            }
+
+            @case ('view-permissions') {
+              <section class="role-permission-review">
+                <header>
+                  <h3>Effective Grants</h3>
+                  <span class="table-status custom">{{ permissionResolutionLabel() }}</span>
+                </header>
+                <div class="permission-review-grid">
+                  @for (permission of rolePermissionOptions; track permission.id) {
+                    <article [class.active]="roleHasPermission(roleAction, permission)">
+                      <span class="material-symbols-outlined" aria-hidden="true">
+                        {{ roleHasPermission(roleAction, permission) ? 'check_circle' : 'radio_button_unchecked' }}
+                      </span>
+                      <div>
+                        <strong>{{ permission.label }}</strong>
+                        <small>{{ permission.group }}</small>
+                      </div>
+                    </article>
+                  }
+                </div>
+              </section>
+            }
+
+            @case ('bulk-assign-users') {
+              @if (!roleBulkAssignmentAllowed(roleAction)) {
+                <div class="confirmation-copy warning">
+                  <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                  <div>
+                    <strong>Bulk assignment unavailable</strong>
+                    <p>
+                      System Admin is managed outside tenant Admin Center.
+                      Bulk assignment is available for tenant-scoped roles only.
+                    </p>
+                  </div>
+                </div>
+              } @else {
+                <div class="bulk-assignment-layout">
+                  <section class="bulk-filter-card">
+                    <h3>Find Matching Users</h3>
+                    <div class="modal-form-grid compact">
+                      <label class="stitch-field">
+                        <span>Search Query</span>
+                        <input placeholder="Name, email, department, or skill" aria-label="Bulk assignment search query" />
+                      </label>
+                      <label class="stitch-field">
+                        <span>Account Status</span>
+                        <select aria-label="Bulk assignment account status filter">
+                          <option>Active users only</option>
+                          <option>Invited users</option>
+                          <option>Any status</option>
+                        </select>
+                      </label>
+                      <label class="stitch-field">
+                        <span>Department</span>
+                        <select aria-label="Bulk assignment department filter">
+                          <option>Any department</option>
+                          <option>Engineering</option>
+                          <option>QA</option>
+                          <option>DevOps</option>
+                          <option>Recruitment</option>
+                          <option>Presales</option>
+                        </select>
+                      </label>
+                      <label class="stitch-field">
+                        <span>Current Role</span>
+                        <select aria-label="Bulk assignment current role filter">
+                          <option>Any current role</option>
+                          <option>Employee</option>
+                          <option>Interviewer</option>
+                          <option>Recruiter</option>
+                          <option>PMO</option>
+                          <option>Presales</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="bulk-preview-card">
+                    <header>
+                      <div>
+                        <span>Preview</span>
+                        <strong>{{ bulkAssignmentPreviewCount(roleAction) }}</strong>
+                        <small>matching users</small>
+                      </div>
+                      <span class="table-status custom">{{ bulkAssignmentSelectedCount(roleAction) }} selected</span>
+                    </header>
+                    <label class="bulk-select-all">
+                      <input
+                        type="checkbox"
+                        [checked]="bulkAssignmentAllSelected(roleAction)"
+                        (change)="toggleBulkAssignmentAll(roleAction, $event)"
+                        aria-label="Select all matching users"
+                      />
+                      <span>Select all {{ bulkAssignmentPreviewCount(roleAction) }} users returned by this filter</span>
+                    </label>
+                    <div class="bulk-preview-list">
+                      @for (user of bulkAssignmentPreviewUsers(roleAction); track user.email) {
+                        <article [class.selected]="bulkAssignmentUserSelected(user.email)">
+                          <input
+                            type="checkbox"
+                            [checked]="bulkAssignmentUserSelected(user.email)"
+                            (change)="toggleBulkAssignmentUser(user.email, $event)"
+                            aria-label="Select {{ user.name }}"
+                          />
+                          <span class="user-avatar">{{ userInitials(user.name) }}</span>
+                          <div>
+                            <strong>{{ user.name }}</strong>
+                            <small>{{ user.email }} - {{ user.department }}</small>
+                          </div>
+                          <span class="user-role-pill">{{ user.currentRole }}</span>
+                        </article>
+                      }
+                      @empty {
+                        <article>
+                          <div>
+                            <strong>No users matched this filter.</strong>
+                            <small>Change the filters and preview again.</small>
+                          </div>
+                        </article>
+                      }
+                    </div>
+                    <p>
+                      This adds <strong>{{ roleAction.name }}</strong> to selected users.
+                      Existing roles remain assigned, and the displayed highest-priority role is recalculated by backend policy.
+                    </p>
+                  </section>
+                </div>
+              }
+            }
+
+            @case ('audit-history') {
+              <section class="user-audit-panel">
+                <header>
+                  <h3>Recent Role Audit Events</h3>
+                  <span class="table-status custom">UTC stored, local display</span>
+                </header>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Local Time</th>
+                      <th>Actor</th>
+                      <th>Event</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (event of roleAuditEvents(roleAction); track event.occurredAtUtc + event.event) {
+                      <tr>
+                        <td>
+                          <time [attr.datetime]="event.occurredAtUtc" [matTooltip]="auditTimestampTooltip(event.occurredAtUtc)">
+                            {{ formatAuditTimestamp(event.occurredAtUtc) }}
+                          </time>
+                        </td>
+                        <td>{{ event.actor }}</td>
+                        <td>{{ event.event }}</td>
+                      </tr>
+                    }
+                    @empty {
+                      <tr>
+                        <td colspan="3">No audit events returned by the backend.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </section>
+            }
+          }
+
+          <footer>
+            <button mat-stroked-button type="button" class="stitch-secondary-button" (click)="closeRoleAction()">
+              {{ roleAction.action === 'audit-history' || roleAction.action === 'view-permissions' || !roleBulkAssignmentAllowed(roleAction) ? 'Close' : 'Cancel' }}
+            </button>
+            @if (roleAction.action === 'edit-role' && !roleAction.protectedRole) {
+              <button
+                mat-flat-button
+                type="button"
+                class="stitch-primary-button"
+                (click)="confirmRoleAction(roleAction)"
+                [disabled]="!canManageRoles()"
+              >
+                Save Role
+              </button>
+            }
+            @if (roleAction.action === 'bulk-assign-users' && roleBulkAssignmentAllowed(roleAction)) {
+              <button
+                mat-flat-button
+                type="button"
+                class="stitch-primary-button"
+                [disabled]="bulkAssignmentSelectedCount(roleAction) === 0 || !canManageRoles()"
+                (click)="confirmRoleAction(roleAction)"
+              >
+                Assign {{ bulkAssignmentSelectedCount(roleAction) }} Users
+              </button>
+            }
+          </footer>
+        </section>
+      }
+
+      <footer class="admin-context-note">
+        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+        <div>
+          <strong>Permission Summary</strong>
+          <p>Access model is role based. Custom roles use known permissions. Groups route work only.</p>
+          <small>
+            Detailed permission selection happens inside role edit screens. All changes are logged in Audit History.
+          </small>
+        </div>
+      </footer>
+    } @else if (isWorkflowsPage()) {
+      <header class="admin-stitch-header">
+        <div>
+          <p class="admin-breadcrumb">Configuration / Workflows</p>
+          <h1>{{ page().title }}</h1>
+          <p>{{ page().subtitle }}</p>
+        </div>
+      </header>
+
+      <section class="admin-stitch-metrics">
+        @for (metric of page().metrics; track metric.label; let index = $index) {
+          <article
+            class="admin-stitch-metric"
+            [matTooltip]="metric.tooltip ?? ''"
+            [matTooltipDisabled]="!metric.tooltip"
+            matTooltipPosition="above"
+          >
+            <p>{{ metric.label }}</p>
+            <div>
+              <strong>{{ metric.value }}</strong>
+              <span class="material-symbols-outlined" aria-hidden="true">{{ adminMetricIcon(index) }}</span>
+            </div>
+            @if (metric.note) {
+              <small>{{ metric.note }}</small>
+            }
+          </article>
+        }
+      </section>
+
+      <section class="admin-info-banner">
+        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+        <p>
+          <strong>Workflows configure Job Request recipients.</strong>
+          Department routing decides which PMO user or group receives new requests created by Presales users.
+          Talent Pilot owns workflow action access rules, action names, and the stage graph. Interview rounds stay in
+          Hiring Pipeline.
+        </p>
+      </section>
+
+      <section class="admin-data-card">
+            <header class="admin-data-card-header">
+              <h2>Department Routing</h2>
+              <button
+                mat-stroked-button
+                type="button"
+                class="stitch-secondary-button"
+                (click)="saveWorkflowIntakeRouting()"
+                [disabled]="!canManageCurrentAdminPage() || workflowIntakeRoutingSaving()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                {{ workflowIntakeRoutingSaving() ? 'Saving' : 'Save Routing' }}
+              </button>
+            </header>
+            <div class="table-wrap">
+              <table class="admin-stitch-table workflow-intake-table">
+                <thead>
+                  <tr>
+                    <th
+                      [matTooltip]="workflowIntakeColumnGuides[0].description"
+                      matTooltipPosition="above"
+                    >
+                      <span class="column-tooltip-header">
+                        Department
+                        <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                      </span>
+                    </th>
+                    <th
+                      [matTooltip]="workflowIntakeColumnGuides[1].description"
+                      matTooltipPosition="above"
+                    >
+                      <span class="column-tooltip-header">
+                        Recipient Type
+                        <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                      </span>
+                    </th>
+                    <th
+                      [matTooltip]="workflowIntakeColumnGuides[2].description"
+                      matTooltipPosition="above"
+                    >
+                      <span class="column-tooltip-header">
+                        Target
+                        <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                      </span>
+                    </th>
+                    <th
+                      [matTooltip]="workflowIntakeColumnGuides[3].description"
+                      matTooltipPosition="above"
+                    >
+                      <span class="column-tooltip-header">
+                        Status
+                        <span class="material-symbols-outlined" aria-hidden="true">help</span>
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (rule of workflowIntakeRoutingRules(); track rule.departmentId) {
+                    <tr>
+                      <td>
+                        <strong>{{ rule.departmentName }}</strong>
+                        <small class="workflow-cell-note">{{ rule.departmentCode }}</small>
+                      </td>
+                      <td>
+                        <label class="stitch-field compact workflow-inline-field">
+                          <span class="sr-only">Recipient type for {{ rule.departmentName }}</span>
+                          <select
+                            [value]="workflowIntakeAssignmentType(rule)"
+                            (change)="setWorkflowIntakeAssignmentType(rule, $event)"
+                            [disabled]="!canManageCurrentAdminPage()"
+                          >
+                            <option value="Group">Group</option>
+                            <option value="User">User</option>
+                          </select>
+                        </label>
+                      </td>
+                      <td>
+                        <label class="stitch-field compact workflow-target-field">
+                          <span class="sr-only">Routing target for {{ rule.departmentName }}</span>
+                          <select
+                            [value]="workflowIntakeTargetValue(rule)"
+                            (change)="setWorkflowIntakeTarget(rule, $event)"
+                            [disabled]="!canManageCurrentAdminPage()"
+                          >
+                            <option value="" [selected]="workflowIntakeTargetValue(rule) === ''">Select recipient</option>
+                            @for (target of workflowIntakeTargetChoices(rule); track target.id) {
+                              <option [value]="target.id" [selected]="target.id === workflowIntakeTargetValue(rule)">
+                                {{ target.name }}
+                              </option>
+                            }
+                          </select>
+                        </label>
+                      </td>
+                      <td>
+                        <label class="stitch-field compact status-field workflow-status-field">
+                          <span class="sr-only">Status for {{ rule.departmentName }}</span>
+                          <select
+                            [value]="rule.status === 'Inactive' ? 'Inactive' : 'Active'"
+                            [class.inactive]="rule.status === 'Inactive'"
+                            (change)="setWorkflowIntakeStatus(rule, $event)"
+                            [disabled]="!canManageCurrentAdminPage()"
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                          </select>
+                        </label>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4">No active departments available for routing.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <footer class="admin-table-footer">
+              <span>Showing {{ workflowIntakeRoutingRules().length }} departments</span>
+            </footer>
+      </section>
+
+      <section class="workflow-routing-summary" aria-label="Workflow routing summary">
+        <header>
+          <span class="material-symbols-outlined" aria-hidden="true">route</span>
+          <div>
+            <h2>Talent Pilot Request Flow</h2>
+            <p>
+              This screen configures the PMO recipient for new requests created by Presales users.
+              After PMO review, the request follows the hiring journey below.
+            </p>
+          </div>
+        </header>
+        <div class="workflow-flow-board">
+          <article class="workflow-flow-step highlight">
+            <span class="material-symbols-outlined" aria-hidden="true">request_page</span>
+            <strong>Presales creates request</strong>
+            <p>The selected department chooses the PMO user or group configured in Department Routing.</p>
+          </article>
+          <span class="workflow-flow-arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          <article class="workflow-flow-step">
+            <span class="material-symbols-outlined" aria-hidden="true">manage_accounts</span>
+            <strong>PMO handles request</strong>
+            <p>PMO reviews the need, checks internal matches, or forwards the request to recruiting.</p>
+          </article>
+          <span class="workflow-flow-arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          <article class="workflow-flow-step">
+            <span class="material-symbols-outlined" aria-hidden="true">campaign</span>
+            <strong>Recruiters handle hiring</strong>
+            <p>Recruiters create the job post, manage candidates, and start interview rounds.</p>
+          </article>
+        </div>
+        <div class="workflow-flow-branch">
+          <span class="workflow-flow-branch-label">Candidate interview path</span>
+          <div class="workflow-flow-branch-steps">
+            <article>
+              <span class="material-symbols-outlined" aria-hidden="true">record_voice_over</span>
+              <strong>Interviewers submit feedback</strong>
+              <p>Each interviewer completes their assigned round and records candidate feedback.</p>
+            </article>
+            <article>
+              <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+              <strong>Recruiter reviews next step</strong>
+              <p>Recruiter reviews feedback and moves the candidate to the next round or final review.</p>
+            </article>
+            <article>
+              <span class="material-symbols-outlined" aria-hidden="true">description</span>
+              <strong>Hiring Manager records outcome</strong>
+              <p>Offer details are prepared, and the candidate outcome is recorded.</p>
+            </article>
+            <article>
+              <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+              <strong>Request closes</strong>
+              <p>The job request closes when hiring is fulfilled or the pipeline reaches a final outcome.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    } @else if (isAiSettingsPage()) {
+      <header class="admin-stitch-header">
+        <div>
+          <p class="admin-breadcrumb">{{ page().eyebrow }}</p>
+          <h1>{{ page().title }}</h1>
+          <p>{{ page().subtitle }}</p>
+        </div>
+      </header>
+
+      <section class="admin-stitch-metrics">
+        @for (metric of page().metrics; track metric.label; let index = $index) {
+          <article
+            class="admin-stitch-metric"
+            [matTooltip]="metric.tooltip ?? ''"
+            [matTooltipDisabled]="!metric.tooltip"
+            matTooltipPosition="above"
+          >
+            <p>{{ metric.label }}</p>
+            <div>
+              <strong>{{ metric.value }}</strong>
+              <span class="material-symbols-outlined" aria-hidden="true">{{ adminMetricIcon(index) }}</span>
+            </div>
+            @if (metric.note) {
+              <small>{{ metric.note }}</small>
+            }
+          </article>
+        }
+      </section>
+
+      <nav class="admin-tabs" aria-label="AI settings sections" role="tablist">
+        @for (tab of aiSettingsTabs; track tab.id) {
+          <button
+            type="button"
+            role="tab"
+            [class.active]="activeAiSettingsTab() === tab.id"
+            [attr.aria-selected]="activeAiSettingsTab() === tab.id"
+            (click)="setActiveAiSettingsTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </nav>
+
+      @switch (activeAiSettingsTab()) {
+        @case ('runtime') {
+          <section class="admin-config-layout">
+            @if (page().table; as table) {
+              <section class="admin-data-card">
+                <header class="admin-data-card-header">
+                  <h2>Runtime Guardrails</h2>
+                  @if (page().status) {
+                    <span class="table-status custom">{{ page().status }}</span>
+                  }
+                </header>
+                <div class="table-wrap">
+                  <table class="admin-stitch-table ai-settings-table">
+                    <thead>
+                      <tr>
+                        @for (column of table.columns; track column) {
+                          <th>{{ column }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of table.rows; track row.join('|')) {
+                        <tr>
+                          @for (cell of visibleTableCells(row, table); track cellIndex; let cellIndex = $index) {
+                            <td>
+                              @if (isStatusValue(cell)) {
+                                <span class="table-status" [class.success]="cell === 'Active'">
+                                  {{ cell }}
+                                </span>
+                              } @else {
+                                {{ cell }}
+                              }
+                            </td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <footer class="admin-table-footer">
+                  <span>Showing {{ table.rows.length }} runtime guardrails</span>
+                </footer>
+              </section>
+            }
+
+            <aside class="admin-config-rail">
+              @for (card of page().cards; track card.title) {
+                <article
+                  class="admin-rail-card"
+                  [matTooltip]="card.tooltip ?? ''"
+                  [matTooltipDisabled]="!card.tooltip"
+                  matTooltipPosition="above"
+                >
+                  <h2>{{ card.title }}</h2>
+                  <ul>
+                    @for (line of card.lines; track line) {
+                      <li>{{ line }}</li>
+                    }
+                  </ul>
+                </article>
+              }
+            </aside>
+          </section>
+        }
+
+        @case ('agents') {
+          <section class="admin-info-banner ai-agent-count-banner">
+            <span class="material-symbols-outlined" aria-hidden="true">smart_toy</span>
+            <p>
+              <strong>{{ activeAiAgentCount() }} AI agents are active.</strong>
+              {{ aiDecisionBoundary() }}
+            </p>
+          </section>
+
+          <section class="ai-agent-grid" aria-label="AI agent responsibilities">
+            @for (agent of aiAgents; track agent.name) {
+              <article class="ai-agent-card">
+                <header>
+                  <span class="material-symbols-outlined" aria-hidden="true">smart_toy</span>
+                  <div>
+                    <h2>{{ agent.name }}</h2>
+                    <p>{{ agent.responsibility }}</p>
+                  </div>
+                </header>
+                <dl>
+                  <div>
+                    <dt>Input</dt>
+                    <dd>{{ agent.input }}</dd>
+                  </div>
+                  <div>
+                    <dt>Output</dt>
+                    <dd>{{ agent.output }}</dd>
+                  </div>
+                  <div>
+                    <dt>MVP Boundary</dt>
+                    <dd>{{ agent.boundary }}</dd>
+                  </div>
+                </dl>
+              </article>
+            }
+          </section>
+
+          <footer class="admin-context-note ai-agent-boundary-note">
+            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
+            <div>
+              <strong>Decision boundary</strong>
+              <p>{{ aiDecisionBoundary() }}</p>
+            </div>
+          </footer>
+        }
+      }
+    } @else {
+      <header class="admin-stitch-header">
+        <div>
+          <p class="admin-breadcrumb">{{ page().eyebrow }}</p>
+          <h1>{{ page().title }}</h1>
+          <p>{{ page().subtitle }}</p>
+        </div>
+        @if (showPageAction()) {
+          <button
+            mat-flat-button
+            type="button"
+            class="stitch-primary-button"
+            [matTooltip]="pageActionTooltip()"
+            [matTooltipDisabled]="!pageActionTooltip()"
+            matTooltipPosition="below"
+            (click)="handlePageAction()"
+            [disabled]="!canRunPageAction()"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">{{ pageActionIcon() }}</span>
+            {{ pageActionLabel() }}
+          </button>
+        }
+      </header>
+
+      <section class="admin-stitch-metrics">
+        @for (metric of page().metrics; track metric.label; let index = $index) {
+          <article
+            class="admin-stitch-metric"
+            [matTooltip]="metric.tooltip ?? ''"
+            [matTooltipDisabled]="!metric.tooltip"
+            matTooltipPosition="above"
+          >
+            <p>{{ metric.label }}</p>
+            <div>
+              <strong>{{ metric.value }}</strong>
+              <span class="material-symbols-outlined" aria-hidden="true">{{ adminMetricIcon(index) }}</span>
+            </div>
+            @if (metric.note) {
+              <small>{{ metric.note }}</small>
+            }
+          </article>
+        }
+      </section>
+
+      @if (isNotificationsPage() && canSendNotificationTestEmail()) {
+        <section class="admin-data-card notification-test-email-card" aria-labelledby="notification-test-email-title">
+          <header class="admin-data-card-header">
+            <h2 id="notification-test-email-title">Send Test Email</h2>
+          </header>
+          <div class="notification-test-email-form notification-email-test-form">
+            <div class="notification-test-field notification-email-address-control">
+              <label for="notification-test-email-recipient">Recipient Email</label>
+              <div class="notification-email-address-row">
+                <input
+                  id="notification-test-email-recipient"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="name@example.com"
+                  [value]="testEmailRecipient()"
+                  (input)="updateTestEmailRecipient($event)"
+                  [disabled]="testEmailSending()"
+                />
+                <button
+                  type="button"
+                  matButton
+                  class="notification-test-send-button"
+                  (click)="sendNotificationTestEmail()"
+                  [disabled]="!canSubmitNotificationTestEmail()"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">send</span>
+                  {{ testEmailSending() ? 'Sending...' : 'Send Test Email' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (isNotificationsPage() && canSendNotificationRealtimeTest()) {
+        <section class="admin-data-card notification-test-email-card notification-realtime-test-card" aria-labelledby="notification-realtime-test-title">
+          <header class="admin-data-card-header">
+            <h2 id="notification-realtime-test-title">Send Realtime Test</h2>
+            <span
+              class="table-status realtime-status"
+              [class.connected]="realtimeConnectionStatus() === 'Connected'"
+              [class.connecting]="realtimeConnectionStatus() === 'Connecting'"
+              [class.reconnecting]="realtimeConnectionStatus() === 'Reconnecting'"
+              [class.disconnected]="realtimeConnectionStatus() === 'Disconnected'"
+            >
+              <span class="realtime-status-dot" aria-hidden="true"></span>
+              {{ realtimeConnectionStatus() }}
+            </span>
+          </header>
+          <div class="notification-test-email-form notification-realtime-test-form">
+            <div class="notification-realtime-count" aria-live="polite">
+              <span>Connected clients</span>
+              <strong>{{ realtimeConnectedClientCountLabel() }}</strong>
+            </div>
+            <button
+              type="button"
+              matButton
+              class="notification-test-send-button"
+              (click)="sendNotificationRealtimeTest()"
+              [disabled]="realtimeTestSending()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">sensors</span>
+              {{ realtimeTestSending() ? 'Sending...' : 'Send Realtime Notification' }}
+            </button>
+          </div>
+        </section>
+      }
+
+      <section class="admin-config-layout" [class.single-column]="!page().table || page().cards.length === 0">
+        @if (page().table; as table) {
+          <section class="admin-data-card">
+            <header class="admin-data-card-header">
+              <h2>{{ adminDetailsTitle() }}</h2>
+              @if (adminDetailsStatus(); as status) {
+                <span class="table-status custom">{{ status }}</span>
+              }
+            </header>
+            @if (isCurrentPagePageable()) {
+              <app-admin-table-toolbar
+                [searchPlaceholder]="'Search ' + adminListItemLabel()"
+                [searchAriaLabel]="'Search ' + adminListItemLabel()"
+                [pageSizeAriaLabel]="adminListItemLabel() + ' page size'"
+                [search]="listState().search"
+                [pageSize]="listState().pageSize"
+                [pageSizeOptions]="adminListPageSizeOptions"
+                (searchChange)="setListSearchValue($event)"
+                (pageSizeChange)="setListPageSizeValue($event)"
+              />
+            }
+            <div class="table-wrap">
+              <table
+                class="admin-stitch-table"
+                [class.pipeline-template-table]="isHiringPipelinePage()"
+                [class.groups-table]="isGroupsPage()"
+                [class.departments-table]="isDepartmentsPage()"
+                [class.skills-table]="isSkillsPage()"
+                [class.notifications-table]="isNotificationsPage()"
+                [class.ai-settings-table]="isAiSettingsPage()"
+                [class.integrations-table]="isIntegrationsPage()"
+                [class.audit-logs-table]="isAuditLogsPage()"
+              >
+                <thead>
+                  <tr>
+                    @for (column of table.columns; track column) {
+                      <th>{{ column }}</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of table.rows; track row.join('|')) {
+                    <tr>
+                      @for (cell of visibleTableCells(row, table); track cellIndex; let cellIndex = $index) {
+                        <td
+                          [class.mono-cell]="cellIndex === 0 && isCodeLike(cell)"
+                          [class.stage-flow-cell]="isPipelineStageCell(cellIndex)"
+                          [class.actions-cell]="isSkillActionsCell(cellIndex) || isNotificationTemplateActionsCell(cellIndex) || isHiringPipelineActionsCell(cellIndex)"
+                        >
+                          @if (isPipelineStageCell(cellIndex)) {
+                            <div class="pipeline-stage-flow" [attr.aria-label]="cell">
+                              @for (stage of stageSteps(cell); track stage; let last = $last) {
+                                <span class="pipeline-stage-chip">{{ stage }}</span>
+                                @if (!last) {
+                                  <span class="material-symbols-outlined pipeline-stage-arrow" aria-hidden="true">
+                                    chevron_right
+                                  </span>
+                                }
+                              }
+                            </div>
+                          } @else if (isAuditTimestampCell(cellIndex) || isNotificationTemplateUpdatedCell(cellIndex)) {
+                            <time [attr.datetime]="cell" [matTooltip]="auditTimestampTooltip(cell)" matTooltipPosition="above">
+                              {{ formatAuditTimestamp(cell) }}
+                            </time>
+                          } @else if (isGroupMembersCell(cellIndex)) {
+                            <button
+                              type="button"
+                              class="table-link-button"
+                              (click)="openGroupMembership(row)"
+                              [disabled]="!canManageCurrentAdminPage()"
+                              [matTooltip]="permissionTooltip(canManageCurrentAdminPage())"
+                              matTooltipPosition="above"
+                            >
+                              {{ cell }}
+                            </button>
+                          } @else if (isGroupActionsCell(cellIndex)) {
+                            <button
+                              type="button"
+                              class="row-text-action"
+                              (click)="openGroupMembership(row)"
+                              [disabled]="!canManageCurrentAdminPage()"
+                              [matTooltip]="permissionTooltip(canManageCurrentAdminPage())"
+                              matTooltipPosition="above"
+                            >
+                              <span class="material-symbols-outlined" aria-hidden="true">group_add</span>
+                              Manage
+                            </button>
+                          } @else if (isSkillActionsCell(cellIndex)) {
+                            <div class="row-action-buttons" aria-label="Actions for {{ row[0] }}">
+                              <button
+                                type="button"
+                                class="icon-only-button"
+                                matTooltip="Edit skill"
+                                matTooltipPosition="above"
+                                aria-label="Edit skill {{ row[0] }}"
+                                (click)="openEditSkillDialog(row)"
+                                [disabled]="!canManageCurrentAdminPage()"
+                              >
+                                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                class="icon-only-button"
+                                matTooltip="Delete skill"
+                                matTooltipPosition="above"
+                                aria-label="Delete skill {{ row[0] }}"
+                                (click)="openDeleteSkillDialog(row)"
+                                [disabled]="!canManageCurrentAdminPage()"
+                              >
+                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                              </button>
+                            </div>
+                          } @else if (isNotificationTemplateActionsCell(cellIndex)) {
+                            <button
+                              type="button"
+                              class="icon-only-button"
+                              matTooltip="Edit email template"
+                              matTooltipPosition="above"
+                              aria-label="Edit template {{ row[0] }}"
+                              (click)="openNotificationTemplate(notificationTemplateFromRow(row))"
+                              [disabled]="!canManageNotifications()"
+                            >
+                              <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                            </button>
+                          } @else if (isHiringPipelineActionsCell(cellIndex)) {
+                            <button
+                              type="button"
+                              class="icon-only-button"
+                              matTooltip="Edit interview template"
+                              matTooltipPosition="above"
+                              aria-label="Edit interview template {{ row[0] }}"
+                              (click)="openInterviewTemplateDialog(row)"
+                              [disabled]="!canManageCurrentAdminPage()"
+                            >
+                              <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                            </button>
+                          } @else {
+                            @if (isStatusValue(cell)) {
+                              <span class="table-status" [class.success]="cell === 'Active'">
+                                {{ cell }}
+                              </span>
+                            } @else if ((cellIndex === 0 && isCodeLike(cell)) || isNotificationTemplateEventCodeCell(cellIndex)) {
+                              <span class="code-chip">{{ cell }}</span>
+                            } @else {
+                              {{ cell }}
+                            }
+                          }
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (isCurrentPagePageable()) {
+              <app-admin-pagination
+                [rangeLabel]="listRangeLabel(adminListItemLabel())"
+                [pageNumbers]="listPageNumbers()"
+                [currentPage]="listState().page"
+                [canGoPrevious]="canGoToPreviousListPage()"
+                [canGoNext]="canGoToNextListPage()"
+                (pageChange)="goToListPage($event)"
+              />
+            } @else {
+              <footer class="admin-table-footer">
+                <span>Showing {{ table.rows.length }} {{ page().title.toLowerCase() }}</span>
+              </footer>
+            }
+          </section>
+        }
+
+        <aside class="admin-config-rail">
+          @for (card of page().cards; track card.title) {
+            <article
+              class="admin-rail-card"
+              [matTooltip]="card.tooltip ?? ''"
+              [matTooltipDisabled]="!card.tooltip"
+              matTooltipPosition="above"
+            >
+              <h2>{{ card.title }}</h2>
+              <ul>
+                @for (line of card.lines; track line) {
+                  <li>{{ line }}</li>
+                }
+              </ul>
+            </article>
+          }
+        </aside>
+      </section>
+
+      @if (createGroupDialogOpen()) {
+        <app-admin-create-group-dialog
+          (closed)="closeCreateGroupDialog()"
+          (groupCreated)="handleGroupCreated()"
+        />
+      }
+
+      @if (createDepartmentDialogOpen()) {
+        <app-admin-create-department-dialog
+          (closed)="closeCreateDepartmentDialog()"
+          (departmentCreated)="handleDepartmentCreated()"
+        />
+      }
+
+      @if (createSkillDialogOpen()) {
+        <app-admin-create-skill-dialog
+          (closed)="closeCreateSkillDialog()"
+          (skillSaved)="handleSkillSaved()"
+        />
+      }
+
+      @if (selectedSkillForEdit(); as skill) {
+        <app-admin-create-skill-dialog
+          [skill]="skill"
+          (closed)="closeEditSkillDialog()"
+          (skillSaved)="handleSkillSaved()"
+        />
+      }
+
+      @if (skillDeleteTarget(); as skill) {
+        <div class="admin-modal-backdrop" aria-hidden="true" (click)="closeDeleteSkillDialog()"></div>
+        <section class="admin-modal-panel" role="dialog" aria-modal="true" aria-labelledby="delete-skill-title">
+          <header>
+            <div>
+              <p class="admin-breadcrumb">Configuration / Skills</p>
+              <h2 id="delete-skill-title">Delete Skill</h2>
+            </div>
+            <button
+              type="button"
+              class="icon-only-button"
+              aria-label="Close delete skill"
+              (click)="closeDeleteSkillDialog()"
+              [disabled]="skillActionSaving()"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </header>
+
+          <section class="notification-template-summary">
+            <span class="material-symbols-outlined" aria-hidden="true">psychology</span>
+            <div>
+              <strong>{{ skill.name }}</strong>
+              <span>{{ skill.category }}</span>
+            </div>
+            <span class="table-status" [class.success]="skill.status === 'Active'">{{ skill.status }}</span>
+          </section>
+
+          <p class="modal-error-message">This will remove the skill from the dictionary and existing skill links.</p>
+
+          <footer>
+            <button
+              mat-stroked-button
+              type="button"
+              class="stitch-secondary-button"
+              (click)="closeDeleteSkillDialog()"
+              [disabled]="skillActionSaving()"
+            >
+              Cancel
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              class="stitch-primary-button danger-action"
+              (click)="deleteSkill(skill)"
+              [disabled]="skillActionSaving()"
+            >
+              {{ skillActionSaving() ? 'Deleting...' : 'Delete Skill' }}
+            </button>
+          </footer>
+        </section>
+      }
+
+      @if (selectedGroupMembership(); as groupMembership) {
+        <app-admin-group-membership-dialog
+          [group]="groupMembership"
+          (closed)="closeGroupMembership()"
+          (membershipChanged)="handleGroupMembershipChanged()"
+        />
+      }
+
+      @if (selectedInterviewTemplate(); as template) {
+        <app-admin-interview-template-dialog
+          [template]="template"
+          [departments]="interviewTemplateDepartmentChoices"
+          [interviewers]="interviewTemplateInterviewerChoices"
+          (closed)="closeInterviewTemplateDialog()"
+          (templateSaved)="handleInterviewTemplateSaved()"
+        />
+      }
+    }
+  }
+
+  @if (selectedNotificationTemplate(); as template) {
+    <div class="admin-modal-backdrop" aria-hidden="true" (click)="closeNotificationTemplate()"></div>
+    <section class="admin-modal-panel notification-template-modal" role="dialog" aria-modal="true" aria-labelledby="notification-template-title">
+      <header>
+        <div>
+          <p class="admin-breadcrumb">Configuration / Notifications</p>
+          <h2 id="notification-template-title">Edit Email Template</h2>
+        </div>
+        <button type="button" class="icon-only-button" aria-label="Close email template" (click)="closeNotificationTemplate()">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </header>
+
+      <section class="notification-template-summary">
+        <span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span>
+        <div>
+          <strong>{{ template.name }}</strong>
+          <span>{{ template.eventCode }} - {{ template.recipient }}</span>
+        </div>
+        <span class="table-status success">Active</span>
+      </section>
+
+      <div class="modal-form-grid notification-template-form">
+        <label class="stitch-field">
+          <span>Subject</span>
+          <input
+            [value]="template.subject"
+            aria-label="Email template subject"
+            (input)="updateSelectedNotificationSubject($event)"
+          />
+        </label>
+        <label class="stitch-field full-span">
+          <span>Email Body</span>
+          <textarea rows="8" aria-label="Email template body" [value]="template.body" (input)="updateSelectedNotificationBody($event)"></textarea>
+        </label>
+      </div>
+
+      <section class="template-variable-panel">
+        <h3>Available Variables</h3>
+        <div>
+          @for (variable of template.variables; track variable) {
+            <span class="code-chip">{{ '{{' + variable + '}}' }}</span>
+          }
+        </div>
+      </section>
+
+      <footer>
+        <button mat-button type="button" class="stitch-secondary-button" (click)="closeNotificationTemplate()">Cancel</button>
+        <button
+          mat-flat-button
+          type="button"
+          class="stitch-primary-button"
+          (click)="saveNotificationTemplate(template)"
+          [disabled]="!canManageNotifications() || notificationTemplateSaving()"
+        >
+          {{ notificationTemplateSaving() ? 'Saving...' : 'Save Template' }}
+        </button>
+      </footer>
+    </section>
+  }
+</main>
+  
