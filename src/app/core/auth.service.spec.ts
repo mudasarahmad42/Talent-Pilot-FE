@@ -106,6 +106,22 @@ describe('AuthService', () => {
     });
   });
 
+  it('navigates to a safe return URL after login', () => {
+    const service = TestBed.inject(AuthService);
+
+    service.loginWithCredentials(loginOption.email, 'demo', true, '/candidate/apply/post-1?source=invite');
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/candidate/apply/post-1?source=invite');
+  });
+
+  it('ignores external return URLs after login', () => {
+    const service = TestBed.inject(AuthService);
+
+    service.loginWithCredentials(loginOption.email, 'demo', true, 'https://example.com/candidate/apply/post-1');
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/app/dashboard');
+  });
+
   it('keeps the current user unset when password authentication fails', () => {
     api.post.mockReturnValueOnce(throwError(() => new Error('Invalid credentials.')));
     const service = TestBed.inject(AuthService);

@@ -1,8 +1,16 @@
 <div class="admin-shell">
   <header class="topbar">
     <a class="brand app-brand" routerLink="/admin-center/tenant-profile" aria-label="Talent Pilot Admin Center">
-      <img class="brand-ai-logo" src="/ai-unlimited-mark.png" alt="" aria-hidden="true" />
-      <strong>Talent Pilot</strong>
+      <span class="talent-pilot-logo app-brand-icon" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+      <span class="app-brand-copy">
+        <img class="brand-ai-logo" src="/ai-unlimited-mark.png" alt="" aria-hidden="true" />
+        <strong>Talent Pilot</strong>
+      </span>
     </a>
 
     <nav class="top-links" aria-label="Global">
@@ -13,6 +21,7 @@
     </nav>
 
     <div class="user-menu">
+      <app-ai-health-warning />
       <app-notification-bell />
       @if (currentUser(); as user) {
         <button type="button" class="avatar-button" [attr.aria-label]="'Sign out ' + user.name" (click)="auth.logout()">

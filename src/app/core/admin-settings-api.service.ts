@@ -25,12 +25,18 @@ const EMPTY_TENANT_PROFILE: TenantProfileSettings = {
   defaultCurrency: 'PKR',
   status: 'Active',
   careerDisplayName: '',
+  companyAddress: null,
+  companyCity: null,
+  companyCountry: null,
+  officialEmail: null,
+  officialPhone: null,
   primaryColor: '#0A66C2',
   candidateLoginRequired: true,
   candidateCvFormat: 'DOCX',
   publicJobsEnabled: true,
   inviteExpiryDays: 7,
   reapplyCooldownDays: 90,
+  notificationEmailProvider: 'Resend',
   userCount: 0,
   roleCount: 0,
   setupComplete: false,
@@ -91,6 +97,10 @@ export class AdminSettingsApiService {
       throw new Error('Admin contact email must be valid.');
     }
 
+    if (input.officialEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.officialEmail.trim())) {
+      throw new Error('Official email must be valid.');
+    }
+
     if (!/^#[0-9a-f]{6}$/i.test(input.primaryColor)) {
       throw new Error('Primary color must be a hex color such as #0A66C2.');
     }
@@ -113,6 +123,10 @@ export class AdminSettingsApiService {
 
     if (input.reapplyCooldownDays < 1 || input.reapplyCooldownDays > 365) {
       throw new Error('Reapply cooldown must be between 1 and 365 days.');
+    }
+
+    if (!['Resend', 'MicrosoftGraph'].includes(input.notificationEmailProvider)) {
+      throw new Error('Email provider must be Resend or Microsoft Graph.');
     }
 
     if (!input.logoContentBase64) {

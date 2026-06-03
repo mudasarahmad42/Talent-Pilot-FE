@@ -43,12 +43,7 @@ export class CandidateOperationsDataService {
 
     const jobPosts = publishing.items ?? [];
     const queueItems = queue.items ?? [];
-    const requestIds = Array.from(
-      new Set([
-        ...jobPosts.map((post) => post.jobRequestId),
-        ...queueItems.map((item) => item.jobRequest.id),
-      ]),
-    ).filter(Boolean);
+    const requestIds = Array.from(new Set(queueItems.map((item) => item.jobRequest.id))).filter(Boolean);
 
     const sourcingResults = await Promise.allSettled(
       requestIds.map((jobRequestId) => this.store.loadRecruiterSourcing(jobRequestId)),
@@ -88,7 +83,10 @@ export class CandidateOperationsDataService {
   private normalizeSourcing(sourcing: RecruiterSourcing): RecruiterSourcing {
     return {
       ...sourcing,
-      applications: sourcing.applications ?? [],
+      applications: (sourcing.applications ?? []).map((application) => ({
+        ...application,
+        documents: application.documents ?? [],
+      })),
       candidateSearchItems: sourcing.candidateSearchItems ?? [],
       talentRediscoveryMatches: sourcing.talentRediscoveryMatches ?? [],
       interviewTemplates: sourcing.interviewTemplates ?? [],

@@ -132,23 +132,32 @@ import {
                       <small>{{ item.interview.locationText }}</small>
                     }
                   </div>
-                  <div role="cell">
+                  <div role="cell" class="scheduling-status-cell">
                     <span class="status-badge" [class.completed]="item.interview.status === 'Completed'">{{ item.interview.status }}</span>
                     @if (item.interview.recommendation) {
                       <small>Recommendation: {{ item.interview.recommendation }}</small>
                     }
                   </div>
-                  <div role="cell" class="candidate-action-stack">
-                    <a class="table-link-button" [routerLink]="['/app/recruitment/sourcing', item.sourcing.jobRequest.id]">
-                      Open sourcing
-                    </a>
-                    <a
-                      class="table-link-button"
-                      [routerLink]="['/app/recruitment/applications', item.application.jobApplicationId, 'history']"
-                      [queryParams]="{ returnUrl: '/app/interview-scheduling' }"
-                    >
-                      View application
-                    </a>
+                  <div role="cell" class="schedule-action-cell">
+                    <details class="row-action-menu schedule-action-menu">
+                      <summary class="icon-button" aria-label="Open interview actions">
+                        <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                      </summary>
+                      <div class="row-action-menu-panel" role="menu">
+                        <a role="menuitem" [routerLink]="['/app/recruitment/sourcing', item.sourcing.jobRequest.id]">
+                          <span class="material-symbols-outlined" aria-hidden="true">work</span>
+                          Open sourcing
+                        </a>
+                        <a
+                          role="menuitem"
+                          [routerLink]="['/app/recruitment/applications', item.application.jobApplicationId, 'history']"
+                          [queryParams]="{ returnUrl: '/app/interview-scheduling' }"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+                          View application
+                        </a>
+                      </div>
+                    </details>
                   </div>
                 </article>
               }

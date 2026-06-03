@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
@@ -27,6 +27,7 @@ import {
   AuditEventRow,
   AuditLogFilter,
   BulkAssignmentPreviewUser,
+  NotificationChannelTab,
   NotificationTemplateDefinition,
   PermissionResolutionMode,
   RoleActionContext,
@@ -40,8 +41,11 @@ import {
 import { buildTimezoneOptions, timezoneValidator } from './utils/timezone-options';
 import { AdminSettingsApiService } from '../../core/admin-settings-api.service';
 import { AuthService } from '../../core/auth.service';
+import { GoogleCalendarApiService, GoogleCalendarConnectionStatus } from '../../core/google-calendar-api.service';
 import {
   AdminAiAgentDefinition,
+  AdminAiRuntimeResponse,
+  AdminSemanticSimilarityHealthResponse,
   AdminCandidateSourceListItem,
   AdminCenterApiService,
   AdminDepartmentListItem,
@@ -49,12 +53,15 @@ import {
   AdminHiringPipelineTemplateDetails,
   AdminHiringPipelineTemplateItem,
   AdminListQuery,
+  AdminNotificationOutboxItem,
+  AdminNotificationWorkerStatus,
   AdminRoleListItem,
   AdminSkillListItem,
   AdminUserListItem,
   AdminWorkflowConfigurationResponse,
   AdminWorkflowIntakeRoutingRuleItem,
   NotificationTemplateSummary,
+  NotificationEmailSenderProviderConfiguration,
   PermissionCatalogItem,
   RoleUserAssignmentPreviewItem,
 } from '../../core/admin-center-api.service';
@@ -64,6 +71,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   CandidateCvFormat,
+  NotificationEmailProvider,
   TenantCurrency,
   TenantProfileSettings,
   TenantStatus,
@@ -101,6 +109,7 @@ export class AdminPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly adminSettingsApi = inject(AdminSettingsApiService);
   private readonly adminCenterApi = inject(AdminCenterApiService);
+  private readonly googleCalendarApi = inject(GoogleCalendarApiService);
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly fileDownloads = inject(FileDownloadService);
@@ -130,6 +139,11 @@ export class AdminPageComponent {
     defaultCurrency: [this.savedTenantProfile().defaultCurrency as TenantCurrency, [Validators.required]],
     status: [this.savedTenantProfile().status as TenantStatus, [Validators.required]],
     careerDisplayName: [this.savedTenantProfile().careerDisplayName, [Validators.required]],
+    companyAddress: [this.savedTenantProfile().companyAddress ?? ''],
+    companyCity: [this.savedTenantProfile().companyCity ?? ''],
+    companyCountry: [this.savedTenantProfile().companyCountry ?? ''],
+    officialEmail: [this.savedTenantProfile().officialEmail ?? '', [Validators.email]],
+    officialPhone: [this.savedTenantProfile().officialPhone ?? ''],
     primaryColor: [this.savedTenantProfile().primaryColor, [Validators.required, Validators.pattern(/^#[0-9a-f]{6}$/i)]],
     candidateLoginRequired: [this.savedTenantProfile().candidateLoginRequired],
     candidateCvFormat: [this.savedTenantProfile().candidateCvFormat as CandidateCvFormat, [Validators.required]],
@@ -138,6 +152,10 @@ export class AdminPageComponent {
     reapplyCooldownDays: [
       this.savedTenantProfile().reapplyCooldownDays,
       [Validators.required, Validators.min(1), Validators.max(365)],
+    ],
+    notificationEmailProvider: [
+      this.savedTenantProfile().notificationEmailProvider as NotificationEmailProvider,
+      [Validators.required],
     ],
   });
 
@@ -171,9 +189,10 @@ export class AdminPageComponent {
   readonly isSkillsPage = computed(() => this.page().id === 'skills');
   readonly isWorkflowsPage = computed(() => this.page().id === 'workflows');
   readonly isNotificationsPage = computed(() => this.page().id === 'notifications');
+  readonly isNotificationOutboxPage = computed(() => this.page().id === 'notification-outbox');
   readonly isAiSettingsPage = computed(() => this.page().id === 'ai-settings');
   readonly isCandidateSourcesPage = computed(() => this.page().id === 'candidate-sources');
-  readonly isIntegrationsPage = computed(() => this.isCandidateSourcesPage());
+  readonly isIntegrationsPage = computed(() => this.page().id === 'integrations');
   readonly isAuditLogsPage = computed(() => this.page().id === 'audit-logs');
   readonly isHiringPipelinePage = computed(() => this.page().id === 'hiring-pipeline');
   readonly canManageTenantProfile = computed(() =>
@@ -213,10 +232,23 @@ export class AdminPageComponent {
   readonly selectedInterviewTemplate = signal<AdminHiringPipelineTemplateDetails | null>(null);
   readonly selectedNotificationTemplate = signal<NotificationTemplateDefinition | null>(null);
   readonly notificationTemplateSaving = signal(false);
+  readonly notificationOutboxSummary = signal({
+    pendingOutboxCount: 0,
+    sentOutboxCount: 0,
+    failedOutboxCount: 0,
+  });
+  readonly notificationOutboxItems = signal<AdminNotificationOutboxItem[]>([]);
+  readonly notificationOutboxTotalCount = signal(0);
+  readonly selectedNotificationOutboxItem = signal<AdminNotificationOutboxItem | null>(null);
+  readonly notificationOutboxRetryingIds = signal<Set<string>>(new Set());
+  readonly notificationWorkerStatus = signal<AdminNotificationWorkerStatus>(this.defaultNotificationWorkerStatus());
   readonly testEmailRecipient = signal('');
   readonly testEmailSending = signal(false);
   readonly realtimeTestSending = signal(false);
   readonly realtimeConnectedClientCount = signal<number | null>(null);
+  readonly notificationEmailSenderConfigurations = signal<NotificationEmailSenderProviderConfiguration[]>([]);
+  readonly googleCalendarStatus = signal<GoogleCalendarConnectionStatus | null>(null);
+  readonly googleCalendarConnecting = signal(false);
   readonly workflowIntakeRoutingRules = signal<AdminWorkflowIntakeRoutingRuleItem[]>([]);
   readonly workflowIntakeRoutingSaving = signal(false);
   readonly realtimeConnectedClientCountLabel = computed(() => {
@@ -225,6 +257,7 @@ export class AdminPageComponent {
   });
   readonly activeTenantTab = signal<TenantProfileTab>('profile');
   readonly activeAiSettingsTab = signal<AiSettingsTab>('runtime');
+  readonly activeNotificationTab = signal<NotificationChannelTab>('email');
   readonly permissionResolutionMode = signal<PermissionResolutionMode>('merge');
   readonly timezoneOptions = buildTimezoneOptions(this.savedTenantProfile().defaultTimezone);
   notificationTemplates: NotificationTemplateDefinition[] = [];
@@ -235,26 +268,35 @@ export class AdminPageComponent {
   workflowIntakeUserChoices: AccessOption[] = [];
   workflowIntakeGroupChoices: AccessOption[] = [];
   readonly accountStatusOptions = ['Active', 'Invited', 'Disabled'];
+  readonly notificationEmailProviderOptions: Array<{ value: NotificationEmailProvider; label: string }> = [
+    { value: 'Resend', label: 'Resend' },
+    { value: 'MicrosoftGraph', label: 'Microsoft Graph' },
+  ];
   readonly adminListPageSizeOptions = ADMIN_LIST_PAGE_SIZE_OPTIONS;
   rolePermissionOptions: RolePermissionOption[] = [];
   interviewTemplateDepartmentChoices: AccessOption[] = [];
   interviewTemplateInterviewerChoices: AdminUserListItem[] = [];
   readonly defaultNewRolePermissions: string[] = [];
-  readonly tenantDraft = toSignal(
+  private readonly tenantProfileFormValue = toSignal(
     this.tenantProfileForm.valueChanges.pipe(
       startWith(this.tenantProfileForm.getRawValue()),
-      map((formValue) => ({
-        ...this.savedTenantProfile(),
-        ...formValue,
-      })),
     ),
     {
-      initialValue: {
-        ...this.savedTenantProfile(),
-        ...this.tenantProfileForm.getRawValue(),
-      },
+      initialValue: this.tenantProfileForm.getRawValue(),
     },
   );
+  readonly tenantDraft = computed(() => ({
+    ...this.savedTenantProfile(),
+    ...this.tenantProfileFormValue(),
+  }));
+  readonly selectedNotificationEmailSenderConfiguration = computed(() => {
+    const selectedProvider =
+      this.tenantProfileFormValue().notificationEmailProvider ?? this.savedTenantProfile().notificationEmailProvider;
+
+    return this.notificationEmailSenderConfigurations().find(
+      (configuration) => configuration.provider === selectedProvider,
+    ) ?? null;
+  });
   readonly tenantAuditQueryParams = computed(() => ({
     area: 'Admin Center',
     entityType: 'Tenant',
@@ -297,6 +339,17 @@ export class AdminPageComponent {
     { id: 'runtime', label: 'Runtime & Guardrails' },
     { id: 'agents', label: 'AI Agents' },
   ];
+  readonly notificationTabs: Array<{ id: NotificationChannelTab; label: string; icon: string }> = [
+    { id: 'email', label: 'Email Notifications', icon: 'mail' },
+    { id: 'realtime', label: 'Realtime Notifications', icon: 'sensors' },
+  ];
+  readonly notificationOutboxStatusOptions = [
+    { value: '', label: 'All statuses' },
+    { value: 'Failed', label: 'Failed' },
+    { value: 'Sent', label: 'Sent' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Processing', label: 'Processing' },
+  ];
   readonly activeAiAgentCount = signal(0);
   readonly aiDecisionBoundary = signal('');
   aiAgents: AiAgentDefinition[] = [];
@@ -324,7 +377,7 @@ export class AdminPageComponent {
       const id = this.pageId() ?? 'tenant-profile';
       if (this.requiresBackendData(id)) {
         const auditLogFilter = id === 'audit-logs' ? this.auditLogFilter() : {};
-        void this.loadBackendPage(id, auditLogFilter);
+        untracked(() => void this.loadBackendPage(id, auditLogFilter));
       }
     });
 
@@ -347,7 +400,7 @@ export class AdminPageComponent {
       ...basePage,
       subtitle: error
         ? `Backend data is required for this screen. ${error}`
-        : 'Loading this screen from the backend...',
+        : 'Loading...',
       status: error ? 'Backend required' : 'Loading',
       metrics: [],
       cards: [],
@@ -359,6 +412,9 @@ export class AdminPageComponent {
   private async loadBackendPage(pageId: string, auditLogFilter: AuditLogFilter = {}): Promise<void> {
     try {
       const listQuery = this.toAdminListQuery(pageId);
+      if (pageId !== 'notification-outbox') {
+        this.selectedNotificationOutboxItem.set(null);
+      }
 
       if (pageId === 'users') {
         const [response, roles, groups] = await Promise.all([
@@ -443,13 +499,50 @@ export class AdminPageComponent {
       }
 
       if (pageId === 'notifications') {
-        const templates = await this.adminCenterApi.listNotificationTemplates(listQuery);
+        const [templates, outbox] = await Promise.all([
+          this.adminCenterApi.listNotificationTemplates(listQuery),
+          this.adminCenterApi
+            .listNotificationOutbox({ page: 1, pageSize: 1 })
+            .catch(() => ({
+              workerStatus: this.unavailableNotificationWorkerStatus(),
+              items: [],
+              page: 1,
+              pageSize: 1,
+              totalCount: 0,
+            })),
+        ]);
         this.notificationTemplates = templates.items.map((template) => this.toNotificationTemplate(template));
+        this.notificationOutboxSummary.set({
+          pendingOutboxCount: templates.summary.pendingOutboxCount ?? 0,
+          sentOutboxCount: templates.summary.sentOutboxCount ?? 0,
+          failedOutboxCount: templates.summary.failedOutboxCount ?? 0,
+        });
+        this.notificationWorkerStatus.set(outbox.workerStatus ?? this.defaultNotificationWorkerStatus());
+        this.notificationOutboxItems.set(outbox.items);
+        this.notificationOutboxTotalCount.set(outbox.totalCount);
         this.setListResult(pageId, templates.page, templates.pageSize, templates.totalCount);
         this.setBackendPageOverride(pageId, this.toNotificationsPage(templates.items, templates.summary));
         if (this.canSendNotificationRealtimeTest()) {
           void this.refreshRealtimeConnectionStatus();
         }
+        return;
+      }
+
+      if (pageId === 'notification-outbox') {
+        const [templates, outbox] = await Promise.all([
+          this.adminCenterApi.listNotificationTemplates({ page: 1, pageSize: 1 }),
+          this.adminCenterApi.listNotificationOutbox(listQuery),
+        ]);
+        this.notificationOutboxSummary.set({
+          pendingOutboxCount: templates.summary.pendingOutboxCount ?? 0,
+          sentOutboxCount: templates.summary.sentOutboxCount ?? 0,
+          failedOutboxCount: templates.summary.failedOutboxCount ?? 0,
+        });
+        this.notificationWorkerStatus.set(outbox.workerStatus ?? this.defaultNotificationWorkerStatus());
+        this.notificationOutboxItems.set(outbox.items);
+        this.notificationOutboxTotalCount.set(outbox.totalCount);
+        this.setListResult(pageId, outbox.page, outbox.pageSize, outbox.totalCount);
+        this.setBackendPageOverride(pageId, this.toNotificationOutboxPage(outbox, templates.summary));
         return;
       }
 
@@ -459,6 +552,8 @@ export class AdminPageComponent {
           this.adminCenterApi.getAiAgents(),
           this.adminCenterApi.getAiGuardrails(),
         ]);
+        const semanticHealth = await this.adminCenterApi.getAiSemanticSimilarityHealth()
+          .catch((error) => this.semanticSimilarityDiagnosticUnavailable(error, runtime));
         this.aiAgents = agents.items.map((agent) => this.toAiAgentDefinition(agent));
         this.activeAiAgentCount.set(agents.activeAgentCount);
         this.aiDecisionBoundary.set(guardrails.decisionBoundary);
@@ -466,8 +561,20 @@ export class AdminPageComponent {
           ...getAdminPage(pageId),
           metrics: [
             { label: 'Provider', value: runtime.provider, note: runtime.runtimeEditable ? 'Editable' : 'Read-only' },
-            { label: 'LLM', value: runtime.llmModel, note: runtime.vectorStore },
+            {
+              label: 'LLM',
+              value: runtime.llmModel,
+              note: runtime.vectorStore,
+            },
             { label: 'Embedding', value: runtime.embeddingModel, note: `${runtime.embeddingDimensions} dimensions` },
+            {
+              label: 'Semantic Similarity',
+              value: this.semanticSimilarityMetricValue(semanticHealth),
+              note: semanticHealth.available
+                ? `Ready at ${semanticHealth.ollamaBaseUrl}`
+                : semanticHealth.message,
+              tooltip: semanticHealth.status,
+            },
             {
               label: 'Human Review',
               value: guardrails.humanReviewRequired ? 'Required' : 'Optional',
@@ -491,6 +598,19 @@ export class AdminPageComponent {
         return;
       }
 
+      if (pageId === 'integrations') {
+        const [status, emailSenders] = await Promise.all([
+          this.googleCalendarApi.getStatus(),
+          this.adminCenterApi
+            .listNotificationEmailSenders()
+            .catch(() => ({ providers: [] })),
+        ]);
+        this.googleCalendarStatus.set(status);
+        this.notificationEmailSenderConfigurations.set(emailSenders.providers);
+        this.setBackendPageOverride(pageId, this.toIntegrationsPage(status));
+        return;
+      }
+
       if (pageId === 'audit-logs') {
         const response = await this.adminCenterApi.listAuditLogs(this.toAuditLogQuery(auditLogFilter, listQuery));
         this.setListResult(pageId, response.page, response.pageSize, response.totalCount);
@@ -502,6 +622,68 @@ export class AdminPageComponent {
     } catch (error) {
       this.setBackendPageError(pageId, error instanceof Error ? error.message : 'Request failed.');
     }
+  }
+
+  private semanticSimilarityMetricValue(health: AdminSemanticSimilarityHealthResponse): string {
+    if (health.status.startsWith('Diagnostic unavailable:')) {
+      return 'Unknown';
+    }
+
+    return health.available ? 'Available' : 'Unavailable';
+  }
+
+  private semanticSimilarityDiagnosticUnavailable(
+    error: unknown,
+    runtime: AdminAiRuntimeResponse,
+  ): AdminSemanticSimilarityHealthResponse {
+    return {
+      available: false,
+      status: `Diagnostic unavailable: ${this.semanticSimilarityDiagnosticErrorLabel(error)}`,
+      message: 'Health diagnostic could not be read. Runtime settings are loaded, but live similarity status is unknown.',
+      provider: runtime.provider,
+      embeddingModel: runtime.embeddingModel,
+      embeddingDimensions: runtime.embeddingDimensions,
+      vectorStore: runtime.vectorStore,
+      ollamaBaseUrl: 'Configured embedding endpoint',
+    };
+  }
+
+  private semanticSimilarityDiagnosticErrorLabel(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      const backendMessage = this.httpErrorMessage(error);
+      if (backendMessage) {
+        return backendMessage;
+      }
+
+      if (error.status === 0) {
+        return 'API request did not complete.';
+      }
+
+      return `HTTP ${error.status}${error.statusText ? ` ${error.statusText}` : ''}.`;
+    }
+
+    return error instanceof Error ? error.message : 'Request failed.';
+  }
+
+  private httpErrorMessage(error: HttpErrorResponse): string {
+    const body = error.error;
+    if (!body) {
+      return '';
+    }
+
+    if (typeof body === 'string') {
+      return body.trim();
+    }
+
+    if (typeof body === 'object' && 'message' in body && typeof body.message === 'string') {
+      return body.message.trim();
+    }
+
+    if (typeof body === 'object' && 'title' in body && typeof body.title === 'string') {
+      return body.title.trim();
+    }
+
+    return '';
   }
 
   private setBackendPageOverride(pageId: string, page: AdminPage): void {
@@ -554,6 +736,7 @@ export class AdminPageComponent {
   adminListItemLabel(): string {
     const labels: Record<string, string> = {
       notifications: 'email templates',
+      'notification-outbox': 'outbox emails',
       'candidate-sources': 'candidate source labels',
       'audit-logs': 'audit log entries',
       'hiring-pipeline': 'interview templates',
@@ -590,6 +773,11 @@ export class AdminPageComponent {
     void this.reloadCurrentBackendPage();
   }
 
+  setListStatusValue(status: string): void {
+    this.updateListState(this.page().id, { status, page: 1 });
+    void this.reloadCurrentBackendPage();
+  }
+
   goToListPage(page: number): void {
     const nextPage = Math.min(Math.max(1, page), this.listTotalPages());
     if (nextPage === this.listState().page) {
@@ -612,6 +800,7 @@ export class AdminPageComponent {
 
     return {
       search: '',
+      status: '',
       page: 1,
       pageSize: DEFAULT_ADMIN_LIST_PAGE_SIZE,
       totalCount: 0,
@@ -636,6 +825,7 @@ export class AdminPageComponent {
     const state = this.listStateFor(pageId);
     return {
       search: state.search,
+      status: state.status,
       page: state.page,
       pageSize: state.pageSize,
     };
@@ -655,6 +845,7 @@ export class AdminPageComponent {
       'skills',
       'hiring-pipeline',
       'notifications',
+      'notification-outbox',
       'candidate-sources',
       'audit-logs',
     ].includes(pageId);
@@ -950,8 +1141,6 @@ export class AdminPageComponent {
       metrics: [
         { label: 'System events', value: String(summary.activeEventCount), note: 'Code-owned triggers' },
         { label: 'Email templates', value: String(summary.editableTemplateCount), note: 'Linked templates' },
-        { label: 'Pending', value: String(summary.pendingOutboxCount), note: 'Queued deliveries' },
-        { label: 'Failed', value: String(summary.failedOutboxCount), note: 'Delivery failures' },
       ],
       table: {
         columns: ['Template', 'Linked Event', 'Subject', 'Recipient', 'Updated', 'Actions'],
@@ -967,6 +1156,26 @@ export class AdminPageComponent {
           template.variables.join(','),
         ]),
       },
+      cards: [],
+      guardrails: [],
+    };
+  }
+
+  private toNotificationOutboxPage(
+    outbox: Awaited<ReturnType<AdminCenterApiService['listNotificationOutbox']>>,
+    summary: Awaited<ReturnType<AdminCenterApiService['listNotificationTemplates']>>['summary'],
+  ): AdminPage {
+    const base = getAdminPage('notification-outbox');
+
+    return {
+      ...base,
+      status: this.listRangeLabel('outbox emails'),
+      metrics: [
+        { label: 'Pending', value: String(summary.pendingOutboxCount ?? 0), note: 'Waiting for worker' },
+        { label: 'Sent', value: String(summary.sentOutboxCount ?? 0), note: 'Provider accepted' },
+        { label: 'Failed', value: String(summary.failedOutboxCount ?? 0), note: 'Requires review' },
+        { label: 'Rows', value: String(outbox.totalCount), note: 'Current outbox records' },
+      ],
       cards: [],
       guardrails: [],
     };
@@ -996,6 +1205,19 @@ export class AdminPageComponent {
         ]),
       },
       cards: [],
+      guardrails: [],
+    };
+  }
+
+  private toIntegrationsPage(status: GoogleCalendarConnectionStatus): AdminPage {
+    const base = getAdminPage('integrations');
+
+    return {
+      ...base,
+      status: status.connected ? 'Connected' : 'Not connected',
+      metrics: [],
+      cards: [],
+      table: undefined,
       guardrails: [],
     };
   }
@@ -1072,6 +1294,219 @@ export class AdminPageComponent {
         .split(',')
         .map((variable) => variable.trim())
         .filter(Boolean),
+    };
+  }
+
+  notificationWorkerStatusIcon(): string {
+    const state = this.notificationWorkerStatus().state;
+    if (state === 'Running') {
+      return 'check_circle';
+    }
+
+    if (state === 'Error') {
+      return 'error';
+    }
+
+    if (state === 'NotConfigured') {
+      return 'settings_alert';
+    }
+
+    return 'sync_problem';
+  }
+
+  notificationWorkerLastHeartbeatLabel(): string {
+    const value = this.notificationWorkerStatus().lastHeartbeatUtc;
+    return value ? this.formatAuditTimestamp(value) : 'Never';
+  }
+
+  notificationWorkerLastProcessedLabel(): string {
+    const status = this.notificationWorkerStatus();
+    if (!status.lastProcessedAtUtc) {
+      return 'No processed batch';
+    }
+
+    const processedCount = status.lastProcessedCount ?? 0;
+    return `${processedCount} in latest batch - ${this.formatAuditTimestamp(status.lastProcessedAtUtc)}`;
+  }
+
+  notificationWorkerHostLabel(): string {
+    const status = this.notificationWorkerStatus();
+    if (!status.hostName && !status.processId) {
+      return 'Not recorded';
+    }
+
+    return [status.hostName, status.processId ? `PID ${status.processId}` : null].filter(Boolean).join(' / ');
+  }
+
+  notificationEmailProviderLabel(provider: string): string {
+    return provider === 'MicrosoftGraph' ? 'Microsoft Graph' : 'Resend';
+  }
+
+  isMicrosoftGraphEmailProvider(provider?: string | null): boolean {
+    return provider === 'MicrosoftGraph';
+  }
+
+  notificationEmailSenderAddressLabel(): string {
+    const senderEmail = this.selectedNotificationEmailSenderConfiguration()?.senderEmail?.trim();
+    return senderEmail || 'Not configured';
+  }
+
+  notificationEmailSenderStatusLabel(): string {
+    return this.selectedNotificationEmailSenderConfiguration()?.senderConfigured ? 'Configured' : 'Missing sender';
+  }
+
+  openNotificationOutboxEmail(item: AdminNotificationOutboxItem): void {
+    this.selectedNotificationOutboxItem.set(item);
+  }
+
+  closeNotificationOutboxEmail(): void {
+    this.selectedNotificationOutboxItem.set(null);
+  }
+
+  canRetryNotificationOutboxEmail(item: AdminNotificationOutboxItem): boolean {
+    return item.status === 'Failed' && !this.isNotificationOutboxRetrying(item);
+  }
+
+  isNotificationOutboxRetrying(item: AdminNotificationOutboxItem): boolean {
+    return this.notificationOutboxRetryingIds().has(item.outboxId);
+  }
+
+  async retryNotificationOutboxEmail(item: AdminNotificationOutboxItem): Promise<void> {
+    if (!this.canRetryNotificationOutboxEmail(item)) {
+      return;
+    }
+
+    this.notificationOutboxRetryingIds.update((ids) => new Set(ids).add(item.outboxId));
+
+    try {
+      const requeued = await this.adminCenterApi.retryNotificationOutboxEmail(item.outboxId);
+      this.notificationOutboxItems.update((items) =>
+        items.map((current) => (current.outboxId === requeued.outboxId ? requeued : current)),
+      );
+
+      if (this.selectedNotificationOutboxItem()?.outboxId === requeued.outboxId) {
+        this.selectedNotificationOutboxItem.set(requeued);
+      }
+
+      this.notifications.success('Email requeued. The worker will retry it shortly.');
+      await this.reloadCurrentBackendPage();
+    } catch (error) {
+      this.notifications.error(this.toErrorMessage(error, 'Email could not be requeued.'));
+    } finally {
+      this.notificationOutboxRetryingIds.update((ids) => {
+        const next = new Set(ids);
+        next.delete(item.outboxId);
+        return next;
+      });
+    }
+  }
+
+  notificationOutboxRecipient(item: AdminNotificationOutboxItem): string {
+    const email = item.recipientEmail?.trim();
+    const displayName = item.recipientDisplayName?.trim();
+    if (displayName && email) {
+      return `${displayName} <${email}>`;
+    }
+
+    return email || displayName || 'Recipient not recorded';
+  }
+
+  notificationOutboxSender(item: AdminNotificationOutboxItem): string {
+    return item.senderDisplayName?.trim() || 'Talent Pilot workflow';
+  }
+
+  notificationOutboxEntityLabel(item: AdminNotificationOutboxItem): string {
+    if (!item.entityType && !item.entityId) {
+      return 'No linked entity';
+    }
+
+    return [item.entityType, item.entityId].filter(Boolean).join(' / ');
+  }
+
+  notificationOutboxDetailTimestamp(item: AdminNotificationOutboxItem): string {
+    return this.formatAuditTimestamp(this.notificationOutboxActivityTimestamp(item));
+  }
+
+  notificationOutboxActivityTimestamp(item: AdminNotificationOutboxItem): string {
+    return item.processedAtUtc ?? item.updatedAtUtc ?? item.createdAtUtc;
+  }
+
+  notificationOutboxActivityLabel(item: AdminNotificationOutboxItem): string {
+    if (item.status === 'Sent') {
+      return 'Sent';
+    }
+
+    if (item.status === 'Failed') {
+      return item.attemptCount > 1 ? 'Last retry' : 'Last attempt';
+    }
+
+    if (item.status === 'Processing') {
+      return item.attemptCount > 1 ? 'Retrying since' : 'Processing since';
+    }
+
+    if (item.status === 'Pending') {
+      return item.attemptCount > 0 ? 'Retry queued' : 'Queued';
+    }
+
+    return 'Updated';
+  }
+
+  notificationOutboxSenderInitial(item: AdminNotificationOutboxItem): string {
+    return this.notificationOutboxSender(item).trim().charAt(0).toUpperCase() || 'T';
+  }
+
+  notificationOutboxDiagnostic(item: AdminNotificationOutboxItem): string {
+    if (item.status === 'Sent') {
+      return item.processedAtUtc ? `Sent ${this.formatAuditTimestamp(item.processedAtUtc)}.` : 'Sent by the worker.';
+    }
+
+    if (item.status === 'Failed') {
+      return item.lastError?.trim()
+        ? 'Delivery failed. Review the provider error below.'
+        : 'The worker marked this row failed without an error message.';
+    }
+
+    if (item.status === 'Processing') {
+      return 'The worker has claimed this row and has not completed it yet.';
+    }
+
+    if (item.attemptCount > 0) {
+      return 'The row returned to pending after a previous delivery attempt. Check the worker and provider configuration.';
+    }
+
+    const availableAt = new Date(item.availableAtUtc);
+    if (!Number.isNaN(availableAt.getTime()) && availableAt.getTime() > Date.now()) {
+      return `Waiting until ${this.formatAuditTimestamp(item.availableAtUtc)} before the worker can send it.`;
+    }
+
+    return 'Still pending because the outbox worker has not claimed it yet. Start TalentPilot.Worker with the same database connection and configured email provider settings.';
+  }
+
+  private defaultNotificationWorkerStatus(): AdminNotificationWorkerStatus {
+    return {
+      state: 'Unknown',
+      label: 'Checking',
+      message: 'Worker status is loading.',
+      lastHeartbeatUtc: null,
+      startedAtUtc: null,
+      lastProcessedAtUtc: null,
+      lastProcessedCount: null,
+      hostName: null,
+      processId: null,
+      lastError: null,
+      pollIntervalSeconds: 30,
+      staleAfterSeconds: 90,
+      pendingDueCount: 0,
+      processingCount: 0,
+    };
+  }
+
+  private unavailableNotificationWorkerStatus(): AdminNotificationWorkerStatus {
+    return {
+      ...this.defaultNotificationWorkerStatus(),
+      state: 'Unknown',
+      label: 'Status unavailable',
+      message: 'The outbox status endpoint did not return worker health. Restart the API after applying the latest backend build.',
     };
   }
 
@@ -1558,10 +1993,10 @@ export class AdminPageComponent {
     this.testEmailSending.set(true);
 
     try {
-      await this.adminCenterApi.sendNotificationTestEmail({
+      const result = await this.adminCenterApi.sendNotificationTestEmail({
         toEmail: this.testEmailRecipient().trim(),
       });
-      this.notifications.success('Test email sent.');
+      this.notifications.success(`Test email sent through ${this.notificationEmailProviderLabel(result.provider)}.`);
     } catch (error) {
       this.notifications.error(this.toErrorMessage(error, 'Test email could not be sent.'));
     } finally {
@@ -1611,6 +2046,22 @@ export class AdminPageComponent {
       this.realtimeConnectedClientCount.set(status.connectedClientCount);
     } catch {
       this.realtimeConnectedClientCount.set(null);
+    }
+  }
+
+  async connectGoogleCalendar(): Promise<void> {
+    if (!this.canManageCurrentAdminPage()) {
+      this.notifications.error('You do not have permission to manage integrations.');
+      return;
+    }
+
+    this.googleCalendarConnecting.set(true);
+    try {
+      const response = await this.googleCalendarApi.getConnectUrl();
+      globalThis.location.assign(response.authorizationUrl);
+    } catch (error) {
+      this.notifications.error(this.toErrorMessage(error, 'Google Calendar connection could not be started.'));
+      this.googleCalendarConnecting.set(false);
     }
   }
 
@@ -1881,6 +2332,17 @@ export class AdminPageComponent {
     this.activeAiSettingsTab.set(tab);
   }
 
+  setActiveNotificationTab(tab: NotificationChannelTab): void {
+    this.activeNotificationTab.set(tab);
+    if (tab !== 'email') {
+      this.selectedNotificationOutboxItem.set(null);
+    }
+
+    if (tab === 'realtime' && this.canSendNotificationRealtimeTest()) {
+      void this.refreshRealtimeConnectionStatus();
+    }
+  }
+
   setPermissionResolutionMode(event: Event): void {
     const value = (event.target as HTMLSelectElement).value as PermissionResolutionMode;
     this.permissionResolutionMode.set(value);
@@ -2008,6 +2470,17 @@ export class AdminPageComponent {
     );
   }
 
+  canSaveIntegrationEmailSender(): boolean {
+    const control = this.tenantProfileForm.controls.notificationEmailProvider;
+
+    return (
+      !this.saving() &&
+      control.valid &&
+      control.value !== this.savedTenantProfile().notificationEmailProvider &&
+      this.canManageCurrentAdminPage()
+    );
+  }
+
   adminMetricIcon(index: number): string {
     if (this.isUsersPage()) {
       return ['group', 'hub', 'visibility'][index] ?? 'insights';
@@ -2045,6 +2518,10 @@ export class AdminPageComponent {
       return ['source_environment', 'category', 'archive', 'label'][index] ?? 'insights';
     }
 
+    if (this.isIntegrationsPage()) {
+      return ['outgoing_mail', 'event_available'][index] ?? 'extension';
+    }
+
     if (this.isAuditLogsPage()) {
       return ['event_note', 'manage_accounts', 'account_tree', 'smart_toy'][index] ?? 'insights';
     }
@@ -2063,6 +2540,7 @@ export class AdminPageComponent {
       skills: 'Skill Dictionary',
       'hiring-pipeline': 'Interview Templates',
       notifications: 'Email Templates',
+      'notification-outbox': 'Email Outbox',
       'candidate-sources': 'Candidate Source Labels',
       'audit-logs': 'Audit Log Entries',
     };
@@ -2083,6 +2561,8 @@ export class AdminPageComponent {
       !this.isCandidateSourcesPage() &&
       !this.isAiSettingsPage() &&
       !this.isNotificationsPage() &&
+      !this.isNotificationOutboxPage() &&
+      !this.isIntegrationsPage() &&
       !this.isWorkflowsPage()
     );
   }
@@ -2401,8 +2881,12 @@ export class AdminPageComponent {
     }
 
     return new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
     }).format(date);
   }
 
@@ -2562,6 +3046,46 @@ export class AdminPageComponent {
     }
   }
 
+  async saveIntegrationEmailSender(): Promise<void> {
+    if (!this.canManageCurrentAdminPage()) {
+      this.notifications.error('You do not have permission to manage integrations.');
+      return;
+    }
+
+    const providerControl = this.tenantProfileForm.controls.notificationEmailProvider;
+    providerControl.markAsTouched();
+
+    if (providerControl.invalid) {
+      this.notifications.error('Select a valid email sender provider.');
+      return;
+    }
+
+    if (providerControl.value === this.savedTenantProfile().notificationEmailProvider) {
+      return;
+    }
+
+    this.saving.set(true);
+    this.formMessage.set('');
+
+    try {
+      const saved = await this.adminSettingsApi.updateTenantProfile(
+        this.toTenantProfileUpdateInputWithEmailProvider(providerControl.value),
+      );
+      this.patchTenantProfileForm(saved);
+      this.patchCompanyLogoPreview(saved);
+      this.formMessageIsError.set(false);
+      this.formMessage.set('Email sender saved.');
+      this.notifications.success('Email sender saved.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Email sender could not be saved.';
+      this.formMessageIsError.set(true);
+      this.formMessage.set(message);
+      this.notifications.error(message);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   async resetTenantProfileForm(): Promise<void> {
     if (!this.canManageTenantProfile()) {
       this.notifications.error('You do not have permission to reset tenant settings.');
@@ -2610,6 +3134,38 @@ export class AdminPageComponent {
     };
   }
 
+  private toTenantProfileUpdateInputWithEmailProvider(
+    notificationEmailProvider: NotificationEmailProvider,
+  ): UpdateTenantProfileSettingsInput {
+    const saved = this.savedTenantProfile();
+
+    return {
+      displayName: saved.displayName,
+      slug: saved.slug,
+      domain: saved.domain,
+      adminContactEmail: saved.adminContactEmail,
+      defaultTimezone: saved.defaultTimezone,
+      defaultCurrency: saved.defaultCurrency,
+      status: saved.status,
+      careerDisplayName: saved.careerDisplayName,
+      companyAddress: saved.companyAddress ?? '',
+      companyCity: saved.companyCity ?? '',
+      companyCountry: saved.companyCountry ?? '',
+      officialEmail: saved.officialEmail ?? '',
+      officialPhone: saved.officialPhone ?? '',
+      primaryColor: saved.primaryColor,
+      candidateLoginRequired: saved.candidateLoginRequired,
+      candidateCvFormat: saved.candidateCvFormat,
+      publicJobsEnabled: saved.publicJobsEnabled,
+      inviteExpiryDays: saved.inviteExpiryDays,
+      reapplyCooldownDays: saved.reapplyCooldownDays,
+      notificationEmailProvider,
+      logoFileName: saved.logoFileName ?? null,
+      logoContentType: saved.logoContentType ?? null,
+      logoContentBase64: saved.logoContentBase64 ?? null,
+    };
+  }
+
   private toLogoDataUrl(contentType?: string | null, contentBase64?: string | null): string | null {
     return contentType && contentBase64 ? `data:${contentType};base64,${contentBase64}` : null;
   }
@@ -2624,12 +3180,18 @@ export class AdminPageComponent {
       defaultCurrency: saved.defaultCurrency,
       status: saved.status,
       careerDisplayName: saved.careerDisplayName,
+      companyAddress: saved.companyAddress ?? '',
+      companyCity: saved.companyCity ?? '',
+      companyCountry: saved.companyCountry ?? '',
+      officialEmail: saved.officialEmail ?? '',
+      officialPhone: saved.officialPhone ?? '',
       primaryColor: saved.primaryColor,
       candidateLoginRequired: saved.candidateLoginRequired,
       candidateCvFormat: saved.candidateCvFormat,
       publicJobsEnabled: saved.publicJobsEnabled,
       inviteExpiryDays: saved.inviteExpiryDays,
       reapplyCooldownDays: saved.reapplyCooldownDays,
+      notificationEmailProvider: saved.notificationEmailProvider,
     };
   }
 }

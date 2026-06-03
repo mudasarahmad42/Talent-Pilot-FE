@@ -355,6 +355,67 @@ export interface PmoDashboardAiHealth {
   employeeEmbeddings: number;
 }
 
+export interface HiringManagerDashboard {
+  generatedAtUtc: string;
+  summary: HiringManagerDashboardSummary;
+  priorityReviews: HiringManagerDashboardReviewItem[];
+  offerPipeline: HiringManagerDashboardStatusBreakdownItem[];
+  agingBuckets: HiringManagerDashboardAgingBucket[];
+  outcomeSplit: HiringManagerDashboardStatusBreakdownItem[];
+  recentActivity: HiringManagerDashboardActivityItem[];
+}
+
+export interface HiringManagerDashboardSummary {
+  pendingReviews: number;
+  offerFollowUps: number;
+  onHold: number;
+  completedOutcomes: number;
+  oldestWaitingDays: number;
+}
+
+export interface HiringManagerDashboardReviewItem {
+  jobApplicationId: string;
+  jobRequestId: string;
+  jobPostId?: string | null;
+  requestCode: string;
+  jobTitle: string;
+  client: string;
+  department: string;
+  candidateName: string;
+  candidateEmail: string;
+  status: string;
+  hiringManagerName: string;
+  updatedAt: string;
+  daysWaiting: number;
+  completedInterviews: number;
+  averageScore?: number | null;
+  positiveRecommendations: number;
+  offerLetterStatus?: string | null;
+  latestMeetingAt?: string | null;
+}
+
+export interface HiringManagerDashboardStatusBreakdownItem {
+  status: string;
+  count: number;
+}
+
+export interface HiringManagerDashboardAgingBucket {
+  label: string;
+  count: number;
+}
+
+export interface HiringManagerDashboardActivityItem {
+  id: string;
+  jobApplicationId: string;
+  jobRequestId: string;
+  requestCode: string;
+  candidateName: string;
+  actorName: string;
+  title: string;
+  detail: string;
+  createdAt: string;
+}
+
 export interface JobRequestIntakeOptions {
   departments: IntakeDepartmentOption[];
   locations: LookupOption[];
@@ -477,6 +538,7 @@ export interface RecruiterSourcing {
   talentRediscoveryMatches: TalentRediscoveryMatch[];
   applicantRankings: ApplicantRankingMatch[];
   interviewTemplates: InterviewTemplateOption[];
+  interviewers: InterviewerOption[];
   hodInterviewers: LookupOption[];
   skills: LookupOption[];
 }
@@ -501,7 +563,20 @@ export interface RecruiterApplication {
   interviewsPassed: number;
   interviewsTotal: number;
   interviewPassSummary: string;
+  documents: RecruiterApplicationDocument[];
   interviews: RecruiterApplicationInterview[];
+}
+
+export interface RecruiterApplicationDocument {
+  applicationDocumentId: string;
+  jobApplicationId: string;
+  documentType: string;
+  displayName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  extractionStatus: string;
+  hasTextEvidence: boolean;
 }
 
 export interface RecruiterApplicationInterview {
@@ -510,6 +585,8 @@ export interface RecruiterApplicationInterview {
   roundName: string;
   interviewerName: string;
   interviewerUserId: string;
+  interviewerAccountStatus: string;
+  interviewerIsDeleted: boolean;
   status: string;
   startsAt: string;
   durationMinutes: number;
@@ -618,6 +695,18 @@ export interface PortalJobPostDetail {
   skills: JobPostSkill[];
 }
 
+export interface PortalInvitationContext {
+  candidateInvitationId: string;
+  jobPostId: string;
+  jobTitle: string;
+  companyName: string;
+  status: string;
+  expiresAtUtc: string;
+  usedAtUtc?: string | null;
+  isExpired: boolean;
+  isRevoked: boolean;
+}
+
 export interface PortalApplyToJobPostInput {
   phone?: string | null;
   linkedInUrl?: string | null;
@@ -625,10 +714,14 @@ export interface PortalApplyToJobPostInput {
   currentCompany?: string | null;
   experienceYears?: number | null;
   noticePeriodDays?: number | null;
+  interviewAvailabilityStartDate?: string | null;
+  interviewAvailabilityEndDate?: string | null;
   universityName?: string | null;
   degreeName?: string | null;
   graduationYear?: number | null;
   coverLetter?: string | null;
+  candidateInvitationId?: string | null;
+  invitationToken?: string | null;
 }
 
 export interface PortalJobApplicationResult {
@@ -641,6 +734,74 @@ export interface PortalJobApplicationResult {
 
 export interface PortalMyApplications {
   items: PortalMyApplicationItem[];
+}
+
+export interface PortalCandidateProfile {
+  candidateId?: string | null;
+  displayName: string;
+  email: string;
+  emailVerifiedAt?: string | null;
+  emailVerifiedAtUtc?: string | null;
+  isEmailVerified?: boolean | null;
+  phone?: string | null;
+  linkedInUrl?: string | null;
+  currentDesignation?: string | null;
+  currentCompany?: string | null;
+  experienceYears?: number | null;
+  expectedSalaryAmount?: number | null;
+  expectedSalaryCurrency?: string | null;
+  noticePeriodDays?: number | null;
+  primaryEducation?: PortalCandidateProfileEducation | null;
+  currentWorkHistory?: PortalCandidateProfileWorkHistory | null;
+  skills: PortalCandidateProfileSkill[];
+  skillOptions: PortalCandidateProfileSkillOption[];
+}
+
+export interface PortalCandidateProfileEducation {
+  universityName?: string | null;
+  degreeName?: string | null;
+  graduationYear?: number | null;
+}
+
+export interface PortalCandidateProfileWorkHistory {
+  companyName?: string | null;
+  title?: string | null;
+}
+
+export interface PortalCandidateProfileSkill {
+  skillId: string;
+  skillName: string;
+  skillLevel: string;
+  yearsExperience?: number | null;
+  isPrimary: boolean;
+}
+
+export interface PortalCandidateProfileSkillOption {
+  skillId: string;
+  skillName: string;
+  category?: string | null;
+}
+
+export interface UpdatePortalCandidateProfileInput {
+  displayName: string;
+  phone?: string | null;
+  linkedInUrl?: string | null;
+  currentDesignation?: string | null;
+  currentCompany?: string | null;
+  experienceYears?: number | null;
+  expectedSalaryAmount?: number | null;
+  expectedSalaryCurrency?: string | null;
+  noticePeriodDays?: number | null;
+  primaryEducation?: PortalCandidateProfileEducation | null;
+  currentWorkHistory?: PortalCandidateProfileWorkHistory | null;
+  skills?: UpdatePortalCandidateProfileSkillInput[] | null;
+}
+
+export interface UpdatePortalCandidateProfileSkillInput {
+  skillId: string;
+  skillLevel?: string | null;
+  yearsExperience?: number | null;
+  isPrimary: boolean;
 }
 
 export interface PortalMyApplicationItem {
@@ -674,6 +835,11 @@ export interface PortalApplicationDocument {
   sizeBytes: number;
   storageProvider: string;
   uploadedAt: string;
+  extractionStatus: string;
+  hasTextEvidence: boolean;
+  parserVersion?: string | null;
+  extractedAt?: string | null;
+  extractionError?: string | null;
 }
 
 export interface PortalUploadApplicationDocumentResult {
@@ -707,6 +873,19 @@ export interface AddManualCandidateInput {
   degreeName?: string | null;
   graduationYear?: number | null;
   invitationMessage?: string | null;
+  parsedCvEvidence?: ParsedCandidateCvEvidenceInput | null;
+}
+
+export interface ParsedCandidateCvEvidenceInput {
+  fileName: string;
+  contentType?: string | null;
+  sizeBytes: number;
+  contentHashSha256: string;
+  extractedText: string;
+  summary?: string | null;
+  agentRunId?: string | null;
+  model?: string | null;
+  parsedAtUtc?: string | null;
 }
 
 export interface AddManualCandidateResult {
@@ -720,6 +899,10 @@ export interface AddManualCandidateResult {
 }
 
 export interface ParseCandidateCvResult {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  contentHashSha256: string;
   agentRunId: string;
   model: string;
   generatedAtUtc: string;
@@ -780,6 +963,8 @@ export interface InterviewTask {
   roundName: string;
   interviewerName: string;
   interviewerUserId: string;
+  interviewerAccountStatus: string;
+  interviewerIsDeleted: boolean;
   scheduledByName: string;
   startsAt: string;
   durationMinutes: number;
@@ -844,6 +1029,8 @@ export interface HiringReviewCandidateSummary {
   currentDesignation?: string | null;
   currentCompany?: string | null;
   experienceYears?: number | null;
+  expectedSalaryAmount?: number | null;
+  expectedSalaryCurrency?: string | null;
   noticePeriodDays?: number | null;
 }
 
@@ -855,13 +1042,19 @@ export interface HiringReviewJobSummary {
   client: string;
   department: string;
   location: string;
+  experienceMinYears?: number | null;
+  experienceMaxYears?: number | null;
   requiredPositions: number;
   fulfilledPositions: number;
   requestStatus: string;
   applicationStatus: string;
+  finalOutcomeRecordedAt?: string | null;
+  finalOutcomeReason?: string | null;
   sourceLabel: string;
   sourceDetail?: string | null;
   recruiterNotes?: string | null;
+  requestDescription?: string | null;
+  jobPostDescription?: string | null;
 }
 
 export interface HiringReviewInterviewDetail {
@@ -912,11 +1105,57 @@ export interface OfferPresentationMeetingDetails {
   createdAt: string;
 }
 
+export interface ReportingManagerOption {
+  employeeId: string;
+  displayName: string;
+  email: string;
+  designation?: string | null;
+  department: string;
+  location: string;
+  experienceYears?: number | null;
+  isDepartmentMatch: boolean;
+}
+
+export interface ReportingManagerOptionList {
+  items: ReportingManagerOption[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface HiringReviewDecisionMetric {
+  key: string;
+  label: string;
+  value: string;
+  score?: number | null;
+  unit?: string | null;
+  tone: string;
+  icon: string;
+  detail?: string | null;
+}
+
+export interface HiringReviewDecisionContextItem {
+  key: string;
+  label: string;
+  value: string;
+  icon: string;
+  tone: string;
+}
+
+export interface HiringReviewDecisionBriefInsight {
+  agentKey: string;
+  agentName: string;
+  summary: string;
+  metrics: HiringReviewDecisionMetric[];
+  context: HiringReviewDecisionContextItem[];
+  signals: string[];
+}
+
 export interface HiringReviewDetail {
   candidate: HiringReviewCandidateSummary;
   job: HiringReviewJobSummary;
   interviews: HiringReviewInterviewDetail[];
   decisionBrief: string;
+  decisionBriefInsight?: HiringReviewDecisionBriefInsight | null;
   offerLetter?: OfferLetterDetails | null;
   presentationMeetings: OfferPresentationMeetingDetails[];
 }
@@ -985,6 +1224,19 @@ export interface InterviewTemplateOption {
   departmentName: string;
   description: string;
   rounds: JobPostInterviewRound[];
+}
+
+export interface InterviewerOption {
+  userId: string;
+  displayName: string;
+  email: string;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  designation?: string | null;
+  roleNames: string[];
+  completedInterviewCount: number;
+  isJobDepartmentMatch: boolean;
+  isDepartmentHod: boolean;
 }
 
 export interface BenchEmployee {
@@ -1212,6 +1464,34 @@ export interface CandidateProfile {
   candidate: HistoricalCandidateSummary;
   skills: CandidateProfileSkill[];
   applications: HistoricalApplicationSummary[];
+  meetingEvents: CandidateMeetingEvent[];
+}
+
+export interface CandidateMeetingParticipant {
+  displayName: string;
+  email: string;
+  role: string;
+  isOptional: boolean;
+}
+
+export interface CandidateMeetingEvent {
+  interviewId: string;
+  jobApplicationId: string;
+  jobRequestId: string;
+  jobPostId?: string | null;
+  requestCode: string;
+  jobTitle: string;
+  client: string;
+  roundName: string;
+  status: string;
+  startsAt: string;
+  durationMinutes: number;
+  meetingLink?: string | null;
+  calendarProvider?: string | null;
+  calendarEventId?: string | null;
+  calendarEventHtmlLink?: string | null;
+  locationText?: string | null;
+  participants: CandidateMeetingParticipant[];
 }
 
 export interface EmployeeReferral {
@@ -1304,6 +1584,7 @@ export interface Notification {
   entityId?: string;
   readAt?: string;
   createdAt: string;
+  metadata?: Record<string, string>;
 }
 
 export interface RealtimeNotification {
@@ -1332,6 +1613,7 @@ export interface ActivityEvent {
 export type TenantStatus = 'Active' | 'Inactive';
 export type CandidateCvFormat = 'DOCX';
 export type TenantCurrency = 'PKR' | 'USD' | 'EUR';
+export type NotificationEmailProvider = 'Resend' | 'MicrosoftGraph';
 
 export interface TenantProfileSettings {
   tenantId: string;
@@ -1343,12 +1625,18 @@ export interface TenantProfileSettings {
   defaultCurrency: TenantCurrency;
   status: TenantStatus;
   careerDisplayName: string;
+  companyAddress?: string | null;
+  companyCity?: string | null;
+  companyCountry?: string | null;
+  officialEmail?: string | null;
+  officialPhone?: string | null;
   primaryColor: string;
   candidateLoginRequired: boolean;
   candidateCvFormat: CandidateCvFormat;
   publicJobsEnabled: boolean;
   inviteExpiryDays: number;
   reapplyCooldownDays: number;
+  notificationEmailProvider: NotificationEmailProvider;
   userCount: number;
   roleCount: number;
   setupComplete: boolean;
@@ -1370,12 +1658,18 @@ export type UpdateTenantProfileSettingsInput = Pick<
   | 'defaultCurrency'
   | 'status'
   | 'careerDisplayName'
+  | 'companyAddress'
+  | 'companyCity'
+  | 'companyCountry'
+  | 'officialEmail'
+  | 'officialPhone'
   | 'primaryColor'
   | 'candidateLoginRequired'
   | 'candidateCvFormat'
   | 'publicJobsEnabled'
   | 'inviteExpiryDays'
   | 'reapplyCooldownDays'
+  | 'notificationEmailProvider'
   | 'logoFileName'
   | 'logoContentType'
   | 'logoContentBase64'

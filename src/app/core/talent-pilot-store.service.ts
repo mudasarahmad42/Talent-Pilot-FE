@@ -1,4 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { HttpResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
   ActivityEvent,
@@ -16,6 +17,7 @@ import {
   ForwardToHiringManagerResult,
   GenerateOfferLetterInput,
   HistoricalApplicationDetail,
+  HiringManagerDashboard,
   HiringManagerReviewList,
   HiringOutcomeInput,
   HiringOutcomeResult,
@@ -33,7 +35,9 @@ import {
   PmoDashboardQuery,
   PmoReview,
   PortalApplyToJobPostInput,
+  PortalCandidateProfile,
   PortalJobApplicationResult,
+  PortalInvitationContext,
   PortalJobPostDetail,
   PortalJobPostList,
   PortalMyApplications,
@@ -43,6 +47,7 @@ import {
   RankTalentRediscoveryResult,
   RealtimeNotification,
   RecruitmentQueue,
+  ReportingManagerOptionList,
   RecruiterApplication,
   RecruiterSourcing,
   ScheduleCandidateInterviewInput,
@@ -56,6 +61,7 @@ import {
   TenantAdminDashboardQuery,
   UpdateCandidateApplicationStatusInput,
   UpdateJobPostInput,
+  UpdatePortalCandidateProfileInput,
   OfferLetterDetails,
   OfferPresentationMeetingDetails,
   UpdateOfferLetterInput,
@@ -210,6 +216,10 @@ export class TalentPilotStoreService {
     );
   }
 
+  async loadHiringManagerDashboard(): Promise<HiringManagerDashboard> {
+    return firstValueFrom(this.api.get<HiringManagerDashboard>('talent-pilot/hiring-manager/dashboard'));
+  }
+
   async createJobRequest(input: CreateJobRequestInput): Promise<JobRequest> {
     const result = await firstValueFrom(
       this.api.post<CreateJobRequestResult, CreateJobRequestInput>('talent-pilot/job-requests', input),
@@ -349,6 +359,10 @@ export class TalentPilotStoreService {
     const sourcing = await firstValueFrom(
       this.api.get<RecruiterSourcing>(`talent-pilot/job-requests/${jobRequestId}/recruiter-sourcing`),
     );
+    sourcing.applications = (sourcing.applications ?? []).map((application) => ({
+      ...application,
+      documents: application.documents ?? [],
+    }));
     this.upsertJobRequest(sourcing.jobRequest);
     if (sourcing.assignment) {
       this.upsertAssignment(sourcing.assignment);
@@ -360,6 +374,17 @@ export class TalentPilotStoreService {
     return firstValueFrom(
       this.api.get<HistoricalApplicationDetail>(
         `talent-pilot/recruitment/applications/${jobApplicationId}/history`,
+      ),
+    );
+  }
+
+  async downloadRecruiterApplicationDocument(
+    jobApplicationId: string,
+    applicationDocumentId: string,
+  ): Promise<HttpResponse<Blob>> {
+    return firstValueFrom(
+      this.api.download(
+        `talent-pilot/recruitment/applications/${jobApplicationId}/documents/${applicationDocumentId}/download`,
       ),
     );
   }
@@ -416,6 +441,14 @@ export class TalentPilotStoreService {
     return firstValueFrom(this.api.get<PortalJobPostDetail>(`talent-pilot/portal/job-posts/${jobPostId}`));
   }
 
+  async loadPortalInvitation(candidateInvitationId: string, token: string): Promise<PortalInvitationContext> {
+    return firstValueFrom(
+      this.api.get<PortalInvitationContext>(
+        `talent-pilot/portal/invitations/${candidateInvitationId}?token=${encodeURIComponent(token)}`,
+      ),
+    );
+  }
+
   async applyToPortalJobPost(
     jobPostId: string,
     input: PortalApplyToJobPostInput,
@@ -447,6 +480,18 @@ export class TalentPilotStoreService {
 
   async loadPortalMyApplications(): Promise<PortalMyApplications> {
     return firstValueFrom(this.api.get<PortalMyApplications>('talent-pilot/portal/my-applications'));
+  }
+
+  async loadPortalCandidateProfile(): Promise<PortalCandidateProfile> {
+    return firstValueFrom(this.api.get<PortalCandidateProfile>('talent-pilot/portal/profile'));
+  }
+
+  async updatePortalCandidateProfile(
+    input: UpdatePortalCandidateProfileInput,
+  ): Promise<PortalCandidateProfile> {
+    return firstValueFrom(
+      this.api.put<PortalCandidateProfile, UpdatePortalCandidateProfileInput>('talent-pilot/portal/profile', input),
+    );
   }
 
   async createJobPost(jobRequestId: string, input: CreateJobPostInput): Promise<JobPost> {
@@ -549,8 +594,14 @@ export class TalentPilotStoreService {
         {},
       ),
     );
-    await this.refreshSnapshot();
-    await this.loadActivityForEntity(result.jobRequestId);
+
+    try {
+      await this.refreshSnapshot();
+      await this.loadActivityForEntity(result.jobRequestId);
+    } catch {
+      // The handoff already succeeded; callers can refresh the screen again if needed.
+    }
+
     return result;
   }
 
@@ -561,6 +612,29 @@ export class TalentPilotStoreService {
   async loadHiringReview(jobApplicationId: string): Promise<HiringReviewDetail> {
     return firstValueFrom(
       this.api.get<HiringReviewDetail>(`talent-pilot/job-applications/${jobApplicationId}/hiring-review`),
+    );
+  }
+
+  async searchReportingManagerOptions(
+    jobRequestId: string,
+    search = '',
+    skip = 0,
+    take = 20,
+  ): Promise<ReportingManagerOptionList> {
+    const params = new URLSearchParams();
+    const trimmedSearch = search.trim();
+
+    if (trimmedSearch) {
+      params.set('search', trimmedSearch);
+    }
+
+    params.set('skip', String(Math.max(0, skip)));
+    params.set('take', String(Math.max(1, take)));
+
+    return firstValueFrom(
+      this.api.get<ReportingManagerOptionList>(
+        `talent-pilot/job-requests/${jobRequestId}/reporting-manager-options?${params.toString()}`,
+      ),
     );
   }
 
@@ -652,6 +726,7 @@ export class TalentPilotStoreService {
       entityType: message.entityType ?? 'AdminCenter',
       entityId: message.entityId ?? undefined,
       createdAt: message.createdAtUtc,
+      metadata: message.metadata,
     };
 
     this.notificationsSignal.update((items) => {

@@ -17,4 +17,14 @@
       }
     </select>
   </label>
+  @if (statusOptions.length > 0) {
+    <label class="status-filter-field">
+      <span>{{ statusLabel }}</span>
+      <select [attr.aria-label]="statusAriaLabel" [value]="status" (change)="setStatus($event)">
+        @for (option of statusOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+  }
 </div>

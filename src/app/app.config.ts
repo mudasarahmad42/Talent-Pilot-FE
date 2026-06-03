@@ -12,7 +12,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authTokenInterceptor, apiErrorInterceptor])),
+    provideHttpClient(withInterceptors([apiErrorInterceptor, authTokenInterceptor])),
     provideAnimationsAsync(),
     importProvidersFrom(MatSnackBarModule),
   ],
