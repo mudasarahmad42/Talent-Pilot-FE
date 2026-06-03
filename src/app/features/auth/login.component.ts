@@ -1,5 +1,5 @@
 import { Component, computed, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { LoginOption } from '../../core/models';
 
@@ -228,7 +228,7 @@ export class LoginComponent {
     })),
   );
 
-  constructor(readonly auth: AuthService) {}
+  constructor(readonly auth: AuthService, private readonly route: ActivatedRoute) {}
 
   setEmail(event: Event): void {
     this.email.set((event.target as HTMLInputElement).value);
@@ -249,7 +249,12 @@ export class LoginComponent {
 
     this.email.set(card.user.email);
     this.password.set('demo');
-    this.auth.loginDemoUser(card.user, this.keepSignedIn());
+    const returnUrl = this.returnUrl();
+    if (returnUrl) {
+      this.auth.loginDemoUser(card.user, this.keepSignedIn(), returnUrl);
+    } else {
+      this.auth.loginDemoUser(card.user, this.keepSignedIn());
+    }
   }
 
   submitCredentials(event: Event): void {
@@ -258,7 +263,12 @@ export class LoginComponent {
       return;
     }
 
-    this.auth.loginWithCredentials(this.email(), this.password(), this.keepSignedIn());
+    const returnUrl = this.returnUrl();
+    if (returnUrl) {
+      this.auth.loginWithCredentials(this.email(), this.password(), this.keepSignedIn(), returnUrl);
+    } else {
+      this.auth.loginWithCredentials(this.email(), this.password(), this.keepSignedIn());
+    }
   }
 
   canSubmitCredentials(): boolean {
@@ -267,5 +277,9 @@ export class LoginComponent {
 
   private findUserForRole(roleCode: string): LoginOption | undefined {
     return this.auth.users().find((user) => user.roles.some((role) => role.code === roleCode));
+  }
+
+  private returnUrl(): string | null {
+    return this.route.snapshot.queryParamMap.get('returnUrl');
   }
 }

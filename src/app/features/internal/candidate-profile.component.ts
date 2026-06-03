@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CandidateProfile } from '../../core/models';
+import { CandidateMeetingEvent, CandidateProfile } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
@@ -81,6 +81,116 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                       <small>{{ skill.yearsExperience }} yrs</small>
                     }
                   </span>
+                }
+              </div>
+            }
+          </article>
+
+          <article class="ops-panel full-span">
+            <div class="panel-header">
+              <div>
+                <h2>Meeting Events</h2>
+                <p class="muted">Interview meeting links, calendar events, and attendees linked to this candidate.</p>
+              </div>
+              <span class="status-badge info">{{ meetingEvents(data).length }} event{{ meetingEvents(data).length === 1 ? '' : 's' }}</span>
+            </div>
+
+            @if (meetingEvents(data).length === 0) {
+              <div class="empty-state">
+                <strong>No meeting events yet</strong>
+                <p>Scheduled interview meetings will appear here with links and participant details.</p>
+              </div>
+            } @else {
+              <div class="candidate-meeting-group-list">
+                @for (group of meetingEventGroups(data); track group.jobApplicationId) {
+                  <section class="candidate-meeting-group">
+                    <header class="candidate-meeting-group-header">
+                      <div>
+                        <span class="section-label">{{ group.requestCode }}</span>
+                        <h3>{{ group.jobTitle }}</h3>
+                        <p>{{ group.client }}</p>
+                      </div>
+                      <div class="candidate-meeting-group-actions">
+                        <span class="status-badge info">{{ group.events.length }} round{{ group.events.length === 1 ? '' : 's' }}</span>
+                        <a
+                          class="table-link-button"
+                          [routerLink]="applicationHistoryLink(group.jobApplicationId)"
+                          [queryParams]="{ returnUrl: currentReturnUrl() }"
+                        >
+                          Open application
+                        </a>
+                      </div>
+                    </header>
+
+                    <div class="candidate-meeting-list">
+                      @for (meeting of group.events; track meeting.interviewId) {
+                        <article class="candidate-meeting-card">
+                          <div class="candidate-meeting-heading">
+                            <div>
+                              <span [class]="meetingStatusBadgeClass(meeting.status)">{{ meeting.status }}</span>
+                              <h4>{{ meeting.roundName }}</h4>
+                            </div>
+                          </div>
+
+                          <dl class="candidate-meeting-meta">
+                            <div>
+                              <dt>Date and time</dt>
+                              <dd>{{ formatMeetingDate(meeting.startsAt) }}</dd>
+                            </div>
+                            <div>
+                              <dt>Duration</dt>
+                              <dd>{{ meeting.durationMinutes }} minutes</dd>
+                            </div>
+                            <div>
+                              <dt>Location / notes</dt>
+                              <dd>{{ meeting.locationText || 'Not recorded' }}</dd>
+                            </div>
+                            <div>
+                              <dt>Calendar</dt>
+                              <dd>{{ meeting.calendarProvider || 'Manual link' }}</dd>
+                            </div>
+                          </dl>
+
+                          <div class="candidate-meeting-actions">
+                            @if (meeting.meetingLink) {
+                              <a
+                                class="btn secondary compact"
+                                [href]="meeting.meetingLink"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                (click)="openExternalLink($event, meeting.meetingLink)"
+                              >
+                                Open meeting
+                              </a>
+                            }
+                            @if (meeting.calendarEventHtmlLink) {
+                              <a
+                                class="btn secondary compact"
+                                [href]="meeting.calendarEventHtmlLink"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                (click)="openExternalLink($event, meeting.calendarEventHtmlLink)"
+                              >
+                                Open calendar event
+                              </a>
+                            }
+                          </div>
+
+                          <div class="candidate-meeting-participants">
+                            <span class="section-label">Participants</span>
+                            <div class="candidate-meeting-participant-list">
+                              @for (participant of meeting.participants; track participant.email) {
+                                <span class="participant-chip">
+                                  <strong>{{ participant.displayName }}</strong>
+                                  <small>{{ formatParticipantRole(participant.role) }} - {{ participant.email }}</small>
+                                </span>
+                              }
+                            </div>
+                          </div>
+                        </article>
+                      }
+                    </div>
+                  </section>
                 }
               </div>
             }
@@ -187,6 +297,82 @@ export class CandidateProfileComponent implements OnInit {
     return ['/app/recruitment/applications', jobApplicationId, 'history'];
   }
 
+  openExternalLink(event: MouseEvent, url: string | null | undefined): void {
+    if (!url) {
+      return;
+    }
+
+    event.preventDefault();
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  meetingEvents(data: CandidateProfile) {
+    return data.meetingEvents ?? [];
+  }
+
+  meetingEventGroups(data: CandidateProfile): CandidateMeetingGroup[] {
+    const groups = new Map<string, CandidateMeetingGroup>();
+    for (const meeting of this.meetingEvents(data)) {
+      const key = meeting.jobApplicationId;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.events.push(meeting);
+        continue;
+      }
+
+      groups.set(key, {
+        jobApplicationId: meeting.jobApplicationId,
+        requestCode: meeting.requestCode,
+        jobTitle: meeting.jobTitle,
+        client: meeting.client,
+        events: [meeting],
+      });
+    }
+
+    return Array.from(groups.values()).map((group) => ({
+      ...group,
+      events: group.events.sort(
+        (left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+      ),
+    }));
+  }
+
+  formatMeetingDate(value: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Not recorded';
+    }
+
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
+  }
+
+  formatParticipantRole(role: string): string {
+    return role
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/^./, (value) => value.toUpperCase());
+  }
+
+  meetingStatusBadgeClass(status: string): string {
+    const normalized = this.normalizeStatus(status);
+    if (normalized === 'completed') {
+      return 'status-badge status-badge--success';
+    }
+
+    if (normalized === 'scheduled') {
+      return 'status-badge status-badge--scheduled';
+    }
+
+    if (['cancelled', 'noshow'].includes(normalized)) {
+      return 'status-badge status-badge--danger';
+    }
+
+    if (normalized === 'skipped') {
+      return 'status-badge status-badge--hold';
+    }
+
+    return 'status-badge status-badge--neutral';
+  }
+
   formatExperience(value?: number | null): string {
     return value === null || value === undefined ? 'Not recorded' : `${value.toFixed(1)} years`;
   }
@@ -194,4 +380,16 @@ export class CandidateProfileComponent implements OnInit {
   formatNotice(value?: number | null): string {
     return value === null || value === undefined ? 'Not recorded' : `${value} days`;
   }
+
+  private normalizeStatus(status: string | null | undefined): string {
+    return (status ?? '').replace(/\s+/g, '').toLowerCase();
+  }
 }
+
+type CandidateMeetingGroup = {
+  jobApplicationId: string;
+  requestCode: string;
+  jobTitle: string;
+  client: string;
+  events: CandidateMeetingEvent[];
+};

@@ -65,7 +65,8 @@ If the frontend needs an API that does not exist, document the expected contract
 - Preserve the existing product shell, typography, nav, and blue-accent design language.
 - Do not turn production screens into static design galleries.
 - Keep controls real: if a button looks actionable, it should have a backend contract or a disabled/backend-required state.
-- After visual changes, verify responsive behavior and run `npm run build`.
+- Whenever you add or modify buttons, fields, filters, or footer action groups, check the rendered spacing and indentation. Add explicit `gap`, wrapping, alignment, and responsive rules so adjacent controls never look concatenated or misaligned.
+- After visual changes, verify responsive behavior through reasoning or lightweight inspection. Run `npm run build` only when explicitly requested, when the change is high-risk, or when needed to resolve a compile/type uncertainty.
 
 ## Typical Frontend Agent Scopes
 
@@ -93,19 +94,19 @@ If the frontend needs an API that does not exist, document the expected contract
 
 ## Validation
 
-Run:
+Available validation command:
 
 ```powershell
 npm run build
 ```
 
-If your work changes visible UI, also verify the route manually in the browser and note whether screenshot-diff verification was performed.
+Do not run this automatically after every small change. The user will run broad validation manually later unless they explicitly ask an agent to run it. If your work changes visible UI, do not run Playwright/screenshot automation unless explicitly requested; note skipped validation in the final report.
 
 ## Finish Checklist
 
 - Branch is not `main`.
 - Branch belongs to the current contributor/session.
-- `npm run build` passes.
+- Validation was run if explicitly requested or needed; otherwise skipped validation is reported.
 - Frontend docs updated when behavior/API assumptions changed.
 - Contributor log updated in `contributors/<contributor-name>/README.md`.
 - Known backend dependencies or visual gaps are reported.

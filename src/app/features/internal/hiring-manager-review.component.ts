@@ -1,17 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   GenerateOfferLetterInput,
+  HiringReviewDecisionContextItem,
+  HiringReviewDecisionMetric,
   HiringManagerReviewListItem,
   HiringReviewDetail,
   HiringReviewInterviewDetail,
   HiringOutcomeInput,
   OfferLetterDetails,
+  ReportingManagerOption,
   ScheduleOfferPresentationMeetingInput,
   UpdateOfferLetterInput,
 } from '../../core/models';
+import { AuthService } from '../../core/auth.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 type OfferForm = {
@@ -30,9 +35,23 @@ type MeetingForm = {
   notes: string;
 };
 
+type PrintableOfferLetter = {
+  companyName: string;
+  companyMeta: string[];
+  dateLine: string;
+  recipientLine: string;
+  subjectLine: string;
+  salutation: string;
+  introParagraphs: string[];
+  detailItems: Array<{ label: string; value: string }>;
+  bodyParagraphs: string[];
+  signerLines: string[];
+  acceptanceLines: string[];
+};
+
 @Component({
   selector: 'app-hiring-manager-review',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, MatTooltipModule, RouterLink],
   template: `
     <main class="page ops-page">
       <header class="ops-page-header">
@@ -72,7 +91,7 @@ type MeetingForm = {
                   <h2>{{ data.candidate.displayName }}</h2>
                   <p class="muted">{{ data.candidate.email }}</p>
                 </div>
-                <span class="status-badge info">{{ data.job.applicationStatus }}</span>
+                <span class="status-badge info">{{ formatStatusLabel(data.job.applicationStatus) }}</span>
               </div>
               <dl class="review-meta-grid">
                 <div>
@@ -101,7 +120,7 @@ type MeetingForm = {
                   <h2>{{ data.job.jobTitle }}</h2>
                   <p class="muted">{{ data.job.requestCode }} - {{ data.job.department }} - {{ data.job.location }}</p>
                 </div>
-                <span class="status-badge">{{ data.job.requestStatus }}</span>
+                <span class="status-badge">{{ formatStatusLabel(data.job.requestStatus) }}</span>
               </div>
               <dl class="review-meta-grid">
                 <div>
@@ -124,14 +143,45 @@ type MeetingForm = {
             </article>
 
             <article class="ops-panel full-span decision-brief-card">
-              <div class="panel-header">
-                <div>
-                  <h2>Hiring Manager Decision Brief</h2>
-                  <p class="muted">AI-supported summary from application, source, recruiter notes, and interview evidence.</p>
+              <div class="decision-brief-header">
+                <div class="decision-brief-title">
+                  <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                  <div>
+                    <p>AI Decision Insight</p>
+                    <h2>Hiring Manager Decision Brief</h2>
+                  </div>
                 </div>
-                <span class="status-badge info">Advisory</span>
+                <span
+                  class="decision-brief-advisory"
+                  [matTooltip]="decisionBriefAgentTooltip"
+                  matTooltipPosition="above"
+                >
+                  Advisory
+                </span>
               </div>
-              <p>{{ data.decisionBrief }}</p>
+              <p class="decision-brief-support">AI-supported summary from application, source, recruiter notes, and interview evidence.</p>
+              <div class="decision-brief-evidence-grid" aria-label="Interview evidence summary">
+                @for (metric of decisionBriefMetrics(data); track metric.key) {
+                  <div [class]="'decision-brief-evidence-card tone-' + metric.tone">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ metric.icon }}</span>
+                    <div>
+                      <strong>{{ metric.value }}</strong>
+                      <small>{{ metric.label }}</small>
+                    </div>
+                    <i [style.width.%]="metric.score ?? 0"></i>
+                  </div>
+                }
+              </div>
+              <div class="decision-brief-context-grid" aria-label="Decision context">
+                @for (item of decisionBriefContext(data); track item.key) {
+                  <div [class]="'decision-brief-context-card tone-' + item.tone">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+                    <small>{{ item.label }}</small>
+                    <strong>{{ item.value }}</strong>
+                  </div>
+                }
+              </div>
+              <p class="decision-brief-copy">{{ decisionBriefNarrative(data) }}</p>
             </article>
 
             <article class="ops-panel full-span">
@@ -196,10 +246,70 @@ type MeetingForm = {
                   <span>Start date</span>
                   <input name="startDate" type="date" [(ngModel)]="offerForm.startDate" />
                 </label>
-                <label class="stitch-field">
+                <div class="stitch-field reporting-manager-picker">
                   <span>Reporting manager</span>
-                  <input name="reportingManager" [(ngModel)]="offerForm.reportingManager" />
-                </label>
+                  <div class="reporting-manager-control" (click)="openReportingManagerPicker(data)">
+                    <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                    <input
+                      name="reportingManagerSearch"
+                      autocomplete="off"
+                      placeholder="Search employees"
+                      [ngModel]="reportingManagerSearchText()"
+                      (focus)="openReportingManagerPicker(data)"
+                      (click)="openReportingManagerPicker(data)"
+                      (keydown.escape)="closeReportingManagerPicker()"
+                      (ngModelChange)="onReportingManagerSearch(data, $event)"
+                    />
+                    @if (offerForm.reportingManager) {
+                      <button
+                        class="reporting-manager-clear"
+                        type="button"
+                        aria-label="Clear reporting manager"
+                        (click)="$event.stopPropagation(); clearReportingManager(data)"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                      </button>
+                    }
+                  </div>
+                  @if (reportingManagerPickerOpen()) {
+                    <div class="reporting-manager-results" role="listbox" aria-label="Reporting manager options">
+                      @if (reportingManagerError()) {
+                        <div class="reporting-manager-state">{{ reportingManagerError() }}</div>
+                      } @else if (reportingManagerLoading() && reportingManagerOptions().length === 0) {
+                        <div class="reporting-manager-state">Loading employees...</div>
+                      } @else if (reportingManagerOptions().length === 0) {
+                        <div class="reporting-manager-state">No employees found.</div>
+                      } @else {
+                        @for (manager of reportingManagerOptions(); track manager.employeeId) {
+                          <button
+                            class="reporting-manager-option"
+                            type="button"
+                            role="option"
+                            [attr.aria-selected]="offerForm.reportingManager === manager.displayName"
+                            [class.department-match]="manager.isDepartmentMatch"
+                            (click)="$event.stopPropagation(); selectReportingManager(manager)"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true">person</span>
+                            <span class="reporting-manager-option-copy">
+                              <strong>{{ manager.displayName }}</strong>
+                              <small>{{ reportingManagerSubtitle(manager) }}</small>
+                            </span>
+                          </button>
+                        }
+                        @if (reportingManagerHasMore()) {
+                          <button
+                            class="reporting-manager-load-more"
+                            type="button"
+                            [disabled]="reportingManagerLoading()"
+                            (click)="$event.stopPropagation(); loadMoreReportingManagers(data)"
+                          >
+                            {{ reportingManagerLoading() ? 'Loading...' : 'Load more employees' }}
+                          </button>
+                        }
+                      }
+                    </div>
+                  }
+                </div>
                 <label class="stitch-field">
                   <span>Work location</span>
                   <input name="workLocation" [(ngModel)]="offerForm.workLocation" />
@@ -220,7 +330,7 @@ type MeetingForm = {
                   <textarea class="offer-body-textarea" name="offerBody" rows="14" [(ngModel)]="offerForm.body"></textarea>
                 </label>
                 <div class="panel-actions">
-                  <button class="btn secondary" type="button" (click)="printOffer()">Print / Download</button>
+                  <button class="btn secondary" type="button" (click)="printOffer(data)">Print / Download</button>
                   <button class="btn primary" type="button" [disabled]="saving()" (click)="saveOfferLetter(data.offerLetter)">
                     {{ saving() ? 'Saving...' : 'Save offer letter' }}
                   </button>
@@ -296,13 +406,17 @@ type MeetingForm = {
                 <h2>Close Job Request</h2>
                 <p class="muted">Use only when the business decides not to continue hiring for this request.</p>
               </div>
-              <label class="stitch-field">
-                <span>Close reason</span>
-                <textarea name="closeReason" rows="3" [(ngModel)]="closeReason"></textarea>
-              </label>
-              <button class="btn secondary danger" type="button" [disabled]="saving()" (click)="closeJobRequest(data)">
-                Close Job Request
-              </button>
+              @if (isRequestClosed(data)) {
+                <p class="field-status success">This Job Request is closed.</p>
+              } @else {
+                <label class="stitch-field">
+                  <span>Close reason</span>
+                  <textarea name="closeReason" rows="3" [(ngModel)]="closeReason"></textarea>
+                </label>
+                <button class="btn secondary danger" type="button" [disabled]="saving()" (click)="closeJobRequest(data)">
+                  Close Job Request
+                </button>
+              }
             </article>
           </section>
         } @else {
@@ -339,7 +453,7 @@ type MeetingForm = {
                       <strong>{{ item.jobTitle }}</strong>
                       <small>{{ item.requestCode }} - {{ item.client }} - {{ item.department }}</small>
                     </div>
-                    <span class="status-badge info">{{ item.status }}</span>
+                    <span class="status-badge info">{{ formatStatusLabel(item.status) }}</span>
                     <span>{{ item.updatedAt | date: 'medium' }}</span>
                     <a class="table-link-button" [routerLink]="reviewLink(item)">Open review</a>
                   </article>
@@ -361,6 +475,30 @@ type MeetingForm = {
 
       .full-span {
         grid-column: 1 / -1;
+      }
+
+      .panel-header {
+        align-items: flex-start;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .panel-header > div {
+        min-width: 0;
+      }
+
+      .panel-header .status-badge {
+        flex: 0 1 auto;
+        justify-content: center;
+        line-height: 1.2;
+        max-width: min(220px, 44%);
+        overflow-wrap: anywhere;
+        text-align: center;
+        white-space: normal;
+      }
+
+      .advisory-badge {
+        cursor: help;
       }
 
       .review-meta-grid,
@@ -445,10 +583,106 @@ type MeetingForm = {
         margin-top: 4px;
       }
 
-      .decision-brief-card p {
-        color: #334155;
-        line-height: 1.55;
+      .decision-brief-card {
+        background: linear-gradient(135deg, #0a73ce 0%, #055cab 58%, #084b91 100%);
+        border: 0;
+        border-radius: 8px;
+        box-shadow: 0 18px 34px rgba(8, 75, 145, 0.18);
+        color: #ffffff;
+        display: grid;
+        gap: 18px;
+        overflow: hidden;
+        padding: 26px 30px;
+        position: relative;
+      }
+
+      .decision-brief-card::after {
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
+        content: '';
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+      }
+
+      .decision-brief-header,
+      .decision-brief-support,
+      .decision-brief-evidence-grid,
+      .decision-brief-context-grid,
+      .decision-brief-copy {
+        position: relative;
+        z-index: 1;
+      }
+
+      .decision-brief-header {
+        align-items: flex-start;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .decision-brief-title {
+        align-items: flex-start;
+        display: flex;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .decision-brief-title .material-symbols-outlined {
+        color: #ffffff;
+        flex: 0 0 auto;
+        font-size: 30px;
+        line-height: 1;
+      }
+
+      .decision-brief-title p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 1;
+        margin: 1px 0 8px;
+        text-transform: uppercase;
+      }
+
+      .decision-brief-title h2 {
+        color: #ffffff;
+        font-size: 1.72rem;
+        line-height: 1.12;
         margin: 0;
+      }
+
+      .decision-brief-advisory {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.78);
+        border-radius: 999px;
+        color: #075ca8;
+        cursor: help;
+        flex: 0 0 auto;
+        font-size: 0.78rem;
+        font-weight: 900;
+        line-height: 1;
+        padding: 9px 13px;
+        text-align: center;
+      }
+
+      .decision-brief-support {
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 1rem;
+        line-height: 1.45;
+        margin: 0;
+        max-width: 860px;
+      }
+
+      .decision-brief-copy {
+        color: #ffffff;
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.5;
+        margin: 0;
+        max-width: 920px;
       }
 
       .offer-editor-card {
@@ -505,14 +739,35 @@ type MeetingForm = {
         .hm-review-row > * {
           border-bottom: 1px solid #e2e8f0;
         }
+
+        .decision-brief-card {
+          padding: 22px;
+        }
+
+        .decision-brief-header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .decision-brief-title h2 {
+          font-size: 1.34rem;
+        }
+
+        .decision-brief-copy {
+          font-size: 1.06rem;
+        }
       }
+
     `,
   ],
 })
-export class HiringManagerReviewComponent implements OnInit {
+export class HiringManagerReviewComponent implements OnInit, OnDestroy {
   private readonly store = inject(TalentPilotStoreService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  readonly decisionBriefAgentTooltip =
+    'Generated by AI Agent: Hiring Manager Decision Brief (hiring-manager-decision-brief). It summarizes candidate profile, source details, recruiter notes, job summary, interview statuses, scores, recommendations, and skipped-round reasons.';
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -520,14 +775,44 @@ export class HiringManagerReviewComponent implements OnInit {
   readonly message = signal('');
   readonly reviews = signal<HiringManagerReviewListItem[]>([]);
   readonly detail = signal<HiringReviewDetail | null>(null);
+  readonly reportingManagerOptions = signal<ReportingManagerOption[]>([]);
+  readonly reportingManagerSearchText = signal('');
+  readonly reportingManagerLoading = signal(false);
+  readonly reportingManagerHasMore = signal(false);
+  readonly reportingManagerPickerOpen = signal(false);
+  readonly reportingManagerError = signal('');
 
   offerForm: OfferForm = this.emptyOfferForm();
   meetingForm: MeetingForm = this.emptyMeetingForm();
   outcomeForm: HiringOutcomeInput = { outcome: 'Offered', reason: '' };
   closeReason = '';
 
+  private readonly reportingManagerPageSize = 20;
+  private reportingManagerSearchDebounce?: ReturnType<typeof setTimeout>;
+  private reportingManagerRequestId = 0;
+
   ngOnInit(): void {
     void this.load();
+  }
+
+  ngOnDestroy(): void {
+    if (this.reportingManagerSearchDebounce) {
+      clearTimeout(this.reportingManagerSearchDebounce);
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeReportingManagerPickerOnOutsideClick(event: MouseEvent): void {
+    if (!this.reportingManagerPickerOpen()) {
+      return;
+    }
+
+    const target = event.target as Element | null;
+    if (target?.closest('.reporting-manager-picker')) {
+      return;
+    }
+
+    this.closeReportingManagerPicker();
   }
 
   async load(): Promise<void> {
@@ -557,6 +842,69 @@ export class HiringManagerReviewComponent implements OnInit {
 
   backToList(): void {
     void this.router.navigate(['/app/hiring-manager/reviews']);
+  }
+
+  openReportingManagerPicker(data: HiringReviewDetail): void {
+    this.reportingManagerPickerOpen.set(true);
+
+    if (this.reportingManagerOptions().length === 0) {
+      void this.loadReportingManagerOptions(data, this.reportingManagerSearchText(), 0, false);
+    }
+  }
+
+  closeReportingManagerPicker(): void {
+    this.reportingManagerPickerOpen.set(false);
+  }
+
+  onReportingManagerSearch(data: HiringReviewDetail, value: string): void {
+    this.reportingManagerSearchText.set(value);
+    this.offerForm.reportingManager = '';
+    this.reportingManagerPickerOpen.set(true);
+
+    if (this.reportingManagerSearchDebounce) {
+      clearTimeout(this.reportingManagerSearchDebounce);
+    }
+
+    this.reportingManagerSearchDebounce = setTimeout(() => {
+      void this.loadReportingManagerOptions(data, value, 0, false);
+    }, 250);
+  }
+
+  async loadMoreReportingManagers(data: HiringReviewDetail): Promise<void> {
+    if (this.reportingManagerLoading() || !this.reportingManagerHasMore()) {
+      return;
+    }
+
+    await this.loadReportingManagerOptions(
+      data,
+      this.reportingManagerSearchText(),
+      this.reportingManagerOptions().length,
+      true,
+    );
+  }
+
+  selectReportingManager(option: ReportingManagerOption): void {
+    this.offerForm.reportingManager = option.displayName;
+    this.reportingManagerSearchText.set(option.displayName);
+    this.reportingManagerPickerOpen.set(false);
+  }
+
+  clearReportingManager(data: HiringReviewDetail): void {
+    this.offerForm.reportingManager = '';
+    this.reportingManagerSearchText.set('');
+    this.reportingManagerPickerOpen.set(true);
+    void this.loadReportingManagerOptions(data, '', 0, false);
+  }
+
+  reportingManagerSubtitle(option: ReportingManagerOption): string {
+    return [
+      option.designation || 'Employee',
+      option.department || 'No department',
+      this.formatEmployeeExperience(option.experienceYears),
+      option.location || '',
+    ]
+      .filter(Boolean)
+      .join(' - ');
   }
 
   async generateOfferLetter(_data: HiringReviewDetail): Promise<void> {
@@ -647,12 +995,520 @@ export class HiringManagerReviewComponent implements OnInit {
     }
   }
 
-  printOffer(): void {
-    window.print();
+  printOffer(data: HiringReviewDetail): void {
+    this.clearStatus();
+    const printableBody = this.normalizePrintableOfferBody(this.offerForm.body);
+    if (!printableBody) {
+      this.error.set('Offer body is required before printing.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=960,height=1200');
+    if (!printWindow) {
+      this.error.set('The browser blocked the print window. Allow pop-ups for this site and try again.');
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(this.buildOfferPrintHtml(printableBody, data));
+    printWindow.document.close();
+  }
+
+  private normalizePrintableOfferBody(body: string): string {
+    const placeholderLines = new Set([
+      '[Company Address]',
+      '[City, Country]',
+      '[Email / Phone]',
+      '[Candidate Address]',
+      '[Designation]',
+    ]);
+
+    return body
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .filter((line) => {
+        const trimmed = line.trim();
+        return !placeholderLines.has(trimmed) && !/^Client\s*\/\s*Request:/i.test(trimmed);
+      })
+      .join('\n')
+      .trim();
+  }
+
+  private buildOfferPrintHtml(body: string, data: HiringReviewDetail): string {
+    const letter = this.parsePrintableOfferLetter(body, data);
+    const title = this.escapeHtml(`Offer Letter - ${data.candidate.displayName}`);
+
+    return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f4f7fb;
+      color: #111827;
+      font-family: Arial, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 32px 14px;
+    }
+
+    .offer-sheet {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+      margin: 0 auto;
+      max-width: 680px;
+      overflow: hidden;
+    }
+
+    .template-header {
+      background: #0a66c2;
+      color: #fff;
+      padding: 28px 32px;
+    }
+
+    .brand-lockup {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .logo-grid {
+      display: grid;
+      flex: 0 0 auto;
+      gap: 4px;
+      grid-template-columns: repeat(2, 10px);
+    }
+
+    .logo-grid span {
+      background: #60a5fa;
+      border-radius: 4px;
+      display: block;
+      height: 10px;
+      width: 10px;
+    }
+
+    .logo-grid span:nth-child(2) { background: #67e8f9; }
+    .logo-grid span:nth-child(3) { background: #fff; }
+    .logo-grid span:nth-child(4) { background: #1d4ed8; }
+
+    .brand-lockup img {
+      display: block;
+      height: 18px;
+      max-width: 70px;
+      object-fit: contain;
+    }
+
+    .brand-lockup strong {
+      color: #ffffff;
+      display: block;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0;
+      line-height: 20px;
+    }
+
+    .template-eyebrow {
+      color: #bfdbfe;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      line-height: 1.2;
+      margin: 18px 0 10px;
+      text-transform: uppercase;
+    }
+
+    .template-header h1 {
+      color: #ffffff;
+      font-size: 26px;
+      line-height: 32px;
+      margin: 0;
+    }
+
+    .template-subtitle {
+      color: #dbeafe;
+      font-size: 14px;
+      line-height: 21px;
+      margin: 10px 0 0;
+    }
+
+    .letter-body {
+      padding: 30px 32px 34px;
+    }
+
+    .document-meta {
+      margin: 0 0 20px;
+    }
+
+    .document-meta p {
+      color: #64748b;
+      font-size: 13px;
+      line-height: 20px;
+      margin: 0;
+    }
+
+    .document-meta strong {
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .salutation,
+    .letter-copy p {
+      color: #253044;
+      font-size: 14px;
+      line-height: 1.62;
+      margin: 0 0 14px;
+    }
+
+    .salutation {
+      color: #0f172a;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .details-card {
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      margin: 6px 0 24px;
+      overflow: hidden;
+    }
+
+    .details-card h3 {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      margin: 0;
+      padding: 14px 16px;
+      text-transform: uppercase;
+    }
+
+    .detail-grid {
+      display: block;
+    }
+
+    .detail-item {
+      border-top: 1px solid #e2e8f0;
+      padding: 14px 16px;
+    }
+
+    .detail-item:first-child {
+      border-top: 0;
+    }
+
+    .detail-item:nth-child(odd) {
+      background: #f8fafc;
+    }
+
+    .detail-item span {
+      color: #64748b;
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .detail-item strong {
+      color: #111827;
+      display: block;
+      font-size: 16px;
+      line-height: 22px;
+    }
+
+    .signature-block {
+      display: grid;
+      gap: 10px;
+      margin-top: 28px;
+      max-width: 280px;
+    }
+
+    .signature-line {
+      border-top: 1px solid #cbd5e1;
+      height: 1px;
+      margin-top: 18px;
+      width: 210px;
+    }
+
+    .signature-block p {
+      color: #253044;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .acceptance-card {
+      border: 1px solid #cfe4ff;
+      border-radius: 14px;
+      margin-top: 28px;
+      padding: 18px;
+    }
+
+    .acceptance-card h3 {
+      color: #0a66c2;
+      font-size: 15px;
+      margin: 0 0 10px;
+    }
+
+    .acceptance-card p {
+      color: #253044;
+      font-size: 13px;
+      line-height: 1.65;
+      margin: 0 0 10px;
+    }
+
+    .print-hint {
+      color: #64748b;
+      font-size: 12px;
+      margin: 14px auto 0;
+      max-width: 680px;
+      text-align: center;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+
+      .offer-sheet {
+        border-radius: 12px;
+        box-shadow: none;
+        max-width: none;
+      }
+
+      .print-hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="offer-sheet">
+    <header class="template-header">
+      <div class="brand-lockup">
+        <div class="logo-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <img src="/ai-unlimited-mark.png" alt="" />
+        <strong>Talent Pilot</strong>
+      </div>
+      <p class="template-eyebrow">Offer Letter</p>
+      <h1>${this.escapeHtml(letter.subjectLine || 'Offer of Employment')}</h1>
+      <p class="template-subtitle">${this.escapeHtml(letter.companyName)}${letter.dateLine ? ` - ${this.escapeHtml(letter.dateLine)}` : ''}</p>
+    </header>
+
+    <section class="letter-body">
+      <div class="document-meta">
+        <p>Candidate: <strong>${this.escapeHtml(letter.recipientLine || data.candidate.displayName)}</strong></p>
+        ${letter.companyMeta.map((line) => `<p>${this.escapeHtml(line)}</p>`).join('')}
+      </div>
+
+      <p class="salutation">${this.escapeHtml(letter.salutation || `Dear ${data.candidate.displayName},`)}</p>
+      <div class="letter-copy">
+        ${this.renderPrintParagraphs(letter.introParagraphs)}
+      </div>
+
+      ${letter.detailItems.length ? this.renderPrintDetails(letter.detailItems) : ''}
+
+      <div class="letter-copy">
+        ${this.renderPrintParagraphs(letter.bodyParagraphs)}
+      </div>
+
+      ${letter.signerLines.length ? this.renderPrintSignature(letter.signerLines) : ''}
+      ${letter.acceptanceLines.length ? this.renderPrintAcceptance(letter.acceptanceLines) : ''}
+    </section>
+  </main>
+  <p class="print-hint">Use the print dialog destination "Save as PDF" to download this offer letter.</p>
+  <script>
+    window.addEventListener('load', function () {
+      window.setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 350);
+    });
+  </script>
+</body>
+</html>`;
+  }
+
+  private parsePrintableOfferLetter(body: string, data: HiringReviewDetail): PrintableOfferLetter {
+    const lines = body
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const dateIndex = lines.findIndex((line) => /^Date:/i.test(line));
+    const toIndex = lines.findIndex((line) => /^To:/i.test(line));
+    const subjectIndex = lines.findIndex((line) => /^Subject:/i.test(line));
+    const salutationIndex = lines.findIndex((line) => /^Dear\b/i.test(line));
+    const detailHeadingIndex = lines.findIndex((line) =>
+      /^Your employment details are as follows:?$/i.test(line),
+    );
+    const sincerelyIndex = lines.findIndex((line) => /^Sincerely,?$/i.test(line));
+    const acceptanceIndex = lines.findIndex((line) => /^Acceptance$/i.test(line));
+
+    const companyHeaderEnd = dateIndex >= 0 ? dateIndex : Math.max(0, Math.min(toIndex, subjectIndex, salutationIndex));
+    const companyHeader = lines.slice(0, companyHeaderEnd).filter((line) => !/^(Date|To|Subject):/i.test(line));
+    const companyName = companyHeader[0] || this.auth.currentUser()?.tenantDisplayName || 'Talent Pilot';
+    const companyMeta = companyHeader.slice(1);
+
+    const detailItems: Array<{ label: string; value: string }> = [];
+    let detailsEndIndex = detailHeadingIndex >= 0 ? detailHeadingIndex + 1 : -1;
+    if (detailHeadingIndex >= 0) {
+      while (detailsEndIndex < lines.length) {
+        const line = lines[detailsEndIndex];
+        if (!line || /^(Date|To|Subject):/i.test(line)) {
+          detailsEndIndex++;
+          continue;
+        }
+
+        const separatorIndex = line.indexOf(':');
+        if (separatorIndex <= 0) {
+          break;
+        }
+
+        detailItems.push({
+          label: line.slice(0, separatorIndex).trim(),
+          value: line.slice(separatorIndex + 1).trim(),
+        });
+        detailsEndIndex++;
+      }
+    }
+
+    const introStart = salutationIndex >= 0 ? salutationIndex + 1 : 0;
+    const introEnd = detailHeadingIndex >= 0 ? detailHeadingIndex : this.firstPositiveIndex(sincerelyIndex, acceptanceIndex, lines.length);
+    const bodyStart = detailsEndIndex >= 0 ? detailsEndIndex : introEnd;
+    const bodyEnd = this.firstPositiveIndex(sincerelyIndex, acceptanceIndex, lines.length);
+
+    return {
+      companyName,
+      companyMeta,
+      dateLine: this.stripLineLabel(lines[dateIndex], 'Date'),
+      recipientLine: this.stripLineLabel(lines[toIndex], 'To'),
+      subjectLine: this.stripLineLabel(lines[subjectIndex], 'Subject'),
+      salutation: lines[salutationIndex] || `Dear ${data.candidate.displayName},`,
+      introParagraphs: lines.slice(introStart, introEnd),
+      detailItems,
+      bodyParagraphs: lines.slice(bodyStart, bodyEnd),
+      signerLines:
+        sincerelyIndex >= 0
+          ? ['Sincerely,', ...lines.slice(sincerelyIndex + 1, acceptanceIndex >= 0 ? acceptanceIndex : lines.length)]
+          : [],
+      acceptanceLines: acceptanceIndex >= 0 ? lines.slice(acceptanceIndex + 1) : [],
+    };
+  }
+
+  private renderPrintParagraphs(paragraphs: string[]): string {
+    return paragraphs.map((paragraph) => `<p>${this.escapeHtml(paragraph)}</p>`).join('');
+  }
+
+  private renderPrintDetails(items: Array<{ label: string; value: string }>): string {
+    return `<section class="details-card">
+      <h3>Employment details</h3>
+      <div class="detail-grid">
+        ${items
+          .map(
+            (item) => `<div class="detail-item">
+              <span>${this.escapeHtml(item.label)}</span>
+              <strong>${this.escapeHtml(item.value || '-')}</strong>
+            </div>`,
+          )
+          .join('')}
+      </div>
+    </section>`;
+  }
+
+  private renderPrintSignature(lines: string[]): string {
+    return `<section class="signature-block">
+      <div class="signature-line"></div>
+      ${lines.map((line) => `<p>${this.escapeHtml(line)}</p>`).join('')}
+    </section>`;
+  }
+
+  private renderPrintAcceptance(lines: string[]): string {
+    return `<section class="acceptance-card">
+      <h3>Acceptance</h3>
+      ${lines.map((line) => `<p>${this.escapeHtml(line)}</p>`).join('')}
+    </section>`;
+  }
+
+  private stripLineLabel(line: string | undefined, label: string): string {
+    return line?.replace(new RegExp(`^${label}:\\s*`, 'i'), '').trim() ?? '';
+  }
+
+  private formatPrintDate(value: Date): string {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(value);
+  }
+
+  private firstPositiveIndex(...indexes: number[]): number {
+    return indexes.find((index) => index >= 0) ?? indexes[indexes.length - 1] ?? 0;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   completedInterviewCount(interviews: HiringReviewInterviewDetail[]): number {
-    return interviews.filter((interview) => interview.status === 'Completed').length;
+    return interviews.filter((interview) => this.normalizeStatus(interview.status) === 'completed').length;
+  }
+
+  skippedInterviewCount(interviews: HiringReviewInterviewDetail[]): number {
+    return interviews.filter((interview) => this.normalizeStatus(interview.status) === 'skipped').length;
+  }
+
+  positiveRecommendationCount(interviews: HiringReviewInterviewDetail[]): number {
+    return interviews.filter((interview) => this.isPositiveRecommendation(interview.recommendation)).length;
+  }
+
+  averageInterviewScore(interviews: HiringReviewInterviewDetail[]): number | null {
+    const scores = interviews
+      .map((interview) => interview.averageScore)
+      .filter((score): score is number => typeof score === 'number');
+
+    if (scores.length === 0) {
+      return null;
+    }
+
+    return scores.reduce((total, score) => total + score, 0) / scores.length;
+  }
+
+  evidenceRatio(value: number, total: number): number {
+    if (value <= 0 || total <= 0) {
+      return 0;
+    }
+
+    return Math.min(100, Math.max(8, Math.round((value / total) * 100)));
+  }
+
+  scoreRatio(value?: number | null): number {
+    if (value === null || value === undefined || value <= 0) {
+      return 0;
+    }
+
+    return Math.min(100, Math.max(8, Math.round((value / 5) * 100)));
   }
 
   score(value?: number | null): string {
@@ -663,12 +1519,193 @@ export class HiringManagerReviewComponent implements OnInit {
     return value === null || value === undefined ? 'No score' : `${Number(value).toFixed(1)}/5 avg`;
   }
 
+  decisionBriefMetrics(data: HiringReviewDetail): HiringReviewDecisionMetric[] {
+    if (data.decisionBriefInsight?.metrics?.length) {
+      return data.decisionBriefInsight.metrics;
+    }
+
+    return [
+      {
+        key: 'interviewsCleared',
+        label: 'Completed rounds',
+        value: `${this.completedInterviewCount(data.interviews)}`,
+        score: this.evidenceRatio(this.completedInterviewCount(data.interviews), data.interviews.length),
+        unit: '%',
+        tone: 'success',
+        icon: 'task_alt',
+        detail: null,
+      },
+      {
+        key: 'skippedRounds',
+        label: 'Skipped rounds',
+        value: `${this.skippedInterviewCount(data.interviews)}`,
+        score: this.evidenceRatio(this.skippedInterviewCount(data.interviews), data.interviews.length),
+        unit: '%',
+        tone: 'neutral',
+        icon: 'do_not_disturb_on',
+        detail: null,
+      },
+      {
+        key: 'collectiveSentiment',
+        label: 'Positive recommendations',
+        value: `${this.positiveRecommendationCount(data.interviews)}`,
+        score: this.evidenceRatio(this.positiveRecommendationCount(data.interviews), this.completedInterviewCount(data.interviews)),
+        unit: '%',
+        tone: 'success',
+        icon: 'thumb_up',
+        detail: null,
+      },
+      {
+        key: 'averageScore',
+        label: 'Average score',
+        value: this.scoreLabel(this.averageInterviewScore(data.interviews)),
+        score: this.scoreRatio(this.averageInterviewScore(data.interviews)),
+        unit: '%',
+        tone: 'success',
+        icon: 'speed',
+        detail: null,
+      },
+    ];
+  }
+
+  decisionBriefContext(data: HiringReviewDetail): HiringReviewDecisionContextItem[] {
+    if (data.decisionBriefInsight?.context?.length) {
+      return data.decisionBriefInsight.context;
+    }
+
+    return [
+      {
+        key: 'applicationStatus',
+        label: 'Application status',
+        value: this.formatStatusLabel(data.job.applicationStatus),
+        icon: 'approval_delegation',
+        tone: 'info',
+      },
+      {
+        key: 'source',
+        label: 'Source',
+        value: data.job.sourceLabel || 'Not recorded',
+        icon: 'travel_explore',
+        tone: 'info',
+      },
+      {
+        key: 'recruiterNotes',
+        label: 'Recruiter notes',
+        value: this.recruiterNotesLabel(data),
+        icon: 'edit_note',
+        tone: data.job.recruiterNotes ? 'info' : 'warning',
+      },
+      {
+        key: 'decisionControl',
+        label: 'Decision control',
+        value: 'Human review required',
+        icon: 'verified_user',
+        tone: 'info',
+      },
+    ];
+  }
+
+  decisionBriefNarrative(data: HiringReviewDetail): string {
+    if (data.decisionBriefInsight?.summary) {
+      return data.decisionBriefInsight.summary;
+    }
+
+    const cleaned = (data.decisionBrief ?? '')
+      .replace(/\s*Application status is [^.]*\.\s*/i, ' ')
+      .replace(/\s*No recruiter notes were recorded\.\s*/i, ' ')
+      .replace(/\s*Human review remains required before [^.]*\.\s*/i, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return cleaned || data.decisionBrief;
+  }
+
+  recruiterNotesLabel(data: HiringReviewDetail): string {
+    const notes = data.job.recruiterNotes?.trim() || '';
+    if (!notes) {
+      return 'No notes recorded';
+    }
+
+    return notes.length > 52 ? `${notes.slice(0, 49)}...` : notes;
+  }
+
   formatExperience(value?: number | null): string {
     return value === null || value === undefined ? 'Not recorded' : `${Number(value).toFixed(1)} years`;
   }
 
   formatNotice(value?: number | null): string {
     return value === null || value === undefined ? 'Not recorded' : `${value} days`;
+  }
+
+  private formatEmployeeExperience(value?: number | null): string {
+    if (value === null || value === undefined) {
+      return 'Experience not recorded';
+    }
+
+    const numericValue = Number(value);
+    const displayValue = Number.isInteger(numericValue) ? `${numericValue}` : numericValue.toFixed(1);
+    return `${displayValue} yrs`;
+  }
+
+  formatStatusLabel(status?: string | null): string {
+    const value = status?.trim() ?? '';
+    if (!value) {
+      return 'Not recorded';
+    }
+
+    return value
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\bHm\b/g, 'HM')
+      .trim();
+  }
+
+  isRequestClosed(data: HiringReviewDetail): boolean {
+    return this.isSameStatus(data.job.requestStatus, 'Closed');
+  }
+
+  private async loadReportingManagerOptions(
+    data: HiringReviewDetail,
+    search: string,
+    skip: number,
+    append: boolean,
+  ): Promise<void> {
+    const requestId = ++this.reportingManagerRequestId;
+    this.reportingManagerLoading.set(true);
+    this.reportingManagerError.set('');
+
+    try {
+      const response = await this.store.searchReportingManagerOptions(
+        data.job.jobRequestId,
+        search,
+        skip,
+        this.reportingManagerPageSize,
+      );
+
+      if (requestId !== this.reportingManagerRequestId) {
+        return;
+      }
+
+      const items = response.items ?? [];
+      this.reportingManagerOptions.set(append ? [...this.reportingManagerOptions(), ...items] : items);
+      this.reportingManagerHasMore.set(Boolean(response.hasMore));
+    } catch {
+      if (requestId !== this.reportingManagerRequestId) {
+        return;
+      }
+
+      if (!append) {
+        this.reportingManagerOptions.set([]);
+      }
+
+      this.reportingManagerHasMore.set(false);
+      this.reportingManagerError.set('Employees could not be loaded.');
+    } finally {
+      if (requestId === this.reportingManagerRequestId) {
+        this.reportingManagerLoading.set(false);
+      }
+    }
   }
 
   private async reloadDetail(jobApplicationId: string, message: string): Promise<void> {
@@ -685,8 +1722,18 @@ export class HiringManagerReviewComponent implements OnInit {
   private hydrateForms(detail: HiringReviewDetail): void {
     this.offerForm = this.emptyOfferForm(detail.offerLetter);
     this.meetingForm = this.emptyMeetingForm();
-    this.outcomeForm = { outcome: 'Offered', reason: '' };
+    this.outcomeForm = {
+      outcome: this.hiringOutcomeFormStatus(detail.job.applicationStatus),
+      reason: detail.job.finalOutcomeReason ?? '',
+    };
     this.closeReason = '';
+    this.reportingManagerRequestId += 1;
+    this.reportingManagerSearchText.set(this.offerForm.reportingManager);
+    this.reportingManagerOptions.set([]);
+    this.reportingManagerHasMore.set(false);
+    this.reportingManagerPickerOpen.set(false);
+    this.reportingManagerError.set('');
+    this.reportingManagerLoading.set(false);
   }
 
   private buildGenerateOfferInput(): GenerateOfferLetterInput {
@@ -746,6 +1793,17 @@ export class HiringManagerReviewComponent implements OnInit {
     };
   }
 
+  private hiringOutcomeFormStatus(status?: string | null): HiringOutcomeInput['outcome'] {
+    const normalized = status?.trim();
+    return normalized === 'Rejected' || normalized === 'OnHold' || normalized === 'Joined' || normalized === 'Offered'
+      ? normalized
+      : 'Offered';
+  }
+
+  private isSameStatus(status: string | null | undefined, expected: string): boolean {
+    return status?.replace(/\s+/g, '').toLowerCase() === expected.replace(/\s+/g, '').toLowerCase();
+  }
+
   private emptyMeetingForm(): MeetingForm {
     const date = new Date();
     date.setDate(date.getDate() + 1);
@@ -761,6 +1819,15 @@ export class HiringManagerReviewComponent implements OnInit {
   private clearStatus(): void {
     this.error.set('');
     this.message.set('');
+  }
+
+  private isPositiveRecommendation(value?: string | null): boolean {
+    const normalized = this.normalizeStatus(value);
+    return ['proceed', 'positive', 'recommended', 'recommend', 'hire', 'stronghire', 'yes'].includes(normalized);
+  }
+
+  private normalizeStatus(value?: string | null): string {
+    return (value ?? '').replace(/[\s_-]+/g, '').toLowerCase();
   }
 
   private blankToNull(value?: string | null): string | null {

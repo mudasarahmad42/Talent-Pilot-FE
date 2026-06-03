@@ -217,7 +217,6 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'tenant-profile' },
       { path: 'branding', pathMatch: 'full', redirectTo: 'tenant-profile' },
       { path: 'career-page', pathMatch: 'full', redirectTo: 'tenant-profile' },
-      { path: 'integrations', pathMatch: 'full', redirectTo: 'candidate-sources' },
       {
         path: ':pageId',
         canActivate: [permissionGuard],
@@ -301,6 +300,22 @@ export const routes: Routes = [
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
     ],
+  },
+  {
+    path: 'settings/integrations/google-calendar/success',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/settings/google-calendar-connection-result.component').then(
+        (component) => component.GoogleCalendarConnectionResultComponent,
+      ),
+  },
+  {
+    path: 'settings/integrations/google-calendar/error',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/settings/google-calendar-connection-result.component').then(
+        (component) => component.GoogleCalendarConnectionResultComponent,
+      ),
   },
   { path: '**', redirectTo: 'auth/login' },
 ];

@@ -8,6 +8,11 @@ import {
   JobPostListItem,
   JobRequest,
   JobRequestStage,
+  InterviewTask,
+  HiringManagerDashboard,
+  HiringManagerDashboardAgingBucket,
+  HiringManagerDashboardStatusBreakdownItem,
+  ApplicantRankingMatch,
   PmoDashboard,
   PmoDashboardAgingBucket,
   PmoDashboardDecisionSplit,
@@ -32,6 +37,13 @@ interface PresalesActionItem {
   jobRequest: JobRequest;
   assignment?: WorkflowAssignment;
   lastActivityAt: string;
+}
+
+interface RecruiterActiveJobPost {
+  post: JobPostListItem;
+  totalApplicants: number;
+  activeApplicants: number;
+  latestApplicationAt?: string | null;
 }
 
 @Component({
@@ -1108,7 +1120,7 @@ interface PresalesActionItem {
                       <strong>{{ item.jobRequest.code }}</strong>
                       <small>{{ item.jobRequest.title }}</small>
                     </span>
-                    <span class="status-badge">{{ item.jobRequest.stage }}</span>
+                    <span [class]="statusBadgeClass(item.jobRequest.stage)">{{ item.jobRequest.stage }}</span>
                     <span>{{ ownerLabel(item.jobRequest) }}</span>
                     <span>{{ formatDateTime(item.lastActivityAt) }}</span>
                   </a>
@@ -1123,12 +1135,18 @@ interface PresalesActionItem {
         </section>
       </main>
     } @else if (isRecruiterOnly()) {
-      <main class="page ops-page dashboard-page recruiter-dashboard-page">
-        <header class="ops-page-header recruiter-dashboard-header">
-          <div>
-            <p class="eyebrow">Recruiter workspace</p>
-            <h1>Recruiter Sourcing Dashboard</h1>
-            <p>Claim PMO-forwarded requests, publish job posts, rank applicants, and keep interviews moving.</p>
+      <main class="page ops-page dashboard-page recruiter-dashboard-page recruiter-overview-page">
+        <header class="recruiter-overview-header">
+          <nav class="recruiter-breadcrumb" aria-label="Breadcrumb">
+            <span>Recruiter Portal</span>
+            <span class="material-symbols-outlined" data-icon="chevron_right" aria-hidden="true"></span>
+            <strong>Dashboard</strong>
+          </nav>
+          <div class="recruiter-overview-heading">
+            <div>
+              <h1>Sourcing Overview</h1>
+              <p>Claim requisitions, move critical applicants, monitor AI support, and keep interviews on schedule.</p>
+            </div>
           </div>
         </header>
 
@@ -1139,273 +1157,280 @@ interface PresalesActionItem {
             <p class="field-status error">{{ recruiterError() }}</p>
           }
 
-          <section class="admin-kpi-grid recruiter-kpi-grid">
-            <a class="admin-kpi-card recruiter-kpi-card" routerLink="/app/recruitment/queue">
+          <section id="recruiter-overview" class="recruiter-overview-kpis" aria-label="Recruiter sourcing metrics">
+            <a class="recruiter-overview-kpi attention" routerLink="/app/recruitment/queue">
               <span>Sourcing work</span>
               <strong>{{ recruiterStats().sourcingWork }}</strong>
-              <small>Pending group work plus your claimed requests</small>
+              <small>{{ recruiterStats().claimedByMe }} claimed</small>
             </a>
-            <a class="admin-kpi-card recruiter-kpi-card" routerLink="/app/recruitment/queue">
-              <span>Claimed by me</span>
+            <a class="recruiter-overview-kpi" routerLink="/app/recruitment/queue">
+              <span>My queue</span>
               <strong>{{ recruiterStats().claimedByMe }}</strong>
-              <small>Requests you currently own</small>
+              <small>Owned by me</small>
             </a>
-            <a class="admin-kpi-card recruiter-kpi-card" routerLink="/app/job-publishing">
-              <span>Draft posts</span>
+            <a class="recruiter-overview-kpi" routerLink="/app/job-publishing">
+              <span>Drafts</span>
               <strong>{{ recruiterStats().draftPosts }}</strong>
-              <small>Need publishing before portal applications</small>
+              <small>Need publishing</small>
             </a>
-            <a class="admin-kpi-card recruiter-kpi-card" routerLink="/app/job-publishing">
-              <span>Published posts</span>
+            <a class="recruiter-overview-kpi" routerLink="/app/job-publishing">
+              <span>Live posts</span>
               <strong>{{ recruiterStats().publishedPosts }}</strong>
-              <small>Visible on the candidate portal</small>
+              <small>Candidate portal</small>
             </a>
-            <a class="admin-kpi-card recruiter-kpi-card" routerLink="/app/candidate-pipeline">
-              <span>Active applications</span>
+            <a class="recruiter-overview-kpi" routerLink="/app/candidate-pipeline">
+              <span>Total apps</span>
               <strong>{{ recruiterStats().activeApplications }}</strong>
-              <small>Current candidates not in terminal states</small>
+              <small>Active pipeline</small>
             </a>
-            <a class="admin-kpi-card recruiter-kpi-card" routerLink="/app/interview-scheduling">
-              <span>Interview follow-ups</span>
+            <a class="recruiter-overview-kpi action-needed" routerLink="/app/interview-scheduling">
+              <span>Follow-ups</span>
               <strong>{{ recruiterStats().interviewFollowUps }}</strong>
-              <small>Scheduled interviews or feedback follow-ups</small>
+              <small>Action req.</small>
             </a>
           </section>
 
-          <section class="admin-dashboard-grid recruiter-dashboard-grid">
-            <article class="ops-panel admin-panel admin-wide-panel recruiter-priority-panel">
-              <div class="panel-header">
-                <div>
-                  <div class="section-title-with-help">
-                    <h2>Priority Sourcing Work</h2>
-                    <span class="agent-help admin-analytics-help">
-                      <button type="button" class="agent-help-trigger" aria-label="What Priority Sourcing Work means" aria-describedby="recruiter-priority-work-help">
-                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                      </button>
-                      <span id="recruiter-priority-work-help" class="agent-help-popover admin-analytics-popover" role="tooltip">
-                        <strong>What this implies</strong>
-                        <span>Shows recruiter-visible SOURCING work: unclaimed group items and requests claimed by you.</span>
-                        <span>Unclaimed rows should be picked from Recruitment Queue; claimed rows should be opened and moved through job post, applications, and interviews.</span>
-                      </span>
-                    </span>
-                  </div>
-                  <p>Active PMO handoffs that need recruiter ownership or sourcing progress.</p>
+          <section class="recruiter-overview-layout">
+            <section class="recruiter-overview-rail recruiter-overview-card-row" aria-label="Recruiter dashboard support cards">
+              <article class="ops-panel recruiter-rail-card recruiter-ai-copilot-card">
+                <div class="recruiter-rail-card-title">
+                  <span class="material-symbols-outlined" data-icon="auto_awesome" aria-hidden="true"></span>
+                  <h2>AI Co-Pilot Support</h2>
                 </div>
-                <a routerLink="/app/recruitment/queue">Recruitment Queue</a>
-              </div>
+                <a class="recruiter-ai-support-row" routerLink="/app/recruitment/talent-rediscovery" [queryParams]="firstRecruiterJobRequestId() ? { jobRequestId: firstRecruiterJobRequestId() } : null">
+                  <span class="material-symbols-outlined" data-icon="groups" aria-hidden="true"></span>
+                  <span>
+                    <strong>Talent Rediscovery</strong>
+                    <small>{{ recruiterStats().rediscoveredCandidates }} warm matches identified</small>
+                  </span>
+                  <span class="material-symbols-outlined" data-icon="chevron_right" aria-hidden="true"></span>
+                </a>
+                <a class="recruiter-ai-support-row" [routerLink]="firstRecruiterJobRequestId() ? ['/app/recruitment/sourcing', firstRecruiterJobRequestId()] : ['/app/recruitment/queue']" [queryParams]="{ tab: 'applications' }">
+                  <span class="material-symbols-outlined" data-icon="bar_chart" aria-hidden="true"></span>
+                  <span>
+                    <strong>Applicant Ranking</strong>
+                    <small>{{ recruiterStats().rankedApplicants }} ranked fit scores active</small>
+                  </span>
+                  <span class="material-symbols-outlined" data-icon="chevron_right" aria-hidden="true"></span>
+                </a>
+                <a class="recruiter-ai-support-row" [routerLink]="firstRecruiterJobRequestId() ? ['/app/recruitment/sourcing', firstRecruiterJobRequestId()] : ['/app/recruitment/queue']" [queryParams]="{ tab: 'job-post' }">
+                  <span class="material-symbols-outlined" data-icon="edit_note" aria-hidden="true"></span>
+                  <span>
+                    <strong>Draft Generation</strong>
+                    <small>{{ recruiterStats().draftPosts }} job post drafts ready</small>
+                  </span>
+                  <span class="material-symbols-outlined" data-icon="chevron_right" aria-hidden="true"></span>
+                </a>
+              </article>
 
-              @if (recruiterPriorityQueue().length > 0) {
-                <div class="admin-table-wrap">
-                  <table class="admin-dashboard-table recruiter-work-table">
-                    <thead>
-                      <tr>
-                        <th>Request</th>
-                        <th>Client / department</th>
-                        <th>Ownership</th>
-                        <th>Job post</th>
-                        <th>Next action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (item of recruiterPriorityQueue(); track item.jobRequest.id) {
-                        <tr>
-                          <td>
-                            <strong>{{ item.jobRequest.code }}</strong>
-                            <small>{{ item.jobRequest.title }}</small>
-                          </td>
-                          <td>
-                            <strong>{{ item.jobRequest.client }}</strong>
-                            <small>{{ item.jobRequest.department }} - {{ item.jobRequest.location }}</small>
-                          </td>
-                          <td>
-                            <span class="status-badge">{{ recruiterOwnerLabel(item) }}</span>
-                            <small>{{ formatAssignmentAge(item.assignment.assignedAt) }}</small>
-                          </td>
-                          <td>
-                            <span class="status-badge">{{ item.jobPostStatus }}</span>
-                            <small>{{ item.jobPostUpdatedAt ? formatDateTime(item.jobPostUpdatedAt) : 'No job post yet' }}</small>
-                          </td>
-                          <td>
-                            <a class="btn secondary compact" [routerLink]="['/app/recruitment/sourcing', item.jobRequest.id]">
-                              {{ recruiterQueueActionLabel(item) }}
-                            </a>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+              <article class="ops-panel recruiter-rail-card recruiter-schedule-card">
+                <div class="recruiter-rail-heading">
+                  <h2>Today's Schedule</h2>
+                  <span class="recruiter-small-pill">{{ recruiterStats().interviewFollowUps }} pending</span>
                 </div>
-              } @else {
-                <div class="empty-state">No recruiter-visible sourcing work is currently available.</div>
-              }
-            </article>
-
-            <article class="ops-panel admin-panel">
-              <div class="panel-header">
-                <div>
-                  <div class="section-title-with-help">
-                    <h2>Applications to Move</h2>
-                    <span class="agent-help admin-analytics-help">
-                      <button type="button" class="agent-help-trigger" aria-label="What Applications to Move means" aria-describedby="recruiter-applications-help">
-                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                      </button>
-                      <span id="recruiter-applications-help" class="agent-help-popover admin-analytics-popover" role="tooltip">
-                        <strong>What this implies</strong>
-                        <span>Current applicants from the portal or manual sourcing that still need recruiter action.</span>
-                        <span>Use this to schedule first interviews, follow up after feedback, or forward completed interview packets to Hiring Manager Review.</span>
-                      </span>
-                    </span>
+                @if (recruiterTodaySchedule().length > 0) {
+                  <div class="recruiter-schedule-list">
+                    @for (item of recruiterTodaySchedule(); track item.interview.interviewId) {
+                      <a class="recruiter-schedule-row" [routerLink]="['/app/recruitment/sourcing', item.sourcing.jobRequest.id]" [queryParams]="{ tab: 'applications' }">
+                        <span class="recruiter-schedule-avatar">{{ candidateInitials(item.application.candidateName) }}</span>
+                        <span>
+                          <strong>{{ item.application.candidateName }}</strong>
+                          <small>{{ item.jobPost?.title ?? item.sourcing.jobRequest.title }} - {{ item.interview.roundName }}</small>
+                        </span>
+                        <time>{{ formatTime(item.interview.startsAt) }}</time>
+                      </a>
+                    }
                   </div>
-                  <p>Non-terminal applications connected to your visible job posts.</p>
+                } @else {
+                  <div class="empty-state compact">No interviews scheduled for today.</div>
+                }
+                <a class="btn secondary compact recruiter-full-width" routerLink="/app/interview-scheduling">Full Calendar</a>
+              </article>
+
+              <article id="recruiter-active-jobs" class="ops-panel recruiter-rail-card recruiter-active-posts-card">
+                <div class="recruiter-rail-heading">
+                  <h2>Active Posts</h2>
+                  <span>{{ recruiterStats().publishedPosts }} live</span>
                 </div>
-                <a routerLink="/app/candidate-pipeline">Pipeline</a>
-              </div>
-              @if (recruiterApplicationActions().length > 0) {
-                <div class="recruiter-action-list">
-                  @for (item of recruiterApplicationActions(); track item.application.jobApplicationId) {
-                    <a class="recruiter-action-row" [routerLink]="['/app/recruitment/sourcing', item.sourcing.jobRequest.id]" [queryParams]="{ tab: 'applications' }">
-                      <span>
-                        <strong>{{ item.application.candidateName }}</strong>
-                        <small>{{ item.application.currentDesignation || 'Candidate' }} - {{ item.application.sourceLabel }}</small>
-                      </span>
-                      <span>
-                        <strong>{{ item.jobPost?.title ?? item.sourcing.jobRequest.title }}</strong>
-                        <small>{{ item.application.interviewPassSummary || interviewSummary(item.application.interviewsPassed, item.application.interviewsTotal) }}</small>
-                      </span>
-                      <span class="status-badge">{{ statusLabel(item.application.applicationStatus) }}</span>
+                @if (recruiterActiveJobPosts().length > 0) {
+                  <div class="recruiter-rail-post-list">
+                    @for (item of recruiterActiveJobPosts(); track item.post.jobPostId) {
+                      <a class="recruiter-rail-post-row" [routerLink]="['/app/recruitment/sourcing', item.post.jobRequestId]" [queryParams]="{ tab: 'applications' }">
+                        <span>
+                          <strong>{{ item.post.title }}</strong>
+                          <small>{{ item.post.requestCode }} - {{ item.post.location }}</small>
+                        </span>
+                        <span>{{ item.activeApplicants }}/{{ item.totalApplicants }}</span>
+                      </a>
+                    }
+                  </div>
+                } @else {
+                  <div class="empty-state compact">No published job posts are visible to candidates right now.</div>
+                }
+                <a class="recruiter-manage-link" routerLink="/app/job-publishing">Manage all posts</a>
+              </article>
+            </section>
+
+            <article id="recruiter-listings" class="ops-panel recruiter-dashboard-card recruiter-listing-panel">
+              <div class="recruiter-listing-header">
+                <div class="recruiter-listing-title">
+                  @if (activeRecruiterListingTab() === 'requisitions') {
+                    <h2>Open Requisitions</h2>
+                    <p>PMO handoffs that need recruiter ownership, sourcing workspace updates, or applicant progress.</p>
+                  } @else {
+                    <h2>Top Applicants by Job</h2>
+                    <p>Best current active applicant for each job, using persisted Applicant Ranking first.</p>
+                  }
+                </div>
+                <div class="recruiter-listing-actions">
+                  <div class="recruiter-listing-tabs" role="tablist" aria-label="Recruiter listing views">
+                    <button
+                      type="button"
+                      role="tab"
+                      [class.active]="activeRecruiterListingTab() === 'requisitions'"
+                      [attr.aria-selected]="activeRecruiterListingTab() === 'requisitions'"
+                      (click)="setRecruiterListingTab('requisitions')"
+                    >
+                      Open Requisitions
+                      <span>{{ recruiterPriorityQueue().length }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      [class.active]="activeRecruiterListingTab() === 'applicants'"
+                      [attr.aria-selected]="activeRecruiterListingTab() === 'applicants'"
+                      (click)="setRecruiterListingTab('applicants')"
+                    >
+                      Top Applicants
+                      <span>{{ recruiterCriticalApplicants().length }}</span>
+                    </button>
+                  </div>
+                  @if (activeRecruiterListingTab() === 'requisitions') {
+                    <a class="recruiter-card-link" routerLink="/app/recruitment/queue">
+                      View all
+                      <span class="material-symbols-outlined" data-icon="arrow_forward" aria-hidden="true"></span>
+                    </a>
+                  } @else {
+                    <a class="recruiter-card-link" routerLink="/app/candidate-pipeline">
+                      Pipeline
+                      <span class="material-symbols-outlined" data-icon="arrow_forward" aria-hidden="true"></span>
                     </a>
                   }
                 </div>
-              } @else {
-                <div class="empty-state">No active applications need recruiter action right now.</div>
-              }
-            </article>
-
-            <article class="ops-panel admin-panel">
-              <div class="panel-header">
-                <div>
-                  <div class="section-title-with-help">
-                    <h2>Job Post Publishing</h2>
-                    <span class="agent-help admin-analytics-help">
-                      <button type="button" class="agent-help-trigger" aria-label="What Job Post Publishing means" aria-describedby="recruiter-posting-help">
-                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                      </button>
-                      <span id="recruiter-posting-help" class="agent-help-popover admin-analytics-popover" role="tooltip">
-                        <strong>What this implies</strong>
-                        <span>Tracks draft, published, and closed Talent Pilot job posts owned by recruiting.</span>
-                        <span>Draft posts need review and publishing; published posts should be monitored for applications and applicant ranking.</span>
-                      </span>
-                    </span>
-                  </div>
-                  <p>Latest recruiter job posts and publication states.</p>
-                </div>
-                <a routerLink="/app/job-publishing">Job Publishing</a>
               </div>
-              @if (recruiterLatestPosts().length > 0) {
-                <div class="recruiter-post-list">
-                  @for (post of recruiterLatestPosts(); track post.jobPostId) {
-                    <a class="recruiter-post-row" [routerLink]="['/app/recruitment/sourcing', post.jobRequestId]">
-                      <span>
-                        <strong>{{ post.title }}</strong>
-                        <small>{{ post.requestCode }} - {{ post.department }} - {{ post.location }}</small>
-                      </span>
-                      <span class="status-badge">{{ post.status }}</span>
-                    </a>
+
+              @if (activeRecruiterListingTab() === 'requisitions') {
+                <section id="recruiter-sourcing" role="tabpanel" aria-label="Open requisitions">
+                  @if (recruiterPriorityQueue().length > 0) {
+                    <div class="recruiter-table-scroll">
+                      <table class="recruiter-overview-table open-requisition-table">
+                        <thead>
+                          <tr>
+                            <th>Requisition</th>
+                            <th>Department</th>
+                            <th>Aging</th>
+                            <th>Owner</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of recruiterPriorityQueue(); track item.jobRequest.id) {
+                            <tr>
+                              <td>
+                                <strong>{{ item.jobRequest.code }}</strong>
+                                <small>{{ item.jobRequest.title }}</small>
+                                <small>{{ item.jobRequest.client }}</small>
+                              </td>
+                              <td>
+                                <strong>{{ item.jobRequest.department }}</strong>
+                                <small>{{ item.jobRequest.location }}</small>
+                              </td>
+                              <td>
+                                <strong class="recruiter-aging-text">{{ formatAssignmentAge(item.assignment.assignedAt) }}</strong>
+                              </td>
+                              <td>
+                                <div class="requisition-owner-cell">
+                                  <span [class]="statusBadgeClass(recruiterOwnerLabel(item))">{{ recruiterOwnerShortLabel(item) }}</span>
+                                  <small>{{ recruiterOwnerDetail(item) }}</small>
+                                  <small>{{ item.jobPostUpdatedAt ? formatDateTime(item.jobPostUpdatedAt) : 'No job post yet' }}</small>
+                                </div>
+                              </td>
+                              <td>
+                                <details class="row-action-menu recruiter-row-menu">
+                                  <summary aria-label="Open requisition actions">
+                                    <span class="material-symbols-outlined" data-icon="more_vert" aria-hidden="true"></span>
+                                  </summary>
+                                  <div class="row-action-menu-panel" role="menu">
+                                    <a [routerLink]="recruiterQueueActionLink(item)" role="menuitem">
+                                      <span class="material-symbols-outlined" data-icon="open_in_new" aria-hidden="true"></span>
+                                      {{ recruiterQueueActionLabel(item) }}
+                                    </a>
+                                  </div>
+                                </details>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <div class="empty-state">No recruiter-visible sourcing work is currently available.</div>
                   }
-                </div>
+                </section>
               } @else {
-                <div class="empty-state">No job posts have been created yet.</div>
-              }
-            </article>
-
-            <article class="ops-panel admin-panel">
-              <div class="panel-header">
-                <div>
-                  <div class="section-title-with-help">
-                    <h2>AI Recruiting Support</h2>
-                    <span class="agent-help admin-analytics-help">
-                      <button type="button" class="agent-help-trigger" aria-label="What AI Recruiting Support means" aria-describedby="recruiter-ai-help">
-                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                      </button>
-                      <span id="recruiter-ai-help" class="agent-help-popover admin-analytics-popover" role="tooltip">
-                        <strong>What this implies</strong>
-                        <span>Summarizes recruiter-side advisory AI: Talent Rediscovery for warm candidates and Applicant Ranking for current applications.</span>
-                        <span>AI output is advisory only. Recruiters still decide who to invite, interview, reject, or forward.</span>
-                      </span>
-                    </span>
-                  </div>
-                  <p>Advisory signals available in recruiter sourcing flows.</p>
-                </div>
-              </div>
-              <div class="admin-ai-grid recruiter-ai-grid">
-                <a routerLink="/app/recruitment/talent-rediscovery" [queryParams]="firstRecruiterJobRequestId() ? { jobRequestId: firstRecruiterJobRequestId() } : null">
-                  <span>Talent Rediscovery</span>
-                  <strong>{{ recruiterStats().rediscoveredCandidates }}</strong>
-                  <small>Warm candidates ranked before external sourcing.</small>
-                </a>
-                <a [routerLink]="firstRecruiterJobRequestId() ? ['/app/recruitment/sourcing', firstRecruiterJobRequestId()] : ['/app/recruitment/queue']" [queryParams]="{ tab: 'applications' }">
-                  <span>Applicant Ranking</span>
-                  <strong>{{ recruiterStats().rankedApplicants }}</strong>
-                  <small>Current applications with persisted AI fit scores.</small>
-                </a>
-                <a [routerLink]="firstRecruiterJobRequestId() ? ['/app/recruitment/sourcing', firstRecruiterJobRequestId()] : ['/app/recruitment/queue']" [queryParams]="{ tab: 'job-post' }">
-                  <span>Job Post Drafting</span>
-                  <strong>{{ recruiterStats().draftPosts }}</strong>
-                  <small>Draft posts can be refined and published manually.</small>
-                </a>
-              </div>
-            </article>
-
-            <article class="ops-panel admin-panel admin-wide-panel">
-              <div class="panel-header">
-                <div>
-                  <div class="section-title-with-help">
-                    <h2>Interview Follow-ups</h2>
-                    <span class="agent-help admin-analytics-help">
-                      <button type="button" class="agent-help-trigger" aria-label="What Interview Follow-ups means" aria-describedby="recruiter-interview-help">
-                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                      </button>
-                      <span id="recruiter-interview-help" class="agent-help-popover admin-analytics-popover" role="tooltip">
-                        <strong>What this implies</strong>
-                        <span>Upcoming scheduled interviews and completed interviews that may still need feedback review.</span>
-                        <span>After all configured rounds are completed or skipped, the recruiter can forward the candidate to Hiring Manager Review.</span>
-                      </span>
-                    </span>
-                  </div>
-                  <p>Scheduled interviews and feedback checkpoints across active applications.</p>
-                </div>
-                <a routerLink="/app/interview-scheduling">Interview Scheduling</a>
-              </div>
-              @if (recruiterInterviewFollowUps().length > 0) {
-                <div class="admin-table-wrap">
-                  <table class="admin-dashboard-table compact">
-                    <thead>
-                      <tr>
-                        <th>Candidate</th>
-                        <th>Job</th>
-                        <th>Round</th>
-                        <th>When</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (item of recruiterInterviewFollowUps(); track item.interview.interviewId) {
-                        <tr>
-                          <td>
-                            <strong>{{ item.application.candidateName }}</strong>
-                            <small>{{ item.application.candidateEmail }}</small>
-                          </td>
-                          <td>{{ item.jobPost?.title ?? item.sourcing.jobRequest.title }}</td>
-                          <td>{{ item.interview.roundName }}</td>
-                          <td>{{ formatDateTime(item.interview.startsAt) }}</td>
-                          <td><span class="status-badge">{{ statusLabel(item.interview.status) }}</span></td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              } @else {
-                <div class="empty-state">No interview follow-ups are currently visible.</div>
+                <section id="recruiter-applicants" role="tabpanel" aria-label="Top applicants by job">
+                  @if (recruiterCriticalApplicants().length > 0) {
+                    <div class="recruiter-table-scroll">
+                      <table class="recruiter-overview-table critical-applicant-table">
+                        <thead>
+                          <tr>
+                            <th>Candidate</th>
+                            <th>Position</th>
+                            <th>Applicant ranking</th>
+                            <th>Current stage</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of recruiterCriticalApplicants(); track item.application.jobApplicationId) {
+                            <tr>
+                              <td>
+                                <div class="recruiter-candidate-cell">
+                                  <span class="recruiter-avatar">{{ candidateInitials(item.application.candidateName) }}</span>
+                                  <span>
+                                    <strong>{{ item.application.candidateName }}</strong>
+                                    <small>{{ item.application.sourceLabel }}</small>
+                                    <small>{{ item.application.currentDesignation || 'Candidate' }}</small>
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <strong>{{ item.jobPost?.title ?? item.sourcing.jobRequest.title }}</strong>
+                                <small>{{ item.sourcing.jobRequest.department }}</small>
+                              </td>
+                              <td>
+                                <div class="recruiter-ai-insight">
+                                  <strong>{{ criticalApplicantScore(item) }}</strong>
+                                  @if (criticalApplicantInsight(item)) {
+                                  <small>{{ criticalApplicantInsight(item) }}</small>
+                                }
+                                  @if (!criticalApplicantRanking(item)) {
+                                    <small>No persisted applicant ranking for this application.</small>
+                                  }
+                                </div>
+                              </td>
+                              <td>
+                                <span [class]="statusBadgeClass(item.application.applicationStatus)">{{ statusLabel(item.application.applicationStatus) }}</span>
+                                <small>{{ item.application.interviewPassSummary || interviewSummary(item.application.interviewsPassed, item.application.interviewsTotal) }}</small>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <div class="empty-state">No active applications need recruiter action right now.</div>
+                  }
+                </section>
               }
             </article>
           </section>
@@ -1414,6 +1439,479 @@ interface PresalesActionItem {
             <strong>Recruiter dashboard could not be loaded.</strong>
             <p>{{ recruiterError() ?? 'Try refreshing the dashboard.' }}</p>
           </section>
+        }
+      </main>
+    } @else if (isHiringManagerDashboard()) {
+      <main class="page ops-page dashboard-page hiring-manager-dashboard-page">
+        <header class="ops-page-header hiring-manager-dashboard-header">
+          <div>
+            <p class="eyebrow">Hiring Manager</p>
+            <h1>Good morning, {{ firstName() }}</h1>
+            <p>Your final review queue, offer follow-ups, and hiring outcomes.</p>
+            @if (hiringManagerDashboard(); as dashboard) {
+              <small>Last refreshed {{ formatDateTime(dashboard.generatedAtUtc) }}</small>
+            }
+          </div>
+        </header>
+
+        @if (hiringManagerLoading()) {
+          <section class="ops-panel empty-state">Loading Hiring Manager dashboard...</section>
+        } @else if (hiringManagerDashboard(); as dashboard) {
+          @if (hiringManagerError()) {
+            <p class="field-status error">{{ hiringManagerError() }}</p>
+          }
+
+          <section class="ops-stats-grid" aria-label="Hiring manager decision summary">
+            <article class="ops-stat-card warning">
+              <span class="ops-stat-icon material-symbols-outlined" aria-hidden="true">approval_delegation</span>
+              <div>
+                <span>Pending reviews</span>
+                <strong>{{ dashboard.summary.pendingReviews }}</strong>
+                <small>Need final decision</small>
+              </div>
+            </article>
+            <article class="ops-stat-card">
+              <span class="ops-stat-icon material-symbols-outlined" aria-hidden="true">draft</span>
+              <div>
+                <span>Offer follow-ups</span>
+                <strong>{{ dashboard.summary.offerFollowUps }}</strong>
+                <small>Drafts, meetings, offered</small>
+              </div>
+            </article>
+            <article class="ops-stat-card">
+              <span class="ops-stat-icon material-symbols-outlined" aria-hidden="true">pause_circle</span>
+              <div>
+                <span>On hold</span>
+                <strong>{{ dashboard.summary.onHold }}</strong>
+                <small>Paused decisions</small>
+              </div>
+            </article>
+            <article class="ops-stat-card success">
+              <span class="ops-stat-icon material-symbols-outlined" aria-hidden="true">task_alt</span>
+              <div>
+                <span>Completed outcomes</span>
+                <strong>{{ dashboard.summary.completedOutcomes }}</strong>
+                <small>Joined or rejected</small>
+              </div>
+            </article>
+            <article class="ops-stat-card danger">
+              <span class="ops-stat-icon material-symbols-outlined" aria-hidden="true">hourglass_top</span>
+              <div>
+                <span>Oldest waiting</span>
+                <strong>{{ dashboard.summary.oldestWaitingDays }}</strong>
+                <small>Days in active review</small>
+              </div>
+            </article>
+          </section>
+
+          <section class="admin-dashboard-grid">
+            <article class="ops-panel admin-panel full-span">
+              <div class="panel-header">
+                <div>
+                  <h2>Priority decision queue</h2>
+                  <p class="muted">Active reviews first, then oldest waiting candidates.</p>
+                </div>
+              </div>
+              @if (dashboard.priorityReviews.length > 0) {
+                <div class="admin-table-wrap">
+                  <table class="admin-dashboard-table compact">
+                    <thead>
+                      <tr>
+                        <th>Candidate</th>
+                        <th>Job</th>
+                        <th>Status</th>
+                        <th>Evidence</th>
+                        <th>Waiting</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (review of dashboard.priorityReviews; track review.jobApplicationId) {
+                        <tr>
+                          <td>
+                            <strong>{{ review.candidateName }}</strong>
+                            <small>{{ review.candidateEmail }}</small>
+                          </td>
+                          <td>
+                            <strong>{{ review.jobTitle }}</strong>
+                            <small>{{ review.requestCode }} - {{ review.client }} - {{ review.department }}</small>
+                          </td>
+                          <td><span [class]="statusBadgeClass(review.status)">{{ statusLabel(review.status) }}</span></td>
+                          <td>
+                            <strong>{{ review.completedInterviews }} interviews</strong>
+                            <small>{{ review.positiveRecommendations }} positive - {{ hiringReviewScoreLabel(review.averageScore) }}</small>
+                          </td>
+                          <td>
+                            <strong>{{ review.daysWaiting }}d</strong>
+                            <small>Updated {{ formatShortDate(review.updatedAt) }}</small>
+                          </td>
+                          <td>
+                            <a class="table-link-button" [routerLink]="['/app/hiring-manager/reviews', review.jobApplicationId]">Open review</a>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="empty-state">
+                  <strong>No hiring decisions assigned</strong>
+                  <p>Candidates forwarded by recruiters after interviews will appear here.</p>
+                </div>
+              }
+            </article>
+
+            <article class="ops-panel admin-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Offer and outcome pipeline</h2>
+                  <p class="muted">Offer artifacts and late-stage candidate states.</p>
+                </div>
+              </div>
+              <div class="hiring-breakdown-list">
+                @for (item of dashboard.offerPipeline; track item.status) {
+                  <div class="hiring-breakdown-row">
+                    <div class="hiring-breakdown-row-main">
+                      <span>{{ item.status }}</span>
+                      <strong>{{ item.count }}</strong>
+                    </div>
+                    <span class="hiring-breakdown-track" aria-hidden="true">
+                      <i [style.width.%]="hiringBreakdownWidth(item, dashboard.offerPipeline)"></i>
+                    </span>
+                  </div>
+                }
+              </div>
+            </article>
+
+            <article class="ops-panel admin-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Decision aging</h2>
+                  <p class="muted">Active reviews grouped by days waiting.</p>
+                </div>
+              </div>
+              <div class="hiring-breakdown-list">
+                @for (bucket of dashboard.agingBuckets; track bucket.label) {
+                  <div class="hiring-breakdown-row">
+                    <div class="hiring-breakdown-row-main">
+                      <span>{{ bucket.label }}</span>
+                      <strong>{{ bucket.count }}</strong>
+                    </div>
+                    <span class="hiring-breakdown-track" aria-hidden="true">
+                      <i [style.width.%]="hiringAgingWidth(bucket, dashboard.agingBuckets)"></i>
+                    </span>
+                  </div>
+                }
+              </div>
+            </article>
+
+            <article class="ops-panel admin-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Outcome split</h2>
+                  <p class="muted">Final or late-stage hiring decisions in your queue.</p>
+                </div>
+              </div>
+              <div class="admin-metric-mini-grid">
+                @for (item of dashboard.outcomeSplit; track item.status) {
+                  <span><strong>{{ item.count }}</strong> {{ item.status }}</span>
+                }
+              </div>
+            </article>
+
+            <article class="ops-panel admin-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>AI transparency</h2>
+                  <p class="muted">Decision brief source and boundary.</p>
+                </div>
+                <span class="status-badge info">Advisory</span>
+              </div>
+              <p class="admin-muted">
+                Decision briefs are generated by Hiring Manager Decision Brief (hiring-manager-decision-brief) from candidate,
+                source, recruiter notes, job, and interview evidence. Final decisions remain human-owned.
+              </p>
+            </article>
+
+            <article class="ops-panel admin-panel full-span">
+              <div class="panel-header">
+                <div>
+                  <h2>Recent hiring activity</h2>
+                  <p class="muted">Latest handoffs, offer changes, meetings, and recorded outcomes.</p>
+                </div>
+              </div>
+              @if (dashboard.recentActivity.length > 0) {
+                <div class="activity-feed">
+                  @for (event of dashboard.recentActivity; track event.id) {
+                    <p>
+                      <strong>{{ event.actorName || 'System' }}</strong>
+                      {{ activityTitle(event.title) }}
+                      <small>{{ event.requestCode }} - {{ event.candidateName }} - {{ formatDateTime(event.createdAt) }}</small>
+                    </p>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state">No hiring-manager activity has been recorded yet.</div>
+              }
+            </article>
+          </section>
+        } @else {
+          <section class="ops-panel empty-state">
+            <strong>Hiring Manager dashboard could not be loaded.</strong>
+            <p>{{ hiringManagerError() ?? 'Try refreshing the dashboard.' }}</p>
+          </section>
+        }
+      </main>
+    } @else if (isInterviewerDashboard()) {
+      <main class="page ops-page dashboard-page interviewer-dashboard-page">
+        <header class="ops-page-header interviewer-dashboard-header">
+          <div>
+            <p class="eyebrow">My interviews</p>
+            <h1>Good morning, {{ firstName() }}</h1>
+            <p>Here is your interview schedule and feedback queue for today.</p>
+          </div>
+          <div class="ops-header-actions">
+            <a class="btn secondary compact" routerLink="/app/interview-feedback">
+              <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
+              Interview Feedback
+            </a>
+          </div>
+        </header>
+
+        @if (interviewerLoading()) {
+          <section class="ops-panel empty-state">Loading your interview dashboard...</section>
+        } @else {
+          @if (interviewerError()) {
+            <p class="field-status error">{{ interviewerError() }}</p>
+          }
+
+          <section class="ops-stats-grid interviewer-kpi-grid" aria-label="My interview summary">
+            <article class="ops-stat-card">
+              <span class="ops-stat-icon material-symbols-outlined" data-icon="today" aria-hidden="true"></span>
+              <div>
+                <span>Today</span>
+                <strong>{{ interviewerStats().today }}</strong>
+                <small>Scheduled interviews</small>
+              </div>
+            </article>
+            <article class="ops-stat-card">
+              <span class="ops-stat-icon material-symbols-outlined" data-icon="event" aria-hidden="true"></span>
+              <div>
+                <span>Upcoming</span>
+                <strong>{{ interviewerStats().upcoming }}</strong>
+                <small>Future interviews</small>
+              </div>
+            </article>
+            <article class="ops-stat-card warning">
+              <span class="ops-stat-icon material-symbols-outlined" data-icon="rate_review" aria-hidden="true"></span>
+              <div>
+                <span>Pending feedback</span>
+                <strong>{{ interviewerStats().pending }}</strong>
+                <small>Needs your input</small>
+              </div>
+            </article>
+            <article class="ops-stat-card danger">
+              <span class="ops-stat-icon material-symbols-outlined" data-icon="notification_important" aria-hidden="true"></span>
+              <div>
+                <span>Overdue</span>
+                <strong>{{ interviewerStats().overdue }}</strong>
+                <small>Past scheduled time</small>
+              </div>
+            </article>
+            <article class="ops-stat-card success">
+              <span class="ops-stat-icon material-symbols-outlined" data-icon="task_alt" aria-hidden="true"></span>
+              <div>
+                <span>Submitted</span>
+                <strong>{{ interviewerStats().completed }}</strong>
+                <small>Feedback completed</small>
+              </div>
+            </article>
+          </section>
+
+          @if (interviewerTasks().length === 0) {
+            <section class="ops-panel interviewer-empty-state">
+              <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+              <div>
+                <strong>No interview tasks assigned</strong>
+                <p>Scheduled interviews assigned to you will appear here with meeting links and feedback actions.</p>
+                <a class="btn secondary compact" routerLink="/app/interview-feedback">Open feedback workbench</a>
+              </div>
+            </section>
+          } @else {
+            <section class="interviewer-dashboard-grid">
+              <article class="ops-panel interviewer-panel interviewer-wide-panel">
+                <div class="panel-header">
+                  <div>
+                    <h2>Today's interviews</h2>
+                    <p class="muted">Candidate interviews scheduled for your local day.</p>
+                  </div>
+                  <span class="status-badge info">{{ todayInterviewTasks().length }} today</span>
+                </div>
+                @if (todayInterviewTasks().length > 0) {
+                  <div class="interviewer-task-list">
+                    @for (task of todayInterviewTasks(); track task.interviewId) {
+                      <article class="interviewer-task-row" [class.overdue]="isInterviewTaskOverdue(task)">
+                        <span class="material-symbols-outlined" aria-hidden="true">{{ interviewerTaskIcon(task) }}</span>
+                        <div>
+                          <strong>{{ task.candidateName }}</strong>
+                          <small>{{ task.jobTitle }} - {{ task.roundName }}</small>
+                          <small>{{ task.client }} - Recruiter: {{ task.scheduledByName }}</small>
+                        </div>
+                        <div class="interviewer-task-meta">
+                          <span>{{ interviewTaskTime(task) }}</span>
+                          <small>{{ task.durationMinutes }} min</small>
+                        </div>
+                        <div class="interviewer-task-actions">
+                          @if (task.meetingLink) {
+                            <a class="btn secondary compact" [href]="task.meetingLink" target="_blank" rel="noreferrer">
+                              <span class="material-symbols-outlined" aria-hidden="true">videocam</span>
+                              Join
+                            </a>
+                          } @else if (task.locationText) {
+                            <span class="status-badge status-badge--idle">{{ task.locationText }}</span>
+                          }
+                          @if (interviewFeedbackActionLabel(task); as feedbackActionLabel) {
+                            <a
+                              class="btn primary compact"
+                              routerLink="/app/interview-feedback"
+                              [queryParams]="{ interviewId: task.interviewId }"
+                            >
+                              {{ feedbackActionLabel }}
+                            </a>
+                          }
+                        </div>
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <div class="empty-state">No interviews are scheduled for today.</div>
+                }
+              </article>
+
+              <article class="ops-panel interviewer-panel">
+                <div class="panel-header">
+                  <div>
+                    <h2>Upcoming interviews</h2>
+                    <p class="muted">Next scheduled interviews after today.</p>
+                  </div>
+                </div>
+                @if (upcomingInterviewTasks().length > 0) {
+                  <div class="interviewer-compact-list">
+                    @for (task of upcomingInterviewTasks(); track task.interviewId) {
+                      <a
+                        class="interviewer-compact-row"
+                        routerLink="/app/interview-feedback"
+                        [queryParams]="{ interviewId: task.interviewId }"
+                      >
+                        <span>
+                          <strong>{{ task.candidateName }}</strong>
+                          <small>{{ task.jobTitle }} - {{ task.roundName }}</small>
+                        </span>
+                        <span>
+                          <strong>{{ formatShortDate(task.startsAt) }}</strong>
+                          <small>{{ interviewTaskTime(task) }}</small>
+                        </span>
+                      </a>
+                    }
+                  </div>
+                } @else {
+                  <div class="empty-state">No upcoming interviews after today.</div>
+                }
+              </article>
+
+              <article class="ops-panel interviewer-panel">
+                <div class="panel-header">
+                  <div>
+                    <h2>Pending feedback</h2>
+                    <p class="muted">Interviews waiting for your structured feedback.</p>
+                  </div>
+                  <a routerLink="/app/interview-feedback">View all</a>
+                </div>
+                @if (pendingFeedbackTasks().length > 0) {
+                  <div class="interviewer-compact-list">
+                    @for (task of pendingFeedbackTasks(); track task.interviewId) {
+                      <a
+                        class="interviewer-compact-row"
+                        [class.overdue]="isInterviewTaskOverdue(task)"
+                        routerLink="/app/interview-feedback"
+                        [queryParams]="{ interviewId: task.interviewId }"
+                      >
+                        <span>
+                          <strong>{{ task.candidateName }}</strong>
+                          <small>{{ task.roundName }} - {{ task.scheduledByName }}</small>
+                        </span>
+                        <span [class]="statusBadgeClass(interviewerTaskStatusLabel(task))">
+                          {{ interviewerTaskStatusLabel(task) }}
+                        </span>
+                      </a>
+                    }
+                  </div>
+                } @else {
+                  <div class="empty-state">No feedback is pending.</div>
+                }
+              </article>
+
+              <article class="ops-panel interviewer-panel interviewer-wide-panel">
+                <div class="panel-header">
+                  <div>
+                    <h2>Recently submitted feedback</h2>
+                    <p class="muted">Completed interview feedback and recommendations.</p>
+                  </div>
+                  <span class="status-badge status-badge--success">{{ recentFeedbackTasks().length }} recent</span>
+                </div>
+                @if (recentFeedbackTasks().length > 0) {
+                  <div class="admin-table-wrap">
+                    <table class="admin-dashboard-table compact interviewer-feedback-table">
+                      <thead>
+                        <tr>
+                          <th>Candidate</th>
+                          <th>Job</th>
+                          <th>Round</th>
+                          <th>Recommendation</th>
+                          <th>Avg score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (task of recentFeedbackTasks(); track task.interviewId) {
+                          <tr>
+                            <td>
+                              <strong>{{ task.candidateName }}</strong>
+                              <small>{{ task.candidateEmail }}</small>
+                            </td>
+                            <td>{{ task.jobTitle }}</td>
+                            <td>{{ task.roundName }}</td>
+                            <td><span [class]="statusBadgeClass(task.recommendation)">{{ task.recommendation || 'Submitted' }}</span></td>
+                            <td>{{ averageInterviewTaskScore(task) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <div class="empty-state">Submitted feedback will appear here after you complete interviews.</div>
+                }
+              </article>
+
+              <aside class="ops-panel interviewer-panel interviewer-actions-panel">
+                <div class="panel-header">
+                  <div>
+                    <h2>Quick actions</h2>
+                    <p class="muted">Use the workbench for full feedback forms.</p>
+                  </div>
+                </div>
+                <div class="interviewer-action-stack">
+                  <a class="btn primary" routerLink="/app/interview-feedback">
+                    <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
+                    Add interview feedback
+                  </a>
+                  <a class="btn secondary" routerLink="/app/interview-feedback">
+                    <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
+                    Open assigned interviews
+                  </a>
+                </div>
+              </aside>
+            </section>
+          }
         }
       </main>
     } @else {
@@ -1587,6 +2085,16 @@ export class DashboardComponent implements OnInit {
   readonly isPresalesOnly = computed(() => this.auth.hasAnyRole(['Presales']) && !this.auth.isAdmin());
   readonly isPmoOnly = computed(() => this.auth.hasAnyRole(['PMO']) && !this.auth.isAdmin());
   readonly isRecruiterOnly = computed(() => this.auth.hasAnyRole(['Recruiter']) && !this.auth.isAdmin());
+  readonly isHiringManagerDashboard = computed(() =>
+    this.auth.hasAnyRole(['HiringManager']) &&
+    !this.auth.isAdmin() &&
+    !this.auth.hasAnyRole(['PMO', 'Recruiter']),
+  );
+  readonly isInterviewerDashboard = computed(() =>
+    this.auth.hasAnyRole(['Interviewer', 'HOD']) &&
+    !this.auth.isAdmin() &&
+    !this.auth.hasAnyRole(['PMO', 'Recruiter', 'HiringManager']),
+  );
   readonly adminDashboard = signal<TenantAdminDashboard | null>(null);
   readonly adminLoading = signal(false);
   readonly adminError = signal<string | null>(null);
@@ -1596,6 +2104,13 @@ export class DashboardComponent implements OnInit {
   readonly recruiterDashboard = signal<CandidateOperationsDataset | null>(null);
   readonly recruiterLoading = signal(false);
   readonly recruiterError = signal<string | null>(null);
+  readonly hiringManagerDashboard = signal<HiringManagerDashboard | null>(null);
+  readonly hiringManagerLoading = signal(false);
+  readonly hiringManagerError = signal<string | null>(null);
+  readonly interviewerTasks = signal<InterviewTask[]>([]);
+  readonly interviewerLoading = signal(false);
+  readonly interviewerError = signal<string | null>(null);
+  readonly activeRecruiterListingTab = signal<'requisitions' | 'applicants'>('requisitions');
   filterFromDate = '';
   filterToDate = '';
   filterDepartmentId = '';
@@ -1769,6 +2284,40 @@ export class DashboardComponent implements OnInit {
       })
       .slice(0, 6);
   });
+  readonly recruiterActiveJobPosts = computed<RecruiterActiveJobPost[]>(() => {
+    const dashboard = this.recruiterDashboard();
+    if (!dashboard) {
+      return [];
+    }
+
+    return dashboard.jobPosts
+      .filter((post) => post.status === 'Published')
+      .map((post) => {
+        const applications = this.recruiterApplicationsForPost(post, dashboard.applications);
+        const latestApplicationAt =
+          applications
+            .map((item) => item.application.appliedAt)
+            .filter(Boolean)
+            .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0] ?? null;
+
+        return {
+          post,
+          totalApplicants: applications.length,
+          activeApplicants: applications.filter((item) => !this.isTerminalApplication(item.application.applicationStatus)).length,
+          latestApplicationAt,
+        };
+      })
+      .sort((left, right) => {
+        const leftActivity = left.latestApplicationAt ?? left.post.updatedAt;
+        const rightActivity = right.latestApplicationAt ?? right.post.updatedAt;
+        return (
+          right.activeApplicants - left.activeApplicants ||
+          right.totalApplicants - left.totalApplicants ||
+          new Date(rightActivity).getTime() - new Date(leftActivity).getTime()
+        );
+      })
+      .slice(0, 6);
+  });
   readonly recruiterLatestPosts = computed(() => {
     const dashboard = this.recruiterDashboard();
     return dashboard
@@ -1790,6 +2339,9 @@ export class DashboardComponent implements OnInit {
           .slice(0, 6)
       : [];
   });
+  readonly recruiterCriticalApplicants = computed(() =>
+    this.topRecruiterApplicantsByJob(),
+  );
   readonly recruiterInterviewFollowUps = computed(() => {
     const dashboard = this.recruiterDashboard();
     return dashboard
@@ -1802,13 +2354,59 @@ export class DashboardComponent implements OnInit {
           .slice(0, 6)
       : [];
   });
+  readonly recruiterTodaySchedule = computed(() =>
+    this.recruiterInterviewFollowUps()
+      .filter((item) => this.isSameLocalDay(item.interview.startsAt, new Date()))
+      .slice(0, 3),
+  );
   readonly firstRecruiterJobRequestId = computed(
     () =>
-      this.recruiterPriorityQueue()[0]?.jobRequest.id ??
-      this.recruiterLatestPosts()[0]?.jobRequestId ??
       this.recruiterDashboard()?.sourcing[0]?.jobRequest.id ??
+      this.recruiterLatestPosts()[0]?.jobRequestId ??
       null,
   );
+  readonly todayInterviewTasks = computed(() =>
+    this.sortedInterviewTasks()
+      .filter((task) => this.isSameLocalDay(task.startsAt, new Date()))
+      .slice(0, 6),
+  );
+  readonly upcomingInterviewTasks = computed(() => {
+    const now = Date.now();
+    return this.sortedInterviewTasks()
+      .filter((task) => new Date(task.startsAt).getTime() > now)
+      .filter((task) => !this.isSameLocalDay(task.startsAt, new Date()))
+      .slice(0, 6);
+  });
+  readonly pendingFeedbackTasks = computed(() =>
+    this.interviewerTasks()
+      .filter((task) => !this.isCompletedInterviewTask(task))
+      .sort((left, right) => {
+        const leftOverdue = this.isInterviewTaskOverdue(left) ? 0 : 1;
+        const rightOverdue = this.isInterviewTaskOverdue(right) ? 0 : 1;
+        return leftOverdue - rightOverdue || new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime();
+      })
+      .slice(0, 6),
+  );
+  readonly recentFeedbackTasks = computed(() =>
+    this.interviewerTasks()
+      .filter((task) => this.isCompletedInterviewTask(task))
+      .sort((left, right) => {
+        const leftTime = new Date(left.submittedAt ?? left.startsAt).getTime();
+        const rightTime = new Date(right.submittedAt ?? right.startsAt).getTime();
+        return rightTime - leftTime;
+      })
+      .slice(0, 6),
+  );
+  readonly interviewerStats = computed(() => {
+    const tasks = this.interviewerTasks();
+    return {
+      today: tasks.filter((task) => this.isSameLocalDay(task.startsAt, new Date())).length,
+      upcoming: tasks.filter((task) => new Date(task.startsAt).getTime() > Date.now()).length,
+      pending: tasks.filter((task) => !this.isCompletedInterviewTask(task)).length,
+      overdue: tasks.filter((task) => this.isInterviewTaskOverdue(task)).length,
+      completed: tasks.filter((task) => this.isCompletedInterviewTask(task)).length,
+    };
+  });
 
   ngOnInit(): void {
     if (this.isTenantAdmin()) {
@@ -1817,6 +2415,10 @@ export class DashboardComponent implements OnInit {
       void this.loadPmoDashboard();
     } else if (this.isRecruiterOnly()) {
       void this.loadRecruiterDashboard();
+    } else if (this.isHiringManagerDashboard()) {
+      void this.loadHiringManagerDashboard();
+    } else if (this.isInterviewerDashboard()) {
+      void this.loadInterviewerDashboard();
     }
   }
 
@@ -1896,6 +2498,39 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  async loadHiringManagerDashboard(): Promise<void> {
+    if (!this.isHiringManagerDashboard()) {
+      return;
+    }
+
+    this.hiringManagerLoading.set(true);
+    this.hiringManagerError.set(null);
+    try {
+      this.hiringManagerDashboard.set(await this.store.loadHiringManagerDashboard());
+    } catch {
+      this.hiringManagerError.set('Hiring Manager dashboard could not be loaded from the backend.');
+    } finally {
+      this.hiringManagerLoading.set(false);
+    }
+  }
+
+  async loadInterviewerDashboard(): Promise<void> {
+    if (!this.isInterviewerDashboard()) {
+      return;
+    }
+
+    this.interviewerLoading.set(true);
+    this.interviewerError.set(null);
+    try {
+      const list = await this.store.loadMyInterviewTasks();
+      this.interviewerTasks.set(list.items);
+    } catch {
+      this.interviewerError.set('Your interview dashboard could not be loaded from the backend.');
+    } finally {
+      this.interviewerLoading.set(false);
+    }
+  }
+
   funnelWidth(item: TenantAdminDashboardFunnelItem, items: TenantAdminDashboardFunnelItem[]): number {
     const max = Math.max(...items.map((candidate) => candidate.count), 1);
     return Math.max(4, Math.round((item.count / max) * 100));
@@ -1931,6 +2566,23 @@ export class DashboardComponent implements OnInit {
     return item.demandCount > 0 ? Math.max(6, Math.round((item.demandCount / max) * 100)) : 2;
   }
 
+  hiringBreakdownWidth(
+    item: HiringManagerDashboardStatusBreakdownItem,
+    items: HiringManagerDashboardStatusBreakdownItem[],
+  ): number {
+    const max = Math.max(...items.map((candidate) => candidate.count), 1);
+    return item.count > 0 ? Math.max(6, Math.round((item.count / max) * 100)) : 2;
+  }
+
+  hiringAgingWidth(item: HiringManagerDashboardAgingBucket, items: HiringManagerDashboardAgingBucket[]): number {
+    const max = Math.max(...items.map((candidate) => candidate.count), 1);
+    return item.count > 0 ? Math.max(6, Math.round((item.count / max) * 100)) : 2;
+  }
+
+  hiringReviewScoreLabel(value: number | null | undefined): string {
+    return value === null || value === undefined ? 'No score' : `${Number(value).toFixed(1)}/5 avg`;
+  }
+
   routeForFunnel(item: TenantAdminDashboardFunnelItem): string {
     if (item.label === 'Published Jobs') {
       return '/app/job-publishing';
@@ -1955,8 +2607,43 @@ export class DashboardComponent implements OnInit {
     return `risk-pill ${risk.toLowerCase()}`;
   }
 
-  statusLabel(status: string): string {
-    return status.replace(/([a-z])([A-Z])/g, '$1 $2');
+  statusLabel(status: string | null | undefined): string {
+    return status ? status.replace(/([a-z])([A-Z])/g, '$1 $2') : 'Not recorded';
+  }
+
+  statusBadgeClass(status: string | null | undefined): string {
+    const normalized = this.normalizeStatus(status);
+    if (normalized.includes('unclaimed') || normalized === 'notstarted') {
+      return 'status-badge status-badge--idle';
+    }
+    if (normalized.includes('claimed')) {
+      return 'status-badge status-badge--claimed';
+    }
+
+    const classByStatus = new Map<string, string>([
+      ['published', 'status-badge--success'],
+      ['draft', 'status-badge--draft'],
+      ['closed', 'status-badge--closed'],
+      ['applied', 'status-badge--applied'],
+      ['invited', 'status-badge--invited'],
+      ['screening', 'status-badge--screening'],
+      ['interviewing', 'status-badge--interviewing'],
+      ['scheduled', 'status-badge--scheduled'],
+      ['completed', 'status-badge--success'],
+      ['overdue', 'status-badge--danger'],
+      ['skipped', 'status-badge--idle'],
+      ['cancelled', 'status-badge--danger'],
+      ['rejected', 'status-badge--danger'],
+      ['withdrawn', 'status-badge--closed'],
+      ['offered', 'status-badge--offer'],
+      ['joined', 'status-badge--success'],
+      ['hired', 'status-badge--success'],
+      ['hiringmanagerreview', 'status-badge--review'],
+      ['offerdeclined', 'status-badge--offer-declined'],
+      ['onhold', 'status-badge--hold'],
+    ]);
+
+    return `status-badge ${classByStatus.get(normalized) ?? 'status-badge--neutral'}`;
   }
 
   recruiterOwnerLabel(item: RecruitmentQueueItem): string {
@@ -1967,8 +2654,90 @@ export class DashboardComponent implements OnInit {
     return 'Unclaimed group work';
   }
 
+  recruiterOwnerShortLabel(item: RecruitmentQueueItem): string {
+    return this.isRecruiterQueueClaimed(item) ? 'Claimed' : 'Unclaimed';
+  }
+
+  recruiterOwnerDetail(item: RecruitmentQueueItem): string {
+    if (this.isRecruiterQueueClaimed(item)) {
+      return item.recruiterOwnerName ? `Claimed by ${item.recruiterOwnerName}` : 'Claimed by recruiter';
+    }
+
+    return 'No recruiter owner yet';
+  }
+
   recruiterQueueActionLabel(item: RecruitmentQueueItem): string {
     return this.isRecruiterQueueClaimed(item) ? 'Open workspace' : 'Claim in queue';
+  }
+
+  recruiterQueueActionLink(item: RecruitmentQueueItem): string[] {
+    return this.isRecruiterQueueClaimed(item)
+      ? ['/app/recruitment/sourcing', item.jobRequest.id]
+      : ['/app/recruitment/queue'];
+  }
+
+  setRecruiterListingTab(tab: 'requisitions' | 'applicants'): void {
+    this.activeRecruiterListingTab.set(tab);
+  }
+
+  topRecruiterApplicantsByJob(): CandidateOperationsApplication[] {
+    const dashboard = this.recruiterDashboard();
+    if (!dashboard) {
+      return [];
+    }
+
+    const topByJob = new Map<string, CandidateOperationsApplication>();
+    for (const item of dashboard.applications) {
+      if (this.isTerminalApplication(item.application.applicationStatus)) {
+        continue;
+      }
+
+      const key = this.recruiterApplicationJobKey(item);
+      const current = topByJob.get(key);
+      if (!current || this.compareRecruiterApplicantsForJob(item, current) < 0) {
+        topByJob.set(key, item);
+      }
+    }
+
+    return [...topByJob.values()].sort((left, right) => {
+      const leftRanking = this.criticalApplicantRanking(left);
+      const rightRanking = this.criticalApplicantRanking(right);
+      return (
+        (rightRanking?.score ?? -1) - (leftRanking?.score ?? -1) ||
+        new Date(right.application.appliedAt).getTime() - new Date(left.application.appliedAt).getTime()
+      );
+    });
+  }
+
+  criticalApplicantRanking(item: CandidateOperationsApplication): ApplicantRankingMatch | undefined {
+    return item.sourcing.applicantRankings.find(
+      (ranking) => ranking.jobApplicationId === item.application.jobApplicationId,
+    );
+  }
+
+  criticalApplicantScore(item: CandidateOperationsApplication): string {
+    const ranking = this.criticalApplicantRanking(item);
+    return ranking ? `${Math.round(ranking.score)}% fit` : 'Not ranked yet';
+  }
+
+  criticalApplicantInsight(item: CandidateOperationsApplication): string {
+    const ranking = this.criticalApplicantRanking(item);
+    if (!ranking) {
+      return '';
+    }
+
+    return ranking.strengths[0] || ranking.explanation || '';
+  }
+
+  candidateInitials(name: string | null | undefined): string {
+    const parts = (name ?? '')
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return parts.length > 0
+      ? parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('')
+      : 'TP';
   }
 
   formatAssignmentAge(value: string | null | undefined): string {
@@ -1991,6 +2760,101 @@ export class DashboardComponent implements OnInit {
 
   interviewSummary(passed: number, total: number): string {
     return total > 0 ? `${passed}/${total} interviews passed` : 'No interviews scheduled yet';
+  }
+
+  interviewTaskTime(task: InterviewTask): string {
+    const startsAt = new Date(task.startsAt);
+    if (Number.isNaN(startsAt.getTime())) {
+      return 'Time not set';
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(startsAt);
+  }
+
+  formatTime(value: string | null | undefined): string {
+    if (!value) {
+      return 'Time not set';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'Time not set';
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date);
+  }
+
+  interviewerTaskIcon(task: InterviewTask): string {
+    if (this.isCompletedInterviewTask(task)) {
+      return 'task_alt';
+    }
+
+    return this.isInterviewTaskOverdue(task) ? 'notification_important' : 'event';
+  }
+
+  interviewerTaskStatusLabel(task: InterviewTask): string {
+    if (this.isCompletedInterviewTask(task)) {
+      return 'Completed';
+    }
+
+    return this.isInterviewTaskOverdue(task) ? 'Overdue' : this.statusLabel(task.status || 'Scheduled');
+  }
+
+  interviewFeedbackActionLabel(task: InterviewTask): 'Add feedback' | 'Admin override feedback' | null {
+    if (this.normalizeStatus(task.status) !== 'scheduled') {
+      return null;
+    }
+
+    const currentUser = this.currentUser();
+    if (!currentUser) {
+      return null;
+    }
+
+    if (task.interviewerUserId === currentUser.id) {
+      return 'Add feedback';
+    }
+
+    if (this.auth.isAdmin() && this.isInactiveInterviewTaskInterviewer(task)) {
+      return 'Admin override feedback';
+    }
+
+    return null;
+  }
+
+  isCompletedInterviewTask(task: InterviewTask): boolean {
+    return this.normalizeStatus(task.status) === 'completed';
+  }
+
+  isInterviewTaskOverdue(task: InterviewTask): boolean {
+    const startsAt = new Date(task.startsAt).getTime();
+    return !this.isCompletedInterviewTask(task) && !Number.isNaN(startsAt) && startsAt < Date.now();
+  }
+
+  averageInterviewTaskScore(task: InterviewTask): string {
+    const scores = [task.technicalScore, task.communicationScore, task.cultureScore].filter(
+      (score): score is number => typeof score === 'number',
+    );
+
+    if (scores.length === 0) {
+      return 'Not scored';
+    }
+
+    const average = scores.reduce((total, score) => total + score, 0) / scores.length;
+    return `${Math.round(average * 10) / 10}/5`;
+  }
+
+  private isInactiveInterviewTaskInterviewer(task: InterviewTask): boolean {
+    return task.interviewerIsDeleted || this.normalizeStatus(task.interviewerAccountStatus) !== 'active';
+  }
+
+  applicantLabel(count: number): string {
+    return count === 1 ? 'applicant' : 'applicants';
   }
 
   activityTitle(title: string): string {
@@ -2073,6 +2937,38 @@ export class DashboardComponent implements OnInit {
     return ['rejected', 'withdrawn', 'joined', 'hired', 'offerdeclined'].includes(this.normalizeStatus(status));
   }
 
+  private recruiterApplicationsForPost(
+    post: JobPostListItem,
+    applications: CandidateOperationsApplication[],
+  ): CandidateOperationsApplication[] {
+    return applications.filter((item) => {
+      const linkedJobPostId = item.jobPost?.jobPostId ?? item.sourcing.jobPost?.jobPostId ?? null;
+      return linkedJobPostId ? linkedJobPostId === post.jobPostId : item.sourcing.jobRequest.id === post.jobRequestId;
+    });
+  }
+
+  private recruiterApplicationJobKey(item: CandidateOperationsApplication): string {
+    return item.jobPost?.jobPostId
+      ?? item.sourcing.jobPost?.jobPostId
+      ?? item.sourcing.jobRequest.id;
+  }
+
+  private compareRecruiterApplicantsForJob(
+    left: CandidateOperationsApplication,
+    right: CandidateOperationsApplication,
+  ): number {
+    const leftRanking = this.criticalApplicantRanking(left);
+    const rightRanking = this.criticalApplicantRanking(right);
+    if (leftRanking || rightRanking) {
+      return (rightRanking?.score ?? -1) - (leftRanking?.score ?? -1);
+    }
+
+    return (
+      this.applicationActionPriority(left) - this.applicationActionPriority(right) ||
+      new Date(right.application.appliedAt).getTime() - new Date(left.application.appliedAt).getTime()
+    );
+  }
+
   private applicationActionPriority(item: CandidateOperationsApplication): number {
     const status = this.normalizeStatus(item.application.applicationStatus);
     if (status === 'applied' || status === 'invited') {
@@ -2097,6 +2993,25 @@ export class DashboardComponent implements OnInit {
 
     const status = this.normalizeStatus(item.interview.status);
     return status === 'scheduled' || status === 'completed';
+  }
+
+  private sortedInterviewTasks(): InterviewTask[] {
+    return [...this.interviewerTasks()].sort(
+      (left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+    );
+  }
+
+  private isSameLocalDay(value: string, compareWith: Date): boolean {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    return (
+      date.getFullYear() === compareWith.getFullYear() &&
+      date.getMonth() === compareWith.getMonth() &&
+      date.getDate() === compareWith.getDate()
+    );
   }
 
   private normalizeStatus(value: string | null | undefined): string {

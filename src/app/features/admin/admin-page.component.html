@@ -7,6 +7,7 @@
   [class.hiring-pipeline-page]="isHiringPipelinePage()"
   [class.workflows-page]="isWorkflowsPage()"
   [class.notifications-page]="isNotificationsPage()"
+  [class.notification-outbox-page]="isNotificationOutboxPage()"
   [class.ai-settings-page]="isAiSettingsPage()"
   [class.integrations-page]="isIntegrationsPage()"
   [class.audit-logs-page]="isAuditLogsPage()"
@@ -120,6 +121,45 @@
               <section class="stitch-card">
                 <div class="stitch-card-heading">
                   <span class="heading-title">
+                    <span class="material-symbols-outlined" aria-hidden="true">contact_mail</span>
+                    <h2>Official Company Contact</h2>
+                  </span>
+                </div>
+
+                <div class="stitch-form-grid">
+                  <label class="stitch-field wide">
+                    <span>Company Address</span>
+                    <input formControlName="companyAddress" aria-label="Company address" />
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>City</span>
+                    <input formControlName="companyCity" aria-label="Company city" />
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Country</span>
+                    <input formControlName="companyCountry" aria-label="Company country" />
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Official Email</span>
+                    <input formControlName="officialEmail" type="email" aria-label="Official company email" />
+                    @if (tenantProfileForm.controls.officialEmail.invalid && tenantProfileForm.controls.officialEmail.touched) {
+                      <em>Use a valid email address.</em>
+                    }
+                  </label>
+
+                  <label class="stitch-field">
+                    <span>Official Phone</span>
+                    <input formControlName="officialPhone" aria-label="Official company phone number" />
+                  </label>
+                </div>
+              </section>
+
+              <section class="stitch-card">
+                <div class="stitch-card-heading">
+                  <span class="heading-title">
                     <span class="material-symbols-outlined" aria-hidden="true">settings</span>
                     <h2>Tenant Defaults</h2>
                   </span>
@@ -156,6 +196,29 @@
                       <option value="USD">USD ($)</option>
                       <option value="EUR">EUR</option>
                     </select>
+                  </label>
+
+                  <label class="stitch-field">
+                    <span class="setting-label">
+                      Email Delivery Provider
+                      <button
+                        type="button"
+                        class="inline-info-button"
+                        matTooltip="Workflow and test emails use the saved provider. Microsoft Graph also requires MicrosoftGraphEmail secrets and a sender mailbox on the API and worker."
+                        matTooltipPosition="above"
+                        aria-label="Email delivery provider requirements"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                      </button>
+                    </span>
+                    <span class="select-leading-icon email-provider-control">
+                      <span class="material-symbols-outlined" aria-hidden="true">outgoing_mail</span>
+                      <select formControlName="notificationEmailProvider" aria-label="Email delivery provider">
+                        @for (provider of notificationEmailProviderOptions; track provider.value) {
+                          <option [value]="provider.value">{{ provider.label }}</option>
+                        }
+                      </select>
+                    </span>
                   </label>
                 </div>
               </section>
@@ -357,6 +420,7 @@
               <span>AI Runtime</span>
               <p><strong>Configured model</strong><em>{{ tenantDraft().configuredLlmModel }}</em></p>
               <p><strong>Embedding model</strong><em>{{ tenantDraft().configuredEmbeddingModel }}</em></p>
+              <p><strong>Email provider</strong><em>{{ notificationEmailProviderLabel(tenantDraft().notificationEmailProvider) }}</em></p>
             </div>
 
             <a
@@ -1546,6 +1610,150 @@
           </div>
         </div>
       </section>
+    } @else if (isIntegrationsPage()) {
+      <header class="admin-stitch-header integration-page-header">
+        <div>
+          <p class="admin-breadcrumb">{{ page().eyebrow }}</p>
+          <h1>{{ page().title }}</h1>
+          <p>{{ page().subtitle }}</p>
+        </div>
+      </header>
+
+      <section class="integration-config-grid" aria-label="Configurable integrations">
+        <form class="integration-config-card" [formGroup]="tenantProfileForm" (ngSubmit)="saveIntegrationEmailSender()">
+          <header>
+            <span class="integration-icon provider-logo-shell" aria-hidden="true">
+              <span
+                class="provider-logo-mark large"
+                [class.microsoft-graph-mark]="isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+                [class.resend-mark]="!isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+              ></span>
+            </span>
+            <div>
+              <p>Email</p>
+              <h2>Email Sender</h2>
+              <small>Select the provider Talent Pilot uses to send workflow emails.</small>
+            </div>
+            <span class="table-status success provider-status-chip">
+              <span
+                class="provider-logo-mark mini"
+                [class.microsoft-graph-mark]="isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+                [class.resend-mark]="!isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+                aria-hidden="true"
+              ></span>
+              {{ notificationEmailProviderLabel(tenantDraft().notificationEmailProvider) }}
+            </span>
+          </header>
+
+          <label class="stitch-field integration-field">
+            <span>Sender provider</span>
+            <span class="select-leading-icon email-provider-control">
+              <span
+                class="provider-logo-mark provider-select-logo"
+                [class.microsoft-graph-mark]="isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+                [class.resend-mark]="!isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+                aria-hidden="true"
+              ></span>
+              <select
+                formControlName="notificationEmailProvider"
+                aria-label="Email sender provider"
+                [disabled]="saving() || !canManageCurrentAdminPage()"
+              >
+                @for (provider of notificationEmailProviderOptions; track provider.value) {
+                  <option [value]="provider.value">{{ provider.label }}</option>
+                }
+              </select>
+            </span>
+          </label>
+
+          <dl class="integration-meta-list">
+            <div>
+              <dt>Sender email</dt>
+              <dd>{{ notificationEmailSenderAddressLabel() }}</dd>
+            </div>
+            <div>
+              <dt>Sender status</dt>
+              <dd>{{ notificationEmailSenderStatusLabel() }}</dd>
+            </div>
+            <div>
+              <dt>Provider</dt>
+              <dd class="provider-meta-value">
+                <span
+                  class="provider-logo-mark mini"
+                  [class.microsoft-graph-mark]="isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+                  [class.resend-mark]="!isMicrosoftGraphEmailProvider(tenantDraft().notificationEmailProvider)"
+                  aria-hidden="true"
+                ></span>
+                {{ notificationEmailProviderLabel(tenantDraft().notificationEmailProvider) }}
+              </dd>
+            </div>
+          </dl>
+
+          <footer>
+            <a mat-stroked-button class="stitch-secondary-button" routerLink="/admin-center/notifications">
+              Templates
+            </a>
+            <button
+              mat-flat-button
+              type="submit"
+              class="stitch-primary-button"
+              [disabled]="!canSaveIntegrationEmailSender()"
+              [matTooltip]="permissionTooltip(canManageCurrentAdminPage())"
+            >
+              {{ saving() ? 'Saving...' : 'Save Sender' }}
+            </button>
+          </footer>
+        </form>
+
+        <article class="integration-config-card">
+          <header>
+            <span class="integration-icon material-symbols-outlined" aria-hidden="true">calendar_month</span>
+            <div>
+              <p>Calendar</p>
+              <h2>Google Calendar</h2>
+              <small>Connect calendar access used for interview events and meeting links.</small>
+            </div>
+            <span class="table-status" [class.success]="googleCalendarStatus()?.connected" [class.warning]="!googleCalendarStatus()?.connected">
+              {{ googleCalendarStatus()?.connected ? 'Connected' : 'Not connected' }}
+            </span>
+          </header>
+
+          <dl class="integration-meta-list">
+            <div>
+              <dt>Google account</dt>
+              <dd>{{ googleCalendarStatus()?.connected ? 'Not captured' : 'Not connected' }}</dd>
+            </div>
+            <div>
+              <dt>Scope</dt>
+              <dd>calendar.events</dd>
+            </div>
+            <div>
+              <dt>Token handling</dt>
+              <dd>Backend only</dd>
+            </div>
+          </dl>
+
+          @if (googleCalendarStatus()?.connected) {
+            <p class="integration-footnote">
+              Calendar access is connected, but this build does not store the Google account email. Reconnect after identity capture is added to verify the exact Google account.
+            </p>
+          }
+
+          <footer>
+            <button
+              mat-flat-button
+              type="button"
+              class="stitch-primary-button"
+              (click)="connectGoogleCalendar()"
+              [disabled]="googleCalendarConnecting() || !canManageCurrentAdminPage()"
+              [matTooltip]="permissionTooltip(canManageCurrentAdminPage())"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+              {{ googleCalendarConnecting() ? 'Opening Google...' : (googleCalendarStatus()?.connected ? 'Reconnect Calendar' : 'Connect Calendar') }}
+            </button>
+          </footer>
+        </article>
+      </section>
     } @else if (isAiSettingsPage()) {
       <header class="admin-stitch-header">
         <div>
@@ -1724,27 +1932,229 @@
         }
       </header>
 
-      <section class="admin-stitch-metrics">
-        @for (metric of page().metrics; track metric.label; let index = $index) {
-          <article
-            class="admin-stitch-metric"
-            [matTooltip]="metric.tooltip ?? ''"
-            [matTooltipDisabled]="!metric.tooltip"
-            matTooltipPosition="above"
-          >
-            <p>{{ metric.label }}</p>
-            <div>
-              <strong>{{ metric.value }}</strong>
-              <span class="material-symbols-outlined" aria-hidden="true">{{ adminMetricIcon(index) }}</span>
-            </div>
-            @if (metric.note) {
-              <small>{{ metric.note }}</small>
-            }
-          </article>
-        }
-      </section>
+      @if (isNotificationsPage()) {
+        <nav class="admin-tabs notification-channel-tabs" aria-label="Notification channels" role="tablist">
+          @for (tab of notificationTabs; track tab.id) {
+            <button
+              type="button"
+              role="tab"
+              [class.active]="activeNotificationTab() === tab.id"
+              [attr.aria-selected]="activeNotificationTab() === tab.id"
+              (click)="setActiveNotificationTab(tab.id)"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">{{ tab.icon }}</span>
+              {{ tab.label }}
+            </button>
+          }
+        </nav>
+      }
 
-      @if (isNotificationsPage() && canSendNotificationTestEmail()) {
+      @if ((!isNotificationsPage() || activeNotificationTab() === 'email') && !isNotificationOutboxPage()) {
+        <section class="admin-stitch-metrics">
+          @for (metric of page().metrics; track metric.label; let index = $index) {
+            <article
+              class="admin-stitch-metric"
+              [matTooltip]="metric.tooltip ?? ''"
+              [matTooltipDisabled]="!metric.tooltip"
+              matTooltipPosition="above"
+            >
+              <p>{{ metric.label }}</p>
+              <div>
+                <strong>{{ metric.value }}</strong>
+                <span class="material-symbols-outlined" aria-hidden="true">{{ adminMetricIcon(index) }}</span>
+              </div>
+              @if (metric.note) {
+                <small>{{ metric.note }}</small>
+              }
+            </article>
+          }
+        </section>
+      }
+
+      @if (isNotificationsPage() && activeNotificationTab() === 'email') {
+        <section class="admin-data-card notification-outbox-card" aria-labelledby="notification-outbox-title">
+          <header class="admin-data-card-header">
+            <h2 id="notification-outbox-title">Outbox</h2>
+            <a class="row-text-action notification-outbox-page-link" routerLink="/admin-center/notification-outbox">
+              <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+              View outbox details
+            </a>
+          </header>
+          <div
+            class="notification-worker-status"
+            [class.running]="notificationWorkerStatus().state === 'Running'"
+            [class.error]="notificationWorkerStatus().state === 'Error'"
+            [class.offline]="notificationWorkerStatus().state === 'Offline'"
+            [class.not-configured]="notificationWorkerStatus().state === 'NotConfigured'"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">{{ notificationWorkerStatusIcon() }}</span>
+            <div class="notification-worker-status-copy">
+              <p>Email worker</p>
+              <strong>{{ notificationWorkerStatus().label }}</strong>
+              <small>{{ notificationWorkerStatus().message }}</small>
+            </div>
+            <dl class="notification-worker-status-meta">
+              <div>
+                <dt>Last heartbeat</dt>
+                <dd>{{ notificationWorkerLastHeartbeatLabel() }}</dd>
+              </div>
+              <div>
+                <dt>Last processed</dt>
+                <dd>{{ notificationWorkerLastProcessedLabel() }}</dd>
+              </div>
+              <div>
+                <dt>Host</dt>
+                <dd>{{ notificationWorkerHostLabel() }}</dd>
+              </div>
+              <div>
+                <dt>Due now</dt>
+                <dd>{{ notificationWorkerStatus().pendingDueCount }} pending / {{ notificationWorkerStatus().processingCount }} processing</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="notification-outbox-grid" aria-live="polite">
+            <article>
+              <span class="material-symbols-outlined" aria-hidden="true">outbox</span>
+              <div>
+                <p>In outbox</p>
+                <strong>{{ notificationOutboxSummary().pendingOutboxCount }}</strong>
+                <small>Pending email deliveries</small>
+              </div>
+            </article>
+            <article>
+              <span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span>
+              <div>
+                <p>Sent</p>
+                <strong>{{ notificationOutboxSummary().sentOutboxCount }}</strong>
+                <small>Provider accepted deliveries</small>
+              </div>
+            </article>
+            <article class="failed">
+              <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+              <div>
+                <p>Failed permanently</p>
+                <strong>{{ notificationOutboxSummary().failedOutboxCount }}</strong>
+                <small>Rows marked failed</small>
+              </div>
+            </article>
+          </div>
+        </section>
+      }
+
+      @if (isNotificationOutboxPage()) {
+        <section class="admin-data-card notification-outbox-detail-card notification-outbox-page-card" aria-labelledby="notification-outbox-detail-title">
+          <header class="admin-data-card-header">
+            <div>
+              <a class="row-text-action notification-detail-back" routerLink="/admin-center/notifications">
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                Notifications
+              </a>
+              <h2 id="notification-outbox-detail-title">Email Outbox Details</h2>
+            </div>
+            <span class="table-status custom">{{ listRangeLabel(adminListItemLabel()) }}</span>
+          </header>
+          <app-admin-table-toolbar
+            [searchPlaceholder]="'Search ' + adminListItemLabel()"
+            [searchAriaLabel]="'Search ' + adminListItemLabel()"
+            [pageSizeAriaLabel]="adminListItemLabel() + ' page size'"
+            [search]="listState().search"
+            [status]="listState().status"
+            [statusOptions]="notificationOutboxStatusOptions"
+            statusLabel="Status"
+            statusAriaLabel="Filter email outbox by status"
+            [pageSize]="listState().pageSize"
+            [pageSizeOptions]="adminListPageSizeOptions"
+            (searchChange)="setListSearchValue($event)"
+            (statusChange)="setListStatusValue($event)"
+            (pageSizeChange)="setListPageSizeValue($event)"
+          />
+          <div class="notification-outbox-list">
+            @if (notificationOutboxItems().length === 0) {
+              <p class="notification-outbox-empty">No email outbox rows found.</p>
+            } @else {
+              @for (item of notificationOutboxItems(); track item.outboxId) {
+                <article class="notification-outbox-row" [class.failed]="item.status === 'Failed'" [class.sent]="item.status === 'Sent'">
+                  <div class="notification-outbox-row-main">
+                    <span
+                      class="table-status"
+                      [class.success]="item.status === 'Sent'"
+                      [class.warning]="item.status === 'Failed'"
+                      [class.custom]="item.status !== 'Sent' && item.status !== 'Failed'"
+                    >
+                      {{ item.status }}
+                    </span>
+                    <div>
+                      <strong>{{ item.subject }}</strong>
+                      <small>{{ item.eventCode }} - {{ item.templateName }}</small>
+                    </div>
+                    <time
+                      class="notification-outbox-timestamp"
+                      [attr.datetime]="notificationOutboxActivityTimestamp(item)"
+                      [matTooltip]="auditTimestampTooltip(notificationOutboxActivityTimestamp(item))"
+                      matTooltipPosition="above"
+                    >
+                      <span>{{ notificationOutboxActivityLabel(item) }}</span>
+                      {{ notificationOutboxDetailTimestamp(item) }}
+                    </time>
+                    <div class="notification-outbox-actions">
+                      <button type="button" class="row-text-action" (click)="openNotificationOutboxEmail(item)">
+                        <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                        View email
+                      </button>
+                      @if (item.status === 'Failed') {
+                        <details class="row-action-menu">
+                          <summary class="icon-only-button" aria-label="More email actions">
+                            <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                          </summary>
+                          <div class="row-action-menu-panel" role="menu">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              [disabled]="!canRetryNotificationOutboxEmail(item)"
+                              (click)="retryNotificationOutboxEmail(item)"
+                            >
+                              <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                              {{ isNotificationOutboxRetrying(item) ? 'Retrying...' : 'Retry send' }}
+                            </button>
+                          </div>
+                        </details>
+                      }
+                    </div>
+                  </div>
+                  <dl class="notification-outbox-meta">
+                    <div>
+                      <dt>Triggered by</dt>
+                      <dd>{{ item.senderDisplayName }}</dd>
+                    </div>
+                    <div>
+                      <dt>To</dt>
+                      <dd>{{ notificationOutboxRecipient(item) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Attempts</dt>
+                      <dd>{{ item.attemptCount }}</dd>
+                    </div>
+                    <div>
+                      <dt>Linked record</dt>
+                      <dd>{{ notificationOutboxEntityLabel(item) }}</dd>
+                    </div>
+                  </dl>
+                </article>
+              }
+            }
+          </div>
+          <app-admin-pagination
+            [rangeLabel]="listRangeLabel(adminListItemLabel())"
+            [pageNumbers]="listPageNumbers()"
+            [currentPage]="listState().page"
+            [canGoPrevious]="canGoToPreviousListPage()"
+            [canGoNext]="canGoToNextListPage()"
+            (pageChange)="goToListPage($event)"
+          />
+        </section>
+      }
+
+      @if (isNotificationsPage() && activeNotificationTab() === 'email' && canSendNotificationTestEmail()) {
         <section class="admin-data-card notification-test-email-card" aria-labelledby="notification-test-email-title">
           <header class="admin-data-card-header">
             <h2 id="notification-test-email-title">Send Test Email</h2>
@@ -1778,7 +2188,7 @@
         </section>
       }
 
-      @if (isNotificationsPage() && canSendNotificationRealtimeTest()) {
+      @if (isNotificationsPage() && activeNotificationTab() === 'realtime' && canSendNotificationRealtimeTest()) {
         <section class="admin-data-card notification-test-email-card notification-realtime-test-card" aria-labelledby="notification-realtime-test-title">
           <header class="admin-data-card-header">
             <h2 id="notification-realtime-test-title">Send Realtime Test</h2>
@@ -1812,6 +2222,7 @@
         </section>
       }
 
+      @if (!isNotificationsPage() || activeNotificationTab() === 'email') {
       <section class="admin-config-layout" [class.single-column]="!page().table || page().cards.length === 0">
         @if (page().table; as table) {
           <section class="admin-data-card">
@@ -2001,6 +2412,7 @@
           }
         </aside>
       </section>
+      }
 
       @if (createGroupDialogOpen()) {
         <app-admin-create-group-dialog
@@ -2102,6 +2514,90 @@
         />
       }
     }
+  }
+
+  @if (selectedNotificationOutboxItem(); as email) {
+    <div class="admin-modal-backdrop" aria-hidden="true" (click)="closeNotificationOutboxEmail()"></div>
+    <section class="admin-modal-panel notification-email-modal" role="dialog" aria-modal="true" aria-labelledby="notification-email-modal-title">
+      <header>
+        <div>
+          <p class="admin-breadcrumb">Configuration / Email Outbox</p>
+          <h2 id="notification-email-modal-title">{{ email.subject }}</h2>
+        </div>
+        <button type="button" class="icon-only-button" aria-label="Close email preview" (click)="closeNotificationOutboxEmail()">
+          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+        </button>
+      </header>
+
+      <div class="notification-email-alert-stack" aria-live="polite">
+        <p class="notification-outbox-diagnostic">{{ notificationOutboxDiagnostic(email) }}</p>
+        @if (email.lastError) {
+          <p class="notification-outbox-error">{{ email.lastError }}</p>
+        }
+      </div>
+
+      <div class="notification-email-detail-view modal-view">
+        <div class="notification-email-message-panel">
+          <div class="notification-email-message-head">
+            <div class="notification-email-avatar" aria-hidden="true">{{ notificationOutboxSenderInitial(email) }}</div>
+            <div class="notification-email-sender">
+              <strong>{{ notificationOutboxSender(email) }}</strong>
+              <small>Sender</small>
+              <p>To: {{ notificationOutboxRecipient(email) }}</p>
+            </div>
+            <div class="notification-email-time">
+              <time
+                [attr.datetime]="notificationOutboxActivityTimestamp(email)"
+                [attr.aria-label]="'Email timestamp ' + notificationOutboxDetailTimestamp(email)"
+                [matTooltip]="auditTimestampTooltip(notificationOutboxActivityTimestamp(email))"
+                matTooltipPosition="above"
+              >
+                {{ notificationOutboxDetailTimestamp(email) }}
+              </time>
+            </div>
+          </div>
+          <dl class="notification-email-detail-meta">
+            <div>
+              <dt>Status</dt>
+              <dd>{{ email.status }}</dd>
+            </div>
+            <div>
+              <dt>Event</dt>
+              <dd>{{ email.eventCode }}</dd>
+            </div>
+            <div>
+              <dt>Template</dt>
+              <dd>{{ email.templateName }}</dd>
+            </div>
+            <div>
+              <dt>Attempts</dt>
+              <dd>{{ email.attemptCount }}</dd>
+            </div>
+            <div>
+              <dt>Linked record</dt>
+              <dd>{{ notificationOutboxEntityLabel(email) }}</dd>
+            </div>
+          </dl>
+          <pre class="notification-email-body">{{ email.body || 'No text body recorded.' }}</pre>
+        </div>
+      </div>
+
+      <footer>
+        @if (email.status === 'Failed') {
+          <button
+            mat-button
+            type="button"
+            class="stitch-secondary-button"
+            [disabled]="!canRetryNotificationOutboxEmail(email)"
+            (click)="retryNotificationOutboxEmail(email)"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+            {{ isNotificationOutboxRetrying(email) ? 'Retrying...' : 'Retry send' }}
+          </button>
+        }
+        <button mat-button type="button" class="stitch-secondary-button" (click)="closeNotificationOutboxEmail()">Close</button>
+      </footer>
+    </section>
   }
 
   @if (selectedNotificationTemplate(); as template) {

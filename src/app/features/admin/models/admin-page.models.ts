@@ -1,5 +1,6 @@
 export type TenantProfileTab = 'profile' | 'branding' | 'career-page' | 'security';
 export type AiSettingsTab = 'runtime' | 'agents';
+export type NotificationChannelTab = 'email' | 'realtime';
 export type PermissionResolutionMode = 'merge' | 'highest-priority';
 export type UserRowAction = 'edit-access' | 'resend-invite' | 'deactivate-user' | 'audit-history';
 export type RoleRowAction = 'edit-role' | 'bulk-assign-users' | 'view-permissions' | 'audit-history';
@@ -84,6 +85,7 @@ export interface AuditLogFilter {
 
 export interface AdminListState {
   search: string;
+  status: string;
   page: number;
   pageSize: number;
   totalCount: number;

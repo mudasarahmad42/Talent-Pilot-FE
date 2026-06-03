@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { AiHealthWarningComponent } from '../../core/components/ai-health-warning.component';
 import { NotificationBellComponent } from '../../core/components/notification-bell.component';
 import { TalentPilotRole } from '../../core/models';
 import { RealtimeNotificationService } from '../../core/services/realtime-notification.service';
@@ -33,7 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Candidates', route: '/app/candidates', icon: 'badge', roles: ['TenantAdmin'], adminSection: 'operationalAccess' },
   { label: 'Candidate Pipeline', route: '/app/candidate-pipeline', icon: 'account_tree', roles: ['TenantAdmin'], adminSection: 'operationalAccess' },
   { label: 'Interview Scheduling', route: '/app/interview-scheduling', icon: 'event', roles: ['TenantAdmin'], adminSection: 'operationalAccess' },
-  { label: 'Interview Feedback', route: '/app/interview-feedback', icon: 'rate_review', roles: ['HOD', 'Interviewer', 'TenantAdmin'], adminSection: 'operationalAccess' },
+  { label: 'Interview Feedback', route: '/app/interview-feedback', icon: 'rate_review', roles: ['Recruiter', 'HOD', 'Interviewer', 'TenantAdmin'], adminSection: 'operationalAccess' },
   { label: 'Hiring Manager Review', route: '/app/hiring-manager/reviews', icon: 'approval_delegation', roles: ['HiringManager', 'TenantAdmin'], adminSection: 'operationalAccess' },
   { label: 'Offer Outcome', route: '/app/offer-onboarding', icon: 'handshake', roles: ['HiringManager', 'TenantAdmin'], adminSection: 'operationalAccess' },
   { label: 'Reports', route: '/app/reports', icon: 'analytics', roles: ['TenantAdmin'], adminSection: 'adminTasks' },
@@ -46,7 +47,7 @@ const ADMIN_NAV_GROUPS: ReadonlyArray<{ id: AdminNavSection; label: string }> = 
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, NotificationBellComponent],
+  imports: [RouterOutlet, RouterLink, AiHealthWarningComponent, NotificationBellComponent],
   template: `
     <div class="app-shell stitch-app-shell">
       <header class="topbar">
@@ -76,6 +77,7 @@ const ADMIN_NAV_GROUPS: ReadonlyArray<{ id: AdminNavSection; label: string }> = 
 
         <div class="user-menu">
           @if (currentUser(); as user) {
+            <app-ai-health-warning />
             <app-notification-bell />
             <button type="button" class="topbar-icon-button" aria-label="Settings">
               <span class="material-symbols-outlined" aria-hidden="true">settings</span>

@@ -19,11 +19,16 @@ const TERMINAL_STATUSES = new Set(['Rejected', 'Withdrawn', 'Joined', 'Hired', '
         <div>
           <p class="eyebrow">Candidate operations</p>
           <h1>Candidate Pipeline</h1>
-          <p>Track applications by current hiring stage across published job posts and recruiter sourcing work.</p>
+          <p>
+            Track applications by current hiring stage across published job posts and recruiter
+            sourcing work.
+          </p>
         </div>
         <div class="ops-header-actions">
           <a class="btn secondary compact" routerLink="/app/candidates">Candidates</a>
-          <a class="btn secondary compact" routerLink="/app/interview-scheduling">Interview Scheduling</a>
+          <a class="btn secondary compact" routerLink="/app/interview-scheduling"
+            >Interview Scheduling</a
+          >
         </div>
       </header>
 
@@ -37,7 +42,12 @@ const TERMINAL_STATUSES = new Set(['Rejected', 'Withdrawn', 'Joined', 'Hired', '
       } @else {
         <section class="pipeline-stage-grid" aria-label="Candidate pipeline stages">
           @for (stage of stageCards(); track stage.key) {
-            <button type="button" class="pipeline-stage-card" [class.active]="stageFilter === stage.key" (click)="stageFilter = stage.key">
+            <button
+              type="button"
+              class="pipeline-stage-card"
+              [class.active]="stageFilter === stage.key"
+              (click)="stageFilter = stage.key"
+            >
               <span>{{ stage.label }}</span>
               <strong>{{ stage.count }}</strong>
               <small>{{ stage.description }}</small>
@@ -49,30 +59,52 @@ const TERMINAL_STATUSES = new Set(['Rejected', 'Withdrawn', 'Joined', 'Hired', '
           <div class="ops-toolbar candidates-toolbar">
             <label class="ops-search">
               <span class="material-symbols-outlined" aria-hidden="true">search</span>
-              <input name="pipelineSearch" type="search" [(ngModel)]="searchText" placeholder="Search candidate, job, client, source" />
+              <input
+                name="pipelineSearch"
+                type="search"
+                [(ngModel)]="searchText"
+                placeholder="Search candidate, job, client, source"
+              />
             </label>
-            <select class="ops-filter-button select-filter" name="stageFilter" [(ngModel)]="stageFilter">
+            <select
+              class="ops-filter-button select-filter"
+              name="stageFilter"
+              [(ngModel)]="stageFilter"
+            >
               <option value="">All stages</option>
               @for (stage of stageOptions(); track stage) {
                 <option [ngValue]="stage">{{ stage }}</option>
               }
             </select>
-            <select class="ops-filter-button select-filter" name="sourceFilter" [(ngModel)]="sourceFilter">
+            <select
+              class="ops-filter-button select-filter"
+              name="sourceFilter"
+              [(ngModel)]="sourceFilter"
+            >
               <option value="">All sources</option>
               @for (source of sourceOptions(); track source) {
                 <option [ngValue]="source">{{ source }}</option>
               }
             </select>
-            <button class="btn secondary compact" type="button" (click)="clearFilters()">Reset</button>
+            <button class="btn secondary compact" type="button" (click)="clearFilters()">
+              Reset
+            </button>
           </div>
 
           @if (filteredApplications().length === 0) {
             <div class="empty-state">
               <strong>No applications match the current filters.</strong>
-              <p>Applications enter the pipeline through candidate portal apply or recruiter manual sourcing.</p>
+              <p>
+                Applications enter the pipeline through candidate portal apply or recruiter manual
+                sourcing.
+              </p>
             </div>
           } @else {
-            <div class="candidate-ops-table pipeline-table" role="table" aria-label="Candidate pipeline">
+            <div
+              class="candidate-ops-table pipeline-table"
+              role="table"
+              aria-label="Candidate pipeline"
+            >
               <div class="candidate-ops-row table-head" role="row">
                 <span role="columnheader">Candidate</span>
                 <span role="columnheader">Job</span>
@@ -88,24 +120,38 @@ const TERMINAL_STATUSES = new Set(['Rejected', 'Withdrawn', 'Joined', 'Hired', '
                     <span>
                       <strong>{{ item.application.candidateName }}</strong>
                       <small>{{ item.application.candidateEmail }}</small>
-                      <small>{{ item.application.currentDesignation || 'Role not recorded' }}</small>
+                      <small>{{
+                        item.application.currentDesignation || 'Role not recorded'
+                      }}</small>
                     </span>
                   </div>
                   <div role="cell">
                     <strong>{{ item.jobPost?.title || item.sourcing.jobRequest.title }}</strong>
-                    <small>{{ item.sourcing.jobRequest.code }} - {{ item.sourcing.jobRequest.client }}</small>
+                    <small
+                      >{{ item.sourcing.jobRequest.code }} -
+                      {{ item.sourcing.jobRequest.client }}</small
+                    >
                     <small>{{ item.sourcing.jobRequest.department }}</small>
                   </div>
-                  <div role="cell">
-                    <span class="status-badge info">{{ displayStatus(item.application.applicationStatus) }}</span>
-                    <small>Applied {{ item.application.appliedAt | date: 'mediumDate' }}</small>
+                  <div role="cell" class="pipeline-stage-cell">
+                    <span class="pipeline-stage-chip">{{
+                      displayStatus(item.application.applicationStatus)
+                    }}</span>
+                    <span class="pipeline-stage-meta">
+                      Applied {{ item.application.appliedAt | date: 'mediumDate' }}
+                    </span>
                   </div>
                   <div role="cell">
-                    <strong>{{ item.application.interviewPassSummary || passSummary(item) }}</strong>
+                    <strong>{{
+                      item.application.interviewPassSummary || passSummary(item)
+                    }}</strong>
                     @if (item.application.interviews.length === 0) {
                       <small>No interviews scheduled yet</small>
                     } @else {
-                      <small>{{ completedInterviewCount(item) }} completed / {{ item.application.interviews.length }} scheduled</small>
+                      <small
+                        >{{ completedInterviewCount(item) }} completed /
+                        {{ item.application.interviews.length }} scheduled</small
+                      >
                     }
                   </div>
                   <div role="cell">
@@ -113,24 +159,34 @@ const TERMINAL_STATUSES = new Set(['Rejected', 'Withdrawn', 'Joined', 'Hired', '
                     @if (item.application.sourceDetail) {
                       <small>{{ item.application.sourceDetail }}</small>
                     }
-                    @if (item.application.isInvited) {
-                      <span class="status-badge subtle">Invited</span>
-                    }
                   </div>
-                  <div role="cell" class="candidate-action-stack">
-                    <a
-                      class="table-link-button"
-                      [routerLink]="['/app/recruitment/applications', item.application.jobApplicationId, 'history']"
-                      [queryParams]="{ returnUrl: currentUrl() }"
-                    >
-                      View history
-                    </a>
-                    <a
-                      class="table-link-button"
-                      [routerLink]="['/app/recruitment/sourcing', item.sourcing.jobRequest.id]"
-                    >
-                      Open sourcing
-                    </a>
+                  <div role="cell" class="pipeline-action-cell">
+                    <details class="row-action-menu pipeline-action-menu">
+                      <summary class="icon-button" aria-label="Open candidate pipeline actions">
+                        <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                      </summary>
+                      <div class="row-action-menu-panel" role="menu">
+                        <a
+                          role="menuitem"
+                          [routerLink]="[
+                            '/app/recruitment/applications',
+                            item.application.jobApplicationId,
+                            'history',
+                          ]"
+                          [queryParams]="{ returnUrl: currentUrl() }"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                          View history
+                        </a>
+                        <a
+                          role="menuitem"
+                          [routerLink]="['/app/recruitment/sourcing', item.sourcing.jobRequest.id]"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">work</span>
+                          Open sourcing
+                        </a>
+                      </div>
+                    </details>
                   </div>
                 </article>
               }
@@ -181,21 +237,61 @@ export class CandidatePipelineComponent implements OnInit {
   stageCards(): { key: string; label: string; count: number; description: string }[] {
     const applications = this.applications();
     return [
-      { key: 'Applied', label: 'Applied', count: this.countByStatus(['Applied']), description: 'Portal applications' },
-      { key: 'Invited', label: 'Invited', count: this.countByStatus(['Invited']), description: 'Manual sourcing leads' },
-      { key: 'Interviewing', label: 'Interviewing', count: applications.filter((item) => item.application.interviews.length > 0 && !TERMINAL_STATUSES.has(item.application.applicationStatus)).length, description: 'Scheduled or in progress' },
-      { key: 'HiringManagerReview', label: 'HM Review', count: this.countByStatus(['HiringManagerReview', 'Hiring Manager Review']), description: 'Final review pending' },
-      { key: 'Offered', label: 'Offered', count: this.countByStatus(['Offered']), description: 'Offer in progress' },
-      { key: 'Joined', label: 'Joined', count: this.countByStatus(['Joined', 'Hired']), description: 'Fulfilled candidates' },
+      {
+        key: 'Applied',
+        label: 'Applied',
+        count: this.countByStatus(['Applied']),
+        description: 'Portal applications',
+      },
+      {
+        key: 'Invited',
+        label: 'Invited',
+        count: this.countByStatus(['Invited']),
+        description: 'Manual sourcing leads',
+      },
+      {
+        key: 'Interviewing',
+        label: 'Interviewing',
+        count: applications.filter(
+          (item) =>
+            item.application.interviews.length > 0 &&
+            !TERMINAL_STATUSES.has(item.application.applicationStatus),
+        ).length,
+        description: 'Scheduled or in progress',
+      },
+      {
+        key: 'HiringManagerReview',
+        label: 'HM Review',
+        count: this.countByStatus(['HiringManagerReview', 'Hiring Manager Review']),
+        description: 'Final review pending',
+      },
+      {
+        key: 'Offered',
+        label: 'Offered',
+        count: this.countByStatus(['Offered']),
+        description: 'Offer in progress',
+      },
+      {
+        key: 'Joined',
+        label: 'Joined',
+        count: this.countByStatus(['Joined', 'Hired']),
+        description: 'Fulfilled candidates',
+      },
     ];
   }
 
   stageOptions(): string[] {
-    return Array.from(new Set(this.applications().map((item) => item.application.applicationStatus))).filter(Boolean).sort();
+    return Array.from(
+      new Set(this.applications().map((item) => item.application.applicationStatus)),
+    )
+      .filter(Boolean)
+      .sort();
   }
 
   sourceOptions(): string[] {
-    return Array.from(new Set(this.applications().map((item) => item.application.sourceLabel))).filter(Boolean).sort();
+    return Array.from(new Set(this.applications().map((item) => item.application.sourceLabel)))
+      .filter(Boolean)
+      .sort();
   }
 
   displayStatus(status: string): string {
@@ -207,7 +303,8 @@ export class CandidatePipelineComponent implements OnInit {
   }
 
   completedInterviewCount(item: CandidateOperationsApplication): number {
-    return item.application.interviews.filter((interview) => interview.status === 'Completed').length;
+    return item.application.interviews.filter((interview) => interview.status === 'Completed')
+      .length;
   }
 
   initials(name: string): string {
@@ -224,13 +321,19 @@ export class CandidatePipelineComponent implements OnInit {
   }
 
   private countByStatus(statuses: string[]): number {
-    return this.applications().filter((item) => statuses.includes(item.application.applicationStatus)).length;
+    return this.applications().filter((item) =>
+      statuses.includes(item.application.applicationStatus),
+    ).length;
   }
 
-  private applyFilters(applications: CandidateOperationsApplication[]): CandidateOperationsApplication[] {
+  private applyFilters(
+    applications: CandidateOperationsApplication[],
+  ): CandidateOperationsApplication[] {
     const search = this.searchText.trim().toLowerCase();
     return applications
-      .filter((item) => !this.stageFilter || item.application.applicationStatus === this.stageFilter)
+      .filter(
+        (item) => !this.stageFilter || item.application.applicationStatus === this.stageFilter,
+      )
       .filter((item) => !this.sourceFilter || item.application.sourceLabel === this.sourceFilter)
       .filter((item) => {
         if (!search) {
@@ -253,6 +356,10 @@ export class CandidatePipelineComponent implements OnInit {
           .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
           .some((value) => value.toLowerCase().includes(search));
       })
-      .sort((left, right) => new Date(right.application.appliedAt).getTime() - new Date(left.application.appliedAt).getTime());
+      .sort(
+        (left, right) =>
+          new Date(right.application.appliedAt).getTime() -
+          new Date(left.application.appliedAt).getTime(),
+      );
   }
 }

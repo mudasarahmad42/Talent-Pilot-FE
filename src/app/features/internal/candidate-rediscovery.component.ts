@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
+  CandidateApplicationEvidence,
   ManualCandidateSearchItem,
   RecruitmentQueue,
   RecruiterSourcing,
@@ -56,17 +57,33 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
             <div class="filter-row">
               <label class="stitch-field compact">
                 <span>Min experience</span>
-                <input name="minExperience" type="number" min="0" step="0.5" [(ngModel)]="minExperience" placeholder="Min" />
+                <input
+                  name="minExperience"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  [(ngModel)]="minExperience"
+                  (ngModelChange)="resetCandidatePage()"
+                  placeholder="Min"
+                />
               </label>
               <label class="stitch-field compact">
                 <span>Max experience</span>
-                <input name="maxExperience" type="number" min="0" step="0.5" [(ngModel)]="maxExperience" placeholder="Max" />
+                <input
+                  name="maxExperience"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  [(ngModel)]="maxExperience"
+                  (ngModelChange)="resetCandidatePage()"
+                  placeholder="Max"
+                />
               </label>
             </div>
 
             <label class="stitch-field compact">
               <span>Skill</span>
-              <select name="skillFilter" [(ngModel)]="skillFilter">
+              <select name="skillFilter" [(ngModel)]="skillFilter" (ngModelChange)="resetCandidatePage()">
                 <option value="">All skills</option>
                 @for (skill of skillOptions(); track skill) {
                   <option [ngValue]="skill">{{ skill }}</option>
@@ -76,7 +93,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
             <label class="stitch-field compact">
               <span>Status</span>
-              <select name="statusFilter" [(ngModel)]="statusFilter">
+              <select name="statusFilter" [(ngModel)]="statusFilter" (ngModelChange)="resetCandidatePage()">
                 <option value="">All statuses</option>
                 @for (status of statusOptions(); track status) {
                   <option [ngValue]="status">{{ status }}</option>
@@ -87,11 +104,27 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
             <div class="filter-row">
               <label class="stitch-field compact">
                 <span>Min passed interviews</span>
-                <input name="minPassedInterviews" type="number" min="0" step="1" [(ngModel)]="minPassedInterviews" placeholder="0" />
+                <input
+                  name="minPassedInterviews"
+                  type="number"
+                  min="0"
+                  step="1"
+                  [(ngModel)]="minPassedInterviews"
+                  (ngModelChange)="resetCandidatePage()"
+                  placeholder="0"
+                />
               </label>
               <label class="stitch-field compact">
                 <span>Max failed interviews</span>
-                <input name="maxFailedInterviews" type="number" min="0" step="1" [(ngModel)]="maxFailedInterviews" placeholder="Any" />
+                <input
+                  name="maxFailedInterviews"
+                  type="number"
+                  min="0"
+                  step="1"
+                  [(ngModel)]="maxFailedInterviews"
+                  (ngModelChange)="resetCandidatePage()"
+                  placeholder="Any"
+                />
               </label>
             </div>
           </aside>
@@ -108,6 +141,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                   name="candidateSearch"
                   type="search"
                   [(ngModel)]="searchText"
+                  (ngModelChange)="resetCandidatePage()"
                   placeholder="Search candidates by name, email, role, company"
                 />
               </label>
@@ -150,7 +184,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                 <p class="field-status error">{{ error() }}</p>
               }
 
-              @if (filteredCandidates().length === 0) {
+              @if (filteredCandidateResults().length === 0) {
                 <div class="empty-inline">
                   <strong>No candidates match the current filters.</strong>
                   <p>Clear filters or select another sourcing request.</p>
@@ -165,7 +199,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                     <span role="columnheader">Latest application</span>
                     <span role="columnheader">Actions</span>
                   </div>
-                  @for (candidate of filteredCandidates(); track candidate.candidateId) {
+                  @for (candidate of pagedCandidates(); track candidate.candidateId) {
                     <div class="candidate-table-row" role="row">
                       <div role="cell" class="candidate-cell">
                         <span class="avatar">{{ initials(candidate.displayName) }}</span>
@@ -191,10 +225,19 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                         <strong>{{ formatCandidatePassSummary(candidate) }}</strong>
                         <small>{{ formatCandidateFailureSummary(candidate) }}</small>
                       </div>
-                      <div role="cell">
+                      <div role="cell" class="latest-application-cell">
                         @if (candidate.latestApplication; as application) {
-                          <strong>{{ application.displayJobTitle || application.jobTitle }}</strong>
-                          <small>{{ application.status }} - {{ application.requestCode }}</small>
+                          <div class="latest-application-card" [attr.aria-label]="applicationSummary(application)">
+                            <div class="latest-application-meta">
+                              <span [class]="applicationStatusChipClass(application.status)">
+                                {{ formatApplicationStatus(application.status) }}
+                              </span>
+                              <span class="latest-application-time">{{ applicationRelativeTime(application) }}</span>
+                            </div>
+                            <strong class="latest-application-title"> {{ displayApplicationTitle(application) }} </strong>
+                            <small class="latest-application-code"> {{ application.requestCode }} </small>
+                            <small class="latest-application-source"> via {{ application.sourceLabel || 'application history' }} </small>
+                          </div>
                         } @else {
                           <span class="muted">No application history</span>
                         }
@@ -237,6 +280,38 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                     </div>
                   }
                 </div>
+                <footer class="candidate-pool-footer">
+                  <span>
+                    Showing {{ candidateShowingStart() }} - {{ candidateShowingEnd() }}
+                    of {{ filteredCandidateResults().length }} candidates
+                  </span>
+                  <div class="candidate-pagination" aria-label="Candidate result pages">
+                    <button
+                      type="button"
+                      [disabled]="!canGoToPreviousCandidatePage()"
+                      (click)="goToCandidatePage(currentCandidatePage() - 1)"
+                    >
+                      Previous
+                    </button>
+                    @for (pageNumber of candidatePageNumbers(); track pageNumber) {
+                      <button
+                        type="button"
+                        [class.active]="pageNumber === currentCandidatePage()"
+                        [attr.aria-current]="pageNumber === currentCandidatePage() ? 'page' : null"
+                        (click)="goToCandidatePage(pageNumber)"
+                      >
+                        {{ pageNumber }}
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      [disabled]="!canGoToNextCandidatePage()"
+                      (click)="goToCandidatePage(currentCandidatePage() + 1)"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </footer>
               }
             </article>
           </section>
@@ -259,7 +334,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
             <div class="invitation-preview">
               <strong>Email preview</strong>
-              <p>{{ companyName() }} is looking for {{ currentJobTitle() }}. Please apply at our job portal for this job post if you are interested.</p>
+              <p>{{ defaultInvitationMessage() }}</p>
             </div>
 
             <label class="stitch-field compact">
@@ -328,17 +403,17 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
         align-items: stretch;
         display: grid;
         gap: 20px;
-        grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .rediscovery-filters {
         align-self: start;
         display: grid;
         gap: 16px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         min-width: 0;
-        overflow: hidden;
-        position: sticky;
-        top: 88px;
+        overflow: visible;
+        position: static;
       }
 
       .rediscovery-filters > div:first-child,
@@ -354,11 +429,17 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
       .rediscovery-filters > div:first-child {
         flex-wrap: wrap;
         gap: 8px 12px;
+        grid-column: 1 / -1;
       }
 
       .rediscovery-filters .stitch-field {
         min-width: 0;
         width: 100%;
+      }
+
+      .rediscovery-filters > .stitch-field:first-of-type,
+      .rediscovery-filters > .filter-row {
+        grid-column: span 2;
       }
 
       .rediscovery-filters input,
@@ -489,6 +570,92 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
       .interview-history-cell small {
         display: block;
         white-space: normal;
+      }
+
+      .latest-application-cell {
+        min-width: 0;
+      }
+
+      .latest-application-card {
+        align-content: start;
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .latest-application-meta {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .latest-application-title {
+        color: var(--text);
+        display: block;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
+
+      .latest-application-code,
+      .latest-application-source,
+      .latest-application-time {
+        color: #637187;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .latest-application-code,
+      .latest-application-source {
+        display: block;
+      }
+
+      .application-status-chip {
+        border: 1px solid transparent;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        padding: 5px 8px;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .application-status-chip.rejected {
+        background: #fff1f2;
+        border-color: #fecdd3;
+        color: #be123c;
+      }
+
+      .application-status-chip.on-hold {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #a16207;
+      }
+
+      .application-status-chip.offer-declined {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        color: #c2410c;
+      }
+
+      .application-status-chip.active-application {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+      }
+
+      .application-status-chip.joined {
+        background: #ecfdf5;
+        border-color: #bbf7d0;
+        color: #047857;
+      }
+
+      .application-status-chip.neutral {
+        background: #f8fafc;
+        border-color: #d8e1ec;
+        color: #475569;
       }
 
       .avatar {
@@ -714,14 +881,6 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
       }
 
       @media (max-width: 1280px) {
-        .rediscovery-layout {
-          grid-template-columns: 1fr;
-        }
-
-        .rediscovery-filters {
-          position: static;
-        }
-
         .rediscovery-filters {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -779,8 +938,10 @@ export class CandidateRediscoveryComponent implements OnInit {
   readonly openCandidateActionMenuId = signal<string | null>(null);
   readonly message = signal('');
   readonly error = signal('');
+  readonly candidatePage = signal(1);
 
   selectedJobRequestId = '';
+  readonly candidatePageSize = 5;
   searchText = '';
   skillFilter = '';
   statusFilter = '';
@@ -791,7 +952,6 @@ export class CandidateRediscoveryComponent implements OnInit {
   invitationMessage = '';
 
   readonly candidateItems = computed(() => this.sourcing()?.candidateSearchItems ?? []);
-  readonly filteredCandidates = computed(() => this.applyFilters(this.candidateItems()));
 
   async ngOnInit(): Promise<void> {
     await this.loadQueue();
@@ -822,6 +982,7 @@ export class CandidateRediscoveryComponent implements OnInit {
     if (!jobRequestId) {
       return;
     }
+    this.resetCandidatePage();
     await this.loadSourcing(jobRequestId, true);
   }
 
@@ -875,7 +1036,7 @@ export class CandidateRediscoveryComponent implements OnInit {
       const result = await this.store.sendCandidateInvitations(this.selectedJobRequestId, {
         candidateIds: selectedIds,
         jobPostId: this.sourcing()?.jobPost?.jobPostId ?? null,
-        message: this.invitationMessage.trim() || null,
+        message: this.invitationEmailMessage(),
       });
       this.message.set(`${result.queuedCount} invitation email(s) queued for rediscovered candidates.`);
       this.selectedAiCandidateIds.set(new Set());
@@ -895,6 +1056,60 @@ export class CandidateRediscoveryComponent implements OnInit {
     this.maxExperience = null;
     this.minPassedInterviews = null;
     this.maxFailedInterviews = null;
+    this.resetCandidatePage();
+    this.closeCandidateActionMenu();
+  }
+
+  filteredCandidateResults(): ManualCandidateSearchItem[] {
+    return this.applyFilters(this.candidateItems());
+  }
+
+  pagedCandidates(): ManualCandidateSearchItem[] {
+    const candidates = this.filteredCandidateResults();
+    const start = (this.currentCandidatePage() - 1) * this.candidatePageSize;
+    return candidates.slice(start, start + this.candidatePageSize);
+  }
+
+  currentCandidatePage(): number {
+    return Math.min(Math.max(1, this.candidatePage()), this.candidateTotalPages());
+  }
+
+  candidateTotalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredCandidateResults().length / this.candidatePageSize));
+  }
+
+  candidatePageNumbers(): number[] {
+    const total = this.candidateTotalPages();
+    const visibleCount = Math.min(5, total);
+    const current = this.currentCandidatePage();
+    const start = Math.max(1, Math.min(current - 2, total - visibleCount + 1));
+    return Array.from({ length: visibleCount }, (_, index) => start + index);
+  }
+
+  candidateShowingStart(): number {
+    const total = this.filteredCandidateResults().length;
+    return total === 0 ? 0 : (this.currentCandidatePage() - 1) * this.candidatePageSize + 1;
+  }
+
+  candidateShowingEnd(): number {
+    return Math.min(this.filteredCandidateResults().length, this.currentCandidatePage() * this.candidatePageSize);
+  }
+
+  canGoToPreviousCandidatePage(): boolean {
+    return this.currentCandidatePage() > 1;
+  }
+
+  canGoToNextCandidatePage(): boolean {
+    return this.currentCandidatePage() < this.candidateTotalPages();
+  }
+
+  goToCandidatePage(page: number): void {
+    this.candidatePage.set(Math.min(Math.max(1, page), this.candidateTotalPages()));
+    this.closeCandidateActionMenu();
+  }
+
+  resetCandidatePage(): void {
+    this.candidatePage.set(1);
     this.closeCandidateActionMenu();
   }
 
@@ -937,12 +1152,37 @@ export class CandidateRediscoveryComponent implements OnInit {
     return this.auth.currentUser()?.tenantDisplayName || 'Your company';
   }
 
+  defaultInvitationMessage(): string {
+    return `${this.companyName()} is looking for ${this.currentJobTitle()}. If you are interested, please apply on our job portal: ${this.candidatePortalJobLink()}`;
+  }
+
   currentUrl(): string {
     return this.router.url;
   }
 
   candidateProfileLink(candidateId: string): string[] {
     return ['/app/recruitment/candidates', candidateId, 'profile'];
+  }
+
+  private invitationEmailMessage(): string {
+    return [this.defaultInvitationMessage(), this.invitationMessage.trim()].filter(Boolean).join('\n\n');
+  }
+
+  private candidatePortalJobLink(): string {
+    const jobPostId = this.sourcing()?.jobPost?.jobPostId;
+    const portalPath = jobPostId
+      ? `/candidate/jobs/${encodeURIComponent(jobPostId)}?source=invite`
+      : '/candidate/jobs?source=invite';
+
+    return `${this.appOrigin()}${portalPath}`;
+  }
+
+  private appOrigin(): string {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+
+    return window.location.origin;
   }
 
   applicationHistoryLink(jobApplicationId: string): string[] {
@@ -997,6 +1237,68 @@ export class CandidateRediscoveryComponent implements OnInit {
 
     const noun = candidate.failedInterviews === 1 ? 'interview' : 'interviews';
     return `${candidate.failedInterviews} failed ${noun}`;
+  }
+
+  displayApplicationTitle(application: CandidateApplicationEvidence): string {
+    return application.displayJobTitle || application.jobPostTitle || application.jobTitle || 'Historical application';
+  }
+
+  formatApplicationStatus(status: string): string {
+    const normalized = status.replace(/\s+/g, '').toLowerCase();
+    const labels: Record<string, string> = {
+      applied: 'Applied',
+      screening: 'Screening',
+      shortlisted: 'Shortlisted',
+      interviewing: 'Interviewed',
+      hiringmanagerreview: 'Final Review',
+      offered: 'Offered',
+      onhold: 'On Hold',
+      offerdeclined: 'Offer Declined',
+      rejected: 'Rejected',
+      withdrawn: 'Withdrawn',
+      joined: 'Joined',
+      hired: 'Hired',
+    };
+
+    return labels[normalized] ?? status.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+
+  applicationStatusChipClass(status: string): string {
+    const normalized = status.replace(/\s+/g, '').toLowerCase();
+
+    if (normalized === 'rejected') {
+      return 'application-status-chip rejected';
+    }
+    if (normalized === 'onhold') {
+      return 'application-status-chip on-hold';
+    }
+    if (normalized === 'offerdeclined') {
+      return 'application-status-chip offer-declined';
+    }
+    if (['applied', 'screening', 'shortlisted', 'interviewing', 'hiringmanagerreview', 'offered'].includes(normalized)) {
+      return 'application-status-chip active-application';
+    }
+    if (normalized === 'joined' || normalized === 'hired') {
+      return 'application-status-chip joined';
+    }
+
+    return 'application-status-chip neutral';
+  }
+
+  applicationRelativeTime(application: CandidateApplicationEvidence): string {
+    return this.formatRelativeTime(application.finalDecisionAt ?? application.appliedAt);
+  }
+
+  applicationSummary(application: CandidateApplicationEvidence): string {
+    return [
+      this.formatApplicationStatus(application.status),
+      this.applicationRelativeTime(application),
+      this.displayApplicationTitle(application),
+      application.requestCode,
+      `via ${application.sourceLabel || 'application history'}`,
+    ]
+      .filter(Boolean)
+      .join(' ');
   }
 
   displayMatchScore(candidate: ManualCandidateSearchItem): number {
@@ -1085,5 +1387,27 @@ export class CandidateRediscoveryComponent implements OnInit {
         return true;
       })
       .sort((left, right) => this.displayMatchScore(right) - this.displayMatchScore(left));
+  }
+
+  private formatRelativeTime(value: string): string {
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) {
+      return 'recently';
+    }
+
+    const diffMs = Date.now() - timestamp;
+    const diffDays = Math.max(0, Math.round(diffMs / 86_400_000));
+    if (diffDays === 0) {
+      return 'today';
+    }
+    if (diffDays === 1) {
+      return '1 day ago';
+    }
+    if (diffDays < 30) {
+      return `${diffDays} days ago`;
+    }
+
+    const diffMonths = Math.max(1, Math.round(diffDays / 30));
+    return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
   }
 }

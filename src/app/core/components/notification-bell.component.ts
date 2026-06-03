@@ -46,6 +46,14 @@ export class NotificationBellComponent {
     await this.store.markAllNotificationsRead(user.id);
   }
 
+  openNotification(notification: Notification): void {
+    if (!notification.readAt) {
+      void this.markRead(notification.id);
+    }
+
+    this.closeDrawer();
+  }
+
   formatTime(value: string): string {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
@@ -56,6 +64,42 @@ export class NotificationBellComponent {
       hour: 'numeric',
       minute: '2-digit',
     }).format(date);
+  }
+
+  notificationRouterLink(notification: Notification): string | unknown[] | null {
+    const route = notification.metadata?.['route'];
+    if (this.isSupportedRoute(route)) {
+      return route.split('?', 2)[0];
+    }
+
+    if (notification.entityType === 'JobRequest' && notification.entityId) {
+      return ['/app/job-requests', notification.entityId];
+    }
+
+    return null;
+  }
+
+  notificationQueryParams(notification: Notification): Record<string, string> | null {
+    const route = notification.metadata?.['route'];
+    if (!this.isSupportedRoute(route)) {
+      return null;
+    }
+
+    const query = route.split('?', 2)[1];
+    if (!query) {
+      return null;
+    }
+
+    const params: Record<string, string> = {};
+    new URLSearchParams(query).forEach((value, key) => {
+      params[key] = value;
+    });
+
+    return Object.keys(params).length > 0 ? params : null;
+  }
+
+  private isSupportedRoute(route: string | undefined): route is string {
+    return !!route && (route.startsWith('/app/') || route.startsWith('/candidate/'));
   }
 
   private groupByDate(notifications: Notification[]): NotificationDateGroup[] {

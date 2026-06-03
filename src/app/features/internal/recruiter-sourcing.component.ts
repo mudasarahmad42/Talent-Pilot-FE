@@ -1,19 +1,32 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { AfterViewChecked, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  BarController,
+  BarElement,
+  CategoryScale,
+  Chart,
+  LinearScale,
+  Tooltip,
+} from 'chart.js';
 import {
   AddManualCandidateInput,
   ApplicantRankingMatch,
   CandidateApplicationEvidence,
   CreateJobPostInput,
+  InterviewerOption,
   InterviewTemplateOption,
   JobPost,
   JobPostInterviewRound,
   LookupOption,
   ManualCandidateSearchItem,
   ParseCandidateCvResult,
+  ParsedCandidateCvEvidenceInput,
   RecruiterApplication,
+  RecruiterApplicationDocument,
+  RecruiterApplicationInterview,
   RecruiterSourcing,
   TalentRediscoveryMatch,
   UpdateJobPostInput,
@@ -32,6 +45,9 @@ import {
   visibleSkillsForPicker,
 } from '../../shared/skill-groups';
 import { formatJobDescription } from '../../core/job-description-formatting';
+import { FileDownloadService } from '../../core/services/file-download.service';
+
+Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
 
 type ManualCandidateForm = {
   existingCandidateId: string;
@@ -52,16 +68,84 @@ type ManualCandidateForm = {
   degreeName: string;
   graduationYear: number | null;
   invitationMessage: string;
+  parsedCvEvidence: ParsedCandidateCvEvidenceInput | null;
 };
 
-type SourcingTab = 'review' | 'applications' | 'rediscovery' | 'post';
+type SourcingTab = 'review' | 'applications' | 'analytics' | 'rediscovery' | 'post';
+
+type ApplicationTrendPoint = {
+  dateKey: string;
+  label: string;
+  shortLabel: string;
+  count: number;
+};
+
+type ApplicationTrendLabel = {
+  dateKey: string;
+  label: string;
+};
+
+type ApplicationAnalytics = {
+  totalApplications: number;
+  lastSevenDaysTotal: number;
+  latestDayCount: number;
+  previousDayCount: number;
+  trendDelta: number;
+  trendDirection: 'increasing' | 'decreasing' | 'flat';
+  trendLabel: string;
+  maxDailyCount: number;
+  points: ApplicationTrendPoint[];
+  axisLabels: ApplicationTrendLabel[];
+};
+
+type RediscoveryScoreMetric = {
+  label: string;
+  value: number;
+  tone: 'skill' | 'semantic' | 'history' | 'role' | 'fit';
+  description: string;
+};
+
+type ApplicantRankingScoreMetric = {
+  label: string;
+  value: number;
+  tone: 'skill' | 'semantic' | 'fit' | 'history' | 'evidence' | 'recency';
+  description: string;
+};
+
+type InterviewerGroup = {
+  departmentName: string;
+  options: InterviewerOption[];
+};
+
+type RecommendedHod = {
+  id: string;
+  name: string;
+  departmentName?: string | null;
+  description?: string | null;
+};
 
 type ScheduleInterviewForm = {
   jobApplicationId: string;
   jobPostInterviewRoundId: string;
   startsAtLocal: string;
-  meetingLink: string;
   locationText: string;
+};
+
+type ScheduleEligibility = {
+  status: 'eligible' | 'blocked' | 'complete';
+  actionLabel: string;
+  message: string;
+  round?: JobPostInterviewRound;
+  blockingRound?: JobPostInterviewRound;
+};
+
+type InterviewTimelineEntry = {
+  key: string;
+  roundName: string;
+  status: string;
+  startsAt?: string | null;
+  interview?: RecruiterApplicationInterview;
+  isUnscheduled: boolean;
 };
 
 @Component({
@@ -118,6 +202,15 @@ type ScheduleInterviewForm = {
           </button>
           <button
             type="button"
+            [class.active]="activeTab() === 'analytics'"
+            [attr.aria-selected]="activeTab() === 'analytics'"
+            (click)="setTab('analytics')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>
+            Job Analytics
+          </button>
+          <button
+            type="button"
             [class.active]="activeTab() === 'post'"
             [attr.aria-selected]="activeTab() === 'post'"
             (click)="setTab('post')"
@@ -126,6 +219,12 @@ type ScheduleInterviewForm = {
             Job Post
           </button>
         </nav>
+
+        @if (isReadOnlySourcing()) {
+          <p class="field-status warning">
+            This recruiter sourcing work has moved forward and is available in read-only mode.
+          </p>
+        }
 
         <section class="recruiter-sourcing-layout">
           <div class="ops-main-stack">
@@ -161,13 +260,27 @@ type ScheduleInterviewForm = {
               <article class="ops-panel applications-panel">
                 <div class="panel-header">
                   <div>
-                    <h2>Applications</h2>
+                    <h2>
+                      Applications
+                      <span class="status-badge info">{{ data.applications.length }} application(s)</span>
+                    </h2>
                     <p class="muted">Review portal and manually sourced applications linked to this job post, then schedule candidate interview tasks.</p>
                   </div>
-                  <div class="panel-actions">
-                    <span class="status-badge info">{{ data.applications.length }} application(s)</span>
-                    <button class="btn secondary ai-action" type="button" [disabled]="!canRankApplicants() || applicantRanking()" (click)="rankApplicants()">
-                      &#10024; {{ applicantRanking() ? 'Ranking...' : 'Rank Applicants' }}
+                  <div class="panel-actions applications-actions" aria-label="Application actions">
+                    @if (data.jobPost) {
+                      <button
+                        class="btn secondary compact"
+                        type="button"
+                        [disabled]="!canAddManualCandidate()"
+                        (click)="openManualCandidateModal()"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
+                        Add sourced candidate
+                      </button>
+                    }
+                    <button class="btn secondary compact ai-action" type="button" [disabled]="!canRankApplicants() || applicantRanking()" (click)="rankApplicants()">
+                      <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                      {{ applicantRanking() ? 'Ranking...' : 'Rank Applicants' }}
                     </button>
                   </div>
                 </div>
@@ -192,7 +305,7 @@ type ScheduleInterviewForm = {
                     <p>Applications are linked to a published job post. Create the draft, publish it, then candidates can apply or be manually invited.</p>
                   </div>
                 } @else if (data.applications.length === 0) {
-                  <div class="empty-state">
+                  <div class="empty-state applications-empty-state">
                     <strong>No applications yet</strong>
                     <p>Published portal applicants and manually sourced candidates will appear here.</p>
                   </div>
@@ -201,7 +314,7 @@ type ScheduleInterviewForm = {
                     <div class="manual-candidate-header" role="row">
                       <span>Candidate</span>
                       <span>Source</span>
-                      <span>Status / AI Fit</span>
+                      <span>Status / AI Match</span>
                       <span>Interviews</span>
                       <span>Actions</span>
                     </div>
@@ -223,12 +336,27 @@ type ScheduleInterviewForm = {
                           }
                           <small>Applied {{ application.appliedAt | date: 'mediumDate' }}</small>
                         </div>
-                        <div data-label="Status">
+                        <div data-label="Status / AI Match">
                           <span class="status-badge info">{{ application.applicationStatus }}</span>
                           @if (applicantRankingFor(application); as ranking) {
-                            <strong>AI #{{ ranking.rank }} - {{ ranking.score | number: '1.0-0' }}%</strong>
-                            <span class="fit-pill">{{ ranking.confidence }}</span>
-                            <small>{{ summarizeApplicantGaps(ranking) || 'No major gaps flagged' }}</small>
+                            <section [class]="'applicant-ai-match-card ' + applicantAiTone(ranking)" aria-label="Applicant AI ranking">
+                              <div class="applicant-ai-match-topline">
+                                <span>AI match</span>
+                                <strong>{{ applicantAiScore(ranking) }}%</strong>
+                              </div>
+                              <span class="applicant-score-meter" aria-hidden="true">
+                                <span [style.width.%]="applicantAiScore(ranking)"></span>
+                              </span>
+                              <div class="applicant-ai-meta-row">
+                                <span class="fit-pill">{{ applicantAiLabel(ranking) }}</span>
+                                <span class="applicant-rank-pill">Ranked #{{ ranking.rank }} of {{ data.applications.length }}</span>
+                              </div>
+                            </section>
+                            <div class="applicant-confidence-row">
+                              <span>AI confidence</span>
+                              <strong>{{ ranking.confidence || 'Not reported' }}</strong>
+                            </div>
+                            <small>{{ summarizeApplicantGaps(ranking) || 'No major gaps flagged by AI' }}</small>
                             <button class="table-link-button" type="button" (click)="toggleApplicantRankingDetails(application.jobApplicationId)">
                               {{ expandedApplicantRankingId() === application.jobApplicationId ? 'Hide rationale' : 'Show rationale' }}
                             </button>
@@ -236,42 +364,183 @@ type ScheduleInterviewForm = {
                             <small>No AI ranking yet</small>
                           }
                         </div>
-                        <div data-label="Interviews">
-                          <strong>{{ application.interviewPassSummary }}</strong>
-                          @if (application.interviews.length === 0) {
-                            <small>No scheduled interviews yet</small>
-                          } @else {
-                            @for (interview of application.interviews.slice(0, 3); track interview.interviewId) {
-                              <small>{{ interview.roundName }} - {{ interview.status }} - {{ interview.startsAt | date: 'short' }}</small>
+                        <div class="interview-timeline-cell" data-label="Interviews">
+                          @if (interviewTimelineEntries(application); as timelineEntries) {
+                            <div class="interview-progress-row">
+                              <span class="interview-progress-pill">{{ application.interviewPassSummary }}</span>
+                              @if (interviewTimelineSummary(application); as timelineSummary) {
+                                <small>{{ timelineSummary }}</small>
+                              }
+                            </div>
+                            @if (timelineEntries.length === 0) {
+                              <small class="interview-empty-note">No scheduled interviews yet</small>
+                            } @else {
+                              <ol class="interview-timeline-list" [attr.aria-label]="'Interview timeline for ' + application.candidateName">
+                                @for (entry of timelineEntries.slice(0, 3); track entry.key) {
+                                  <li [class]="interviewTimelineItemClass(entry)">
+                                    <span class="interview-status-dot" aria-hidden="true"></span>
+                                    <div class="interview-timeline-content">
+                                      <div class="interview-timeline-title-row">
+                                        <strong class="interview-round-name">{{ entry.roundName }}</strong>
+                                        <span [class]="interviewStatusChipClass(entry.status)">{{ entry.status }}</span>
+                                      </div>
+                                      <small class="interview-timeline-meta">
+                                        {{ entry.startsAt ? formatInterviewSchedule(entry.startsAt) : 'Waiting to be scheduled' }}
+                                      </small>
+                                      @if (entry.interview) {
+                                        @if (interviewFeedbackActionLabel(entry.interview); as feedbackActionLabel) {
+                                          <a
+                                            class="table-link-button inline-feedback-link timeline-feedback-link"
+                                            routerLink="/app/interview-feedback"
+                                            [queryParams]="{ interviewId: entry.interview.interviewId, returnUrl: currentReturnUrl() }"
+                                          >
+                                            {{ feedbackActionLabel }}
+                                          </a>
+                                        }
+                                      }
+                                    </div>
+                                  </li>
+                                }
+                              </ol>
+                              @if (timelineEntries.length > 3) {
+                                <small class="interview-overflow-note">+{{ timelineEntries.length - 3 }} more round{{ timelineEntries.length - 3 === 1 ? '' : 's' }}</small>
+                              }
                             }
                           }
                         </div>
-                        <div class="application-actions" data-label="Actions">
-                          <button class="btn secondary compact" type="button" [disabled]="!canManageApplications() || saving()" (click)="updateApplicationStatus(application, 'Shortlist')">Shortlist</button>
-                          <button class="btn secondary compact" type="button" [disabled]="!canManageApplications() || saving()" (click)="openScheduleModal(application)">Schedule</button>
-                          @if (canForwardToHiringManager(application)) {
-                            <button class="btn primary compact" type="button" [disabled]="!canManageApplications() || saving()" (click)="forwardToHiringManager(application)">Forward to Hiring Manager</button>
-                          }
-                          <button class="btn secondary compact" type="button" [disabled]="!canManageApplications() || saving()" (click)="updateApplicationStatus(application, 'Hold')">Hold</button>
-                          <button class="btn secondary compact danger" type="button" [disabled]="!canManageApplications() || saving()" (click)="updateApplicationStatus(application, 'Reject')">Reject</button>
-                          <a
-                            class="table-link-button"
-                            [routerLink]="candidateProfileLink(application.candidateId)"
-                            [queryParams]="{ returnUrl: currentReturnUrl() }"
+                        <div class="candidate-action-menu application-action-menu" data-label="Actions">
+                          <button
+                            class="icon-button action-menu-trigger"
+                            type="button"
+                            [attr.aria-expanded]="openApplicationActionMenuId() === application.jobApplicationId"
+                            [attr.aria-label]="'Open actions for ' + application.candidateName"
+                            (click)="toggleApplicationActionMenu(application.jobApplicationId)"
                           >
-                            View profile
-                          </a>
+                            <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                          </button>
+                          @if (openApplicationActionMenuId() === application.jobApplicationId) {
+                            <div class="action-dropdown" role="menu">
+                              @if (canShortlistApplication(application)) {
+                                <button
+                                  role="menuitem"
+                                  type="button"
+                                  [disabled]="!canManageApplications() || saving()"
+                                  (click)="closeApplicationActionMenu(); updateApplicationStatus(application, 'Shortlist')"
+                                >
+                                  <span class="material-symbols-outlined" aria-hidden="true">playlist_add_check</span>
+                                  Shortlist
+                                </button>
+                              }
+                              <button
+                                role="menuitem"
+                                type="button"
+                                [disabled]="!canManageApplications() || saving() || scheduleEligibility(application).status !== 'eligible'"
+                                [attr.title]="scheduleEligibility(application).message"
+                                (click)="closeApplicationActionMenu(); openScheduleModal(application)"
+                              >
+                                <span class="material-symbols-outlined" aria-hidden="true">event</span>
+                                {{ scheduleEligibility(application).actionLabel }}
+                              </button>
+                              @if (canForwardToHiringManager(application)) {
+                                <button
+                                  role="menuitem"
+                                  type="button"
+                                  [disabled]="!canManageApplications() || saving()"
+                                  (click)="closeApplicationActionMenu(); forwardToHiringManager(application)"
+                                >
+                                  <span class="material-symbols-outlined" aria-hidden="true">send</span>
+                                  Forward to Hiring Manager
+                                </button>
+                              }
+                              @if (trackedInvitationLink(application); as inviteLink) {
+                                <button
+                                  role="menuitem"
+                                  type="button"
+                                  (click)="closeApplicationActionMenu(); openInvitationLinkModal(application)"
+                                >
+                                  <span class="material-symbols-outlined" aria-hidden="true">link</span>
+                                  View invite link
+                                </button>
+                              }
+                              <button
+                                role="menuitem"
+                                type="button"
+                                [disabled]="!canManageApplications() || saving()"
+                                (click)="closeApplicationActionMenu(); updateApplicationStatus(application, 'Hold')"
+                              >
+                                <span class="material-symbols-outlined" aria-hidden="true">pause_circle</span>
+                                Hold
+                              </button>
+                              <button
+                                role="menuitem"
+                                type="button"
+                                class="danger-menu-item"
+                                [disabled]="!canManageApplications() || saving()"
+                                (click)="closeApplicationActionMenu(); updateApplicationStatus(application, 'Reject')"
+                              >
+                                <span class="material-symbols-outlined" aria-hidden="true">block</span>
+                                Reject
+                              </button>
+                              <a
+                                role="menuitem"
+                                [routerLink]="candidateProfileLink(application.candidateId)"
+                                [queryParams]="{ returnUrl: currentReturnUrl() }"
+                                (click)="closeApplicationActionMenu()"
+                              >
+                                <span class="material-symbols-outlined" aria-hidden="true">badge</span>
+                                View profile
+                              </a>
+                            </div>
+                          }
                         </div>
                         @if (expandedApplicantRankingId() === application.jobApplicationId && applicantRankingFor(application); as ranking) {
                           <section class="rationale-details-card applicant-ranking-details">
                             <div class="applicant-ranking-summary">
                               <h3>Applicant Ranking rationale</h3>
                               <p>{{ ranking.explanation }}</p>
+                              @if (applicantRankingScoreBreakdown(ranking).length > 0) {
+                                <div class="applicant-score-breakdown" aria-label="Applicant ranking score breakdown">
+                                  @for (metric of applicantRankingScoreBreakdown(ranking); track metric.label) {
+                                    <div class="applicant-score-metric" [attr.title]="metric.description">
+                                      <div class="applicant-score-label">
+                                        <span>{{ metric.label }}</span>
+                                        <span
+                                          class="material-symbols-outlined score-help-icon"
+                                          [attr.title]="metric.description"
+                                          aria-hidden="true"
+                                        >
+                                          help
+                                        </span>
+                                      </div>
+                                      <span
+                                        class="applicant-score-track"
+                                        role="meter"
+                                        [attr.aria-label]="metric.label + ': ' + metric.value + '%. ' + metric.description"
+                                        [attr.aria-valuenow]="metric.value"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                      >
+                                        <span
+                                          class="applicant-score-fill"
+                                          [class.skill]="metric.tone === 'skill'"
+                                          [class.semantic]="metric.tone === 'semantic'"
+                                          [class.fit]="metric.tone === 'fit'"
+                                          [class.history]="metric.tone === 'history'"
+                                          [class.evidence]="metric.tone === 'evidence'"
+                                          [class.recency]="metric.tone === 'recency'"
+                                          [style.width.%]="metric.value"
+                                        ></span>
+                                        <strong class="applicant-score-track-value">{{ metric.value }}%</strong>
+                                      </span>
+                                    </div>
+                                  }
+                                </div>
+                              }
                             </div>
                             <div>
                               <h4>Why this applicant fits</h4>
                               <ul>
-                                @for (strength of ranking.strengths; track strength) {
+                                @for (strength of applicantRationaleStrengths(application, ranking); track strength) {
                                   <li>{{ strength }}</li>
                                 }
                               </ul>
@@ -279,37 +548,52 @@ type ScheduleInterviewForm = {
                             <div>
                               <h4>Skills and gaps</h4>
                               <div class="tag-stack">
-                                @for (skill of ranking.matchedSkills; track skill) {
+                                @for (skill of applicantMatchedSkills(ranking); track skill) {
                                   <span class="skill-chip matched">{{ skill }}</span>
                                 }
                               </div>
-                              @if (ranking.missingSkills.length > 0) {
-                                <small>Gaps: {{ ranking.missingSkills.join(', ') }}</small>
+                              <ul>
+                                @for (gap of applicantRationaleGaps(application, ranking); track gap) {
+                                  <li>{{ gap }}</li>
+                                }
+                              </ul>
+                            </div>
+                            <div>
+                              <h4>Application evidence</h4>
+                              @if (applicationDocuments(application).length > 0) {
+                                <div class="application-document-list">
+                                  @for (document of applicationDocuments(application); track document.applicationDocumentId) {
+                                    <button
+                                      class="application-document-link"
+                                      type="button"
+                                      (click)="downloadApplicationDocument(document)"
+                                    >
+                                      <span class="material-symbols-outlined" aria-hidden="true">description</span>
+                                      <span>
+                                        <strong>{{ document.displayName }}</strong>
+                                        <small>{{ applicationDocumentMeta(document) }}</small>
+                                      </span>
+                                      <span class="material-symbols-outlined download-icon" aria-hidden="true">download</span>
+                                    </button>
+                                  }
+                                </div>
                               }
-                              @if (ranking.gaps.length > 0) {
+                              @if (applicantDocumentEvidence(application, ranking).length > 0) {
                                 <ul>
-                                  @for (gap of ranking.gaps; track gap) {
-                                    <li>{{ gap }}</li>
+                                  @for (evidence of applicantDocumentEvidence(application, ranking); track evidence) {
+                                    <li>{{ evidence }}</li>
                                   }
                                 </ul>
                               }
                             </div>
                             <div>
-                              <h4>Application evidence</h4>
-                              <ul>
-                                @for (evidence of ranking.documentEvidence; track evidence) {
-                                  <li>{{ evidence }}</li>
-                                }
-                              </ul>
-                            </div>
-                            <div>
                               <h4>Interview and history signal</h4>
                               <ul>
-                                @for (evidence of ranking.historicalOutcomeEvidence; track evidence) {
+                                @for (evidence of applicantHistoryEvidence(application, ranking); track evidence) {
                                   <li>{{ evidence }}</li>
                                 }
                               </ul>
-                              <small>Semantic similarity: {{ ranking.semanticSimilarityStatus }}</small>
+                              <small>{{ applicantSemanticNote(ranking) }}</small>
                             </div>
                           </section>
                         }
@@ -318,6 +602,72 @@ type ScheduleInterviewForm = {
                   </div>
                 }
               </article>
+            }
+
+            @if (activeTab() === 'analytics') {
+              @if (applicationAnalytics(); as analytics) {
+                <article class="ops-panel job-analytics-panel">
+                  <div class="panel-header">
+                    <div>
+                      <h2>Job Analytics</h2>
+                      <p class="muted">Candidate application activity for this job post.</p>
+                    </div>
+                    <span class="status-badge info">{{ analytics.totalApplications }} applicant(s)</span>
+                  </div>
+
+                  <dl class="analytics-metric-grid">
+                    <div>
+                      <dt>Total applicants</dt>
+                      <dd>{{ analytics.totalApplications }}</dd>
+                      <small>All applications</small>
+                    </div>
+                    <div>
+                      <dt>Last 7 days</dt>
+                      <dd>{{ analytics.lastSevenDaysTotal }}</dd>
+                      <small>Recent applications</small>
+                    </div>
+                    <div>
+                      <dt>Latest day</dt>
+                      <dd>{{ analytics.latestDayCount }}</dd>
+                      <small>{{ dailyApplicationsLabel(analytics.latestDayCount) }}</small>
+                    </div>
+                    <div [class]="'trend-metric ' + analytics.trendDirection">
+                      <dt>Daily trend</dt>
+                      <dd>{{ analytics.trendLabel }}</dd>
+                      <small>{{ trendDeltaLabel(analytics) }}</small>
+                    </div>
+                  </dl>
+
+                  @if (analytics.totalApplications === 0) {
+                    <div class="empty-state analytics-empty-state">
+                      <strong>No application activity yet</strong>
+                      <p>Daily applicant counts will appear after candidates apply or are manually sourced.</p>
+                    </div>
+                  } @else {
+                    <section class="application-chart-section" aria-labelledby="application-chart-title">
+                      <div class="analytics-section-header">
+                        <div>
+                          <h3 id="application-chart-title">Daily applications</h3>
+                          <p class="muted">{{ applicationTrendSummary(analytics) }}</p>
+                        </div>
+                        <span class="status-badge subtle">Peak {{ analytics.maxDailyCount }}</span>
+                      </div>
+                      <div class="application-chart-frame">
+                        <div class="application-chart-canvas-wrap">
+                          <canvas
+                            #applicationTrendCanvas
+                            class="application-trend-chart"
+                            role="img"
+                            [attr.aria-label]="applicationTrendAriaLabel(analytics)"
+                          >
+                            {{ applicationTrendAriaLabel(analytics) }}
+                          </canvas>
+                        </div>
+                      </div>
+                    </section>
+                  }
+                </article>
+              }
             }
 
             @if (activeTab() === 'rediscovery') {
@@ -366,28 +716,24 @@ type ScheduleInterviewForm = {
                   <p class="field-status error">{{ error() }}</p>
                 }
 
-                <section class="manual-candidate-search">
-                  <div class="panel-header compact">
-                    <div>
-                      <h3>Manual Candidate Search</h3>
-                      <p class="muted">Search active tenant candidates with previous application history. This does not run AI or move candidates.</p>
-                    </div>
-                    <button class="btn secondary compact" type="button" (click)="clearManualFilters()">Clear Filters</button>
-                  </div>
-
-                  <div class="manual-candidate-filters">
-                    <label class="stitch-field compact">
-                      <span>Search</span>
-                      <input
-                        name="manualCandidateSearch"
-                        type="search"
-                        placeholder="Name, email, role, company"
-                        [(ngModel)]="manualSearchText"
-                      />
+                <section class="manual-candidate-search candidate-pool-panel">
+                  <div class="candidate-pool-filters">
+                    <label class="stitch-field compact candidate-search-field">
+                      <span>Search candidates</span>
+                      <div class="candidate-search-input">
+                        <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                        <input
+                          name="manualCandidateSearch"
+                          type="search"
+                          placeholder="Name, role, or keyword..."
+                          [(ngModel)]="manualSearchText"
+                          (ngModelChange)="resetManualCandidatePage()"
+                        />
+                      </div>
                     </label>
                     <label class="stitch-field compact">
-                      <span>Skill</span>
-                      <select name="manualSkillFilter" [(ngModel)]="manualSkillFilter">
+                      <span>Expertise</span>
+                      <select name="manualSkillFilter" [(ngModel)]="manualSkillFilter" (ngModelChange)="resetManualCandidatePage()">
                         <option value="">All skills</option>
                         @for (skill of manualSkillOptions(data); track skill) {
                           <option [ngValue]="skill">{{ skill }}</option>
@@ -395,72 +741,91 @@ type ScheduleInterviewForm = {
                       </select>
                     </label>
                     <label class="stitch-field compact">
-                      <span>Candidate status</span>
-                      <select name="manualStatusFilter" [(ngModel)]="manualStatusFilter">
-                        <option value="All">All statuses</option>
+                      <span>Status</span>
+                      <select name="manualStatusFilter" [(ngModel)]="manualStatusFilter" (ngModelChange)="resetManualCandidatePage()">
+                        <option value="All">Active leads</option>
                         @for (status of manualCandidateStatusOptions(); track status) {
                           <option [ngValue]="status">{{ status }}</option>
                         }
                       </select>
                     </label>
                     <label class="stitch-field compact">
-                      <span>Min passed interviews</span>
-                      <input name="manualMinPassed" type="number" min="0" [(ngModel)]="manualMinPassedInterviews" />
+                      <span>Min AI score</span>
+                      <select name="manualMinAiScore" [(ngModel)]="manualMinAiScore" (ngModelChange)="resetManualCandidatePage()">
+                        <option value="">Any score</option>
+                        <option value="70">70%+</option>
+                        <option value="80">80%+</option>
+                        <option value="90">90%+</option>
+                      </select>
                     </label>
-                    <label class="stitch-field compact">
-                      <span>Max failed interviews</span>
-                      <input name="manualMaxFailed" type="number" min="0" [(ngModel)]="manualMaxFailedInterviews" />
-                    </label>
+                    <button class="table-link-button clear-filter-action" type="button" (click)="clearManualFilters()">Clear</button>
+                    <button class="icon-button filter-settings-button" type="button" aria-label="Candidate filter settings">
+                      <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+                    </button>
                   </div>
 
                   @if (filteredManualCandidates().length === 0) {
                     <div class="empty-state compact">
                       <strong>No candidates match these filters</strong>
-                      <p>Try a broader skill or interview-history filter.</p>
+                      <p>Try a broader skill, status, or score filter.</p>
                     </div>
                   } @else {
-                    <div class="manual-candidate-list" role="table" aria-label="Manual candidate search results">
-                      <div class="manual-candidate-header" role="row">
+                    <div class="candidate-pool-table" role="table" aria-label="Candidate rediscovery results">
+                      <div class="candidate-pool-header" role="row">
                         <span>Candidate</span>
-                        <span>Skills</span>
-                        <span>Interview History</span>
-                        <span>Latest Application</span>
+                        <span>AI Match</span>
+                        <span>AI Reasoning</span>
+                        <span>Key Skills</span>
+                        <span>Last Activity</span>
+                        <span>Status</span>
                         <span>Actions</span>
                       </div>
-                      @for (candidate of filteredManualCandidates(); track candidate.candidateId) {
-                        <article class="manual-candidate-row" role="row">
-                          <div data-label="Candidate">
-                            <strong>{{ candidate.displayName }}</strong>
-                            <small>{{ candidate.email }}</small>
-                            <small>{{ candidate.currentDesignation || 'Designation not recorded' }}</small>
-                            <small>{{ formatExperience(candidate.experienceYears) }} - Notice {{ formatNotice(candidate.noticePeriodDays) }}</small>
-                            <span class="status-badge subtle">{{ candidate.status }}</span>
+                      @for (candidate of pagedManualCandidates(); track candidate.candidateId) {
+                        <article class="candidate-pool-row" role="row">
+                          <div class="candidate-pool-identity" data-label="Candidate">
+                            <span class="candidate-avatar">{{ candidateInitials(candidate.displayName) }}</span>
+                            <div>
+                              <strong>{{ candidate.displayName }}</strong>
+                              <small>{{ candidate.currentDesignation || 'Designation not recorded' }}</small>
+                              <small>{{ formatExperience(candidate.experienceYears) }} exp.</small>
+                            </div>
                           </div>
-                          <div data-label="Skills">
-                            <div class="tag-stack">
-                              @for (skill of candidate.skills.slice(0, 6); track skill) {
+                          <div [class]="'candidate-score-cell ' + candidateScoreTone(candidate)" data-label="AI Match">
+                            <strong>{{ candidateAiScore(candidate) }}%</strong>
+                            <span class="candidate-score-meter" aria-hidden="true">
+                              <span [style.width.%]="candidateAiScore(candidate)"></span>
+                            </span>
+                            <small>{{ candidateAiLabel(candidate) }}</small>
+                          </div>
+                          <div class="candidate-reason-cell" data-label="AI Reasoning">
+                            <p>{{ candidateReasonSummary(candidate) }}</p>
+                            <small>{{ candidateReasonCaveat(candidate) }}</small>
+                          </div>
+                          <div data-label="Key Skills">
+                            <div class="tag-stack compact-tags">
+                              @for (skill of candidateKeySkills(candidate); track skill) {
                                 <span class="skill-chip" [class.matched]="candidate.matchedSkills.includes(skill)">{{ skill }}</span>
                               }
                             </div>
-                            @if (candidate.missingSkills.length > 0) {
-                              <small>Gaps: {{ candidate.missingSkills.slice(0, 4).join(', ') }}</small>
-                            }
                           </div>
-                          <div data-label="Interview History">
-                            <strong>{{ candidate.passedInterviews }}/{{ candidate.totalInterviews }} passed</strong>
-                            <small>{{ candidate.failedInterviews }} failed interview(s)</small>
-                            <small>{{ candidate.applicationCount }} historical application(s)</small>
+                          <div class="candidate-activity-cell" data-label="Last Activity">
+                            <div class="candidate-activity-block">
+                              <div class="activity-status-line">
+                                <span [class]="candidateActivityStatusClass(candidate)">
+                                  {{ candidateActivityStatusLabel(candidate) }}
+                                </span>
+                                <span class="activity-time">{{ candidateActivityTime(candidate) }}</span>
+                              </div>
+                              <strong class="activity-title">{{ candidateActivityTitle(candidate) }}</strong>
+                              <small class="activity-source">{{ candidateActivitySource(candidate) }}</small>
+                            </div>
                           </div>
-                          <div data-label="Latest Application">
-                            @if (candidate.latestApplication; as application) {
-                              <strong>{{ displayApplicationTitle(application) }}</strong>
-                              <small>{{ application.requestCode }} - {{ application.status }}</small>
-                              <small>Interviews: {{ formatPassSummary(application) }}</small>
-                            } @else {
-                              <small>No application details available</small>
-                            }
+                          <div data-label="Status">
+                            <span class="candidate-status-chip" [class.active]="candidate.status === 'Active'" [class.benched]="candidate.status === 'Benched'">
+                              {{ candidate.status }}
+                            </span>
                           </div>
-                          <div class="candidate-action-menu" data-label="Actions">
+                          <div class="candidate-action-menu compact-actions" data-label="Actions">
                             <button
                               class="icon-button action-menu-trigger"
                               type="button"
@@ -489,134 +854,133 @@ type ScheduleInterviewForm = {
                                     (click)="closeManualCandidateMenu()"
                                   >
                                     <span class="material-symbols-outlined" aria-hidden="true">history</span>
-                                    Open latest application
+                                    View history
                                   </a>
+                                }
+                                @if (rediscoveryMatchForCandidate(candidate); as match) {
+                                  <button
+                                    role="menuitem"
+                                    type="button"
+                                    (click)="toggleDetails(match.candidateId); closeManualCandidateMenu()"
+                                  >
+                                    <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                                    {{ expandedCandidateId() === match.candidateId ? 'Hide AI rationale' : 'Review AI rationale' }}
+                                  </button>
                                 }
                               </div>
                             }
                           </div>
                         </article>
+                        @if (rediscoveryMatchForCandidate(candidate); as match) {
+                          @if (expandedCandidateId() === match.candidateId) {
+                            <article class="candidate-rationale-panel">
+                              <div>
+                                <h3>AI reasoning</h3>
+                                @if (rediscoveryScoreBreakdown(match).length > 0) {
+                                  <div class="rediscovery-score-breakdown" aria-label="Talent Rediscovery score breakdown">
+                                    <strong class="rediscovery-score-heading">Score breakdown</strong>
+                                    @for (metric of rediscoveryScoreBreakdown(match); track metric.label) {
+                                      <div class="rediscovery-score-metric" [attr.title]="metric.description">
+                                        <div class="rediscovery-score-label">
+                                          <span>{{ metric.label }}</span>
+                                          <span
+                                            class="material-symbols-outlined score-help-icon"
+                                            aria-hidden="true"
+                                          >
+                                            help
+                                          </span>
+                                          <strong>{{ metric.value }}%</strong>
+                                        </div>
+                                        <span
+                                          class="rediscovery-score-track"
+                                          role="meter"
+                                          [attr.aria-label]="metric.label + ': ' + metric.value + '%. ' + metric.description"
+                                          [attr.aria-valuenow]="metric.value"
+                                          aria-valuemin="0"
+                                          aria-valuemax="100"
+                                        >
+                                          <span
+                                            class="rediscovery-score-fill"
+                                            [class.skill]="metric.tone === 'skill'"
+                                            [class.semantic]="metric.tone === 'semantic'"
+                                            [class.history]="metric.tone === 'history'"
+                                            [class.role]="metric.tone === 'role'"
+                                            [class.fit]="metric.tone === 'fit'"
+                                            [style.width.%]="metric.value"
+                                          ></span>
+                                        </span>
+                                      </div>
+                                    }
+                                  </div>
+                                }
+                                <p>{{ match.explanation }}</p>
+                              </div>
+                              <section>
+                                <h4>Strengths</h4>
+                                <ul>
+                                  @for (strength of match.strengths.slice(0, 4); track strength) {
+                                    <li>{{ strength }}</li>
+                                  }
+                                </ul>
+                              </section>
+                              <section>
+                                <h4>Application evidence</h4>
+                                <div class="application-history-cards">
+                                  @for (application of match.applicationEvidence.slice(0, 2); track application.jobApplicationId) {
+                                    <article class="application-history-card compact">
+                                      <strong>{{ displayApplicationTitle(application) }}</strong>
+                                      <span>{{ application.requestCode }} - {{ application.status }}</span>
+                                      <span>Interviews: {{ formatPassSummary(application) }}</span>
+                                      <a
+                                        class="table-link-button"
+                                        [routerLink]="applicationHistoryLink(application)"
+                                        [queryParams]="{ returnUrl: currentReturnUrl() }"
+                                      >
+                                        Open application
+                                      </a>
+                                    </article>
+                                  }
+                                </div>
+                              </section>
+                            </article>
+                          }
+                        }
                       }
+                      <footer class="candidate-pool-footer">
+                        <span>
+                          Showing {{ manualCandidateShowingStart() }} - {{ manualCandidateShowingEnd() }}
+                          of {{ filteredManualCandidates().length }} candidates
+                        </span>
+                        <div class="candidate-pagination" aria-label="Candidate result pages">
+                          <button
+                            type="button"
+                            [disabled]="!canGoToPreviousManualCandidatePage()"
+                            (click)="goToManualCandidatePage(currentManualCandidatePage() - 1)"
+                          >
+                            Previous
+                          </button>
+                          @for (pageNumber of manualCandidatePageNumbers(); track pageNumber) {
+                            <button
+                              type="button"
+                              [class.active]="pageNumber === currentManualCandidatePage()"
+                              [attr.aria-current]="pageNumber === currentManualCandidatePage() ? 'page' : null"
+                              (click)="goToManualCandidatePage(pageNumber)"
+                            >
+                              {{ pageNumber }}
+                            </button>
+                          }
+                          <button
+                            type="button"
+                            [disabled]="!canGoToNextManualCandidatePage()"
+                            (click)="goToManualCandidatePage(currentManualCandidatePage() + 1)"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </footer>
                     </div>
                   }
                 </section>
-
-                @if (data.talentRediscoveryMatches.length === 0) {
-                  <div class="empty-state">
-                    <strong>No ranked warm candidates yet</strong>
-                    <p>Claim the sourcing work, then run the agent to rank previous applicants from tenant history.</p>
-                  </div>
-                } @else {
-                  <div class="rediscovery-list" role="table" aria-label="Talent Rediscovery ranked candidates">
-                    <div class="rediscovery-list-header" role="row">
-                      <span>Rank / Fit</span>
-                      <span>Candidate</span>
-                      <span>History Signal</span>
-                      <span>Skill Match</span>
-                    </div>
-                    @for (match of data.talentRediscoveryMatches; track match.candidateId) {
-                      <article class="rediscovery-row" role="row">
-                        <div class="rank-cell" data-label="Rank / Fit">
-                          <strong>#{{ match.rank }}</strong>
-                          <span class="fit-pill">{{ match.score | number: '1.0-0' }}%</span>
-                          <small>{{ match.confidence }} confidence</small>
-                        </div>
-                        <div class="candidate-cell" data-label="Candidate">
-                          <strong>{{ match.candidateName }}</strong>
-                          <small>{{ match.candidateEmail }}</small>
-                          <small>{{ match.currentDesignation || 'Designation not recorded' }}</small>
-                          <small>{{ formatExperience(match.experienceYears) }} - Notice {{ formatNotice(match.noticePeriodDays) }}</small>
-                          <a
-                            class="table-link-button"
-                            [routerLink]="candidateProfileLink(match.candidateId)"
-                            [queryParams]="{ returnUrl: currentReturnUrl() }"
-                          >
-                            View profile
-                          </a>
-                        </div>
-                        <div data-label="History Signal">
-                          @if (match.applicationEvidence[0]; as application) {
-                            <strong>{{ application.requestCode }}</strong>
-                            <small>{{ displayApplicationTitle(application) }}</small>
-                            <small>{{ application.status }} - {{ application.department }}</small>
-                            <small>Interviews: {{ formatPassSummary(application) }}</small>
-                          } @else {
-                            <small>No application evidence</small>
-                          }
-                          @if (match.interviewEvidence[0]; as interview) {
-                            <small>Interview: {{ interview.recommendation || interview.status }}</small>
-                          }
-                        </div>
-                        <div data-label="Skill Match">
-                          <div class="tag-stack">
-                            @for (strength of visibleStrengthTags(match); track strength) {
-                              <span class="skill-chip">{{ strength }}</span>
-                            }
-                          </div>
-                          @if (match.gaps.length > 0) {
-                            <small>Gaps: {{ summarizeGaps(match) }}</small>
-                          }
-                        </div>
-                        <div class="rediscovery-rationale" data-label="AI Rationale">
-                          <p>{{ match.explanation }}</p>
-                          <button class="table-link-button" type="button" (click)="toggleDetails(match.candidateId)">
-                            {{ expandedCandidateId() === match.candidateId ? 'Hide details' : 'Show details' }}
-                          </button>
-                        </div>
-                      </article>
-                      @if (expandedCandidateId() === match.candidateId) {
-                        <article class="rationale-details-card">
-                          <section>
-                            <h3>Strengths</h3>
-                            <ul>
-                              @for (strength of match.strengths; track strength) {
-                                <li>{{ strength }}</li>
-                              }
-                            </ul>
-                          </section>
-                          <section>
-                            <h3>Gaps and Caveats</h3>
-                            <ul>
-                              @for (gap of match.gaps; track gap) {
-                                <li>{{ gap }}</li>
-                              }
-                            </ul>
-                          </section>
-                          <section>
-                            <h3>Application History</h3>
-                            <div class="application-history-cards">
-                              @for (application of match.applicationEvidence; track application.jobApplicationId) {
-                                <article class="application-history-card">
-                                  <strong>{{ displayApplicationTitle(application) }}</strong>
-                                  <span>{{ application.requestCode }} - {{ application.status }}</span>
-                                  <span>Interviews: {{ formatPassSummary(application) }}</span>
-                                  @if (application.jobPostStatus) {
-                                    <span>Post: {{ application.jobPostStatus }}</span>
-                                  }
-                                  <a
-                                    class="table-link-button"
-                                    [routerLink]="applicationHistoryLink(application)"
-                                    [queryParams]="{ returnUrl: currentReturnUrl() }"
-                                  >
-                                    Open application
-                                  </a>
-                                </article>
-                              }
-                            </div>
-                          </section>
-                          <section>
-                            <h3>Interview Evidence</h3>
-                            <ul>
-                              @for (interview of match.interviewEvidence; track interview.interviewId) {
-                                <li>{{ interview.roundName }} - {{ interview.recommendation || interview.status }} - {{ interview.feedbackSummary || 'No written feedback' }}</li>
-                              }
-                            </ul>
-                          </section>
-                        </article>
-                      }
-                    }
-                  </div>
-                }
               </article>
             }
 
@@ -629,15 +993,6 @@ type ScheduleInterviewForm = {
                 </div>
                 <div class="post-header-actions">
                   @if (data.jobPost) {
-                    <button
-                      class="btn secondary compact"
-                      type="button"
-                      [disabled]="!canAddManualCandidate()"
-                      (click)="openManualCandidateModal()"
-                    >
-                      <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
-                      Add candidate
-                    </button>
                     <span class="status-badge info">{{ data.jobPost.status }}</span>
                   }
                 </div>
@@ -654,7 +1009,7 @@ type ScheduleInterviewForm = {
                 </label>
               }
 
-              <div class="modal-form-grid">
+              <div class="modal-form-grid compact job-post-core-grid">
                 <label class="stitch-field">
                   <span>Title</span>
                   <input name="title" [(ngModel)]="form.title" [disabled]="!canEditContent()" />
@@ -773,74 +1128,154 @@ type ScheduleInterviewForm = {
                   <button type="button" class="btn secondary compact" [disabled]="!canEditContent()" (click)="addRound()">Add Round</button>
                 </div>
 
-                <div class="table-wrap">
-                  <table class="ops-table sourcing-round-table">
-                    <thead>
-                      <tr>
-                        <th>Round</th>
-                        <th>Default Interviewer</th>
-                        <th>Minutes</th>
-                        <th>Status</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (round of form.interviewRounds; track round.roundOrder; let index = $index) {
-                        <tr>
-                          <td>
-                            <input class="table-input" name="roundName{{ index }}" [(ngModel)]="round.name" [disabled]="!canEditContent()" />
-                          </td>
-                          <td>
-                            <div class="round-interviewer-context">
-                              <strong>{{ round.ownerUserName || 'Not assigned' }}</strong>
-                              <small>Default interviewer for this round</small>
-                            </div>
-                            @if (recommendedHodForRound(round, index); as hod) {
-                              <div class="hod-recommendation-card" [class.applied]="round.ownerUserId === hod.id">
-                                <span class="material-symbols-outlined hod-recommendation-icon" aria-hidden="true">
-                                  verified_user
-                                </span>
-                                <div class="hod-recommendation-copy">
-                                  <span class="hod-recommendation-label">Recommended Department HOD</span>
-                                  <strong>{{ hod.name }}</strong>
-                                  <small>{{ hodRecommendationReason() }}</small>
-                                </div>
-                                @if (round.ownerUserId === hod.id) {
-                                  <span class="status-badge success">Applied</span>
-                                } @else {
-                                  <button
-                                    type="button"
-                                    class="btn secondary compact"
-                                    [disabled]="!canEditContent()"
-                                    (click)="applyRecommendedHod(index, hod)"
-                                  >
-                                    Use recommendation
-                                  </button>
-                                }
+                <div class="round-editor-list" [class.has-rounds]="form.interviewRounds.length > 0" aria-label="Interview rounds">
+                  @if (form.interviewRounds.length === 0) {
+                    <p class="empty-inline-state">No interview rounds have been added.</p>
+                  } @else {
+                    @for (round of form.interviewRounds; track round.roundOrder; let index = $index) {
+                    <article class="round-editor-row" [class.inactive]="round.status === 'Inactive'">
+                      <div class="round-timeline-marker" aria-hidden="true">
+                        <span>{{ index + 1 }}</span>
+                      </div>
+                      <div class="round-timeline-card">
+                        <div class="round-sequence-label">
+                          <span>Step {{ index + 1 }}</span>
+                          @if (index === 0) {
+                            <small>First interview</small>
+                          } @else {
+                            <small>After step {{ index }}</small>
+                          }
+                        </div>
+                        <div class="round-card-top">
+                          <div class="round-editor-main">
+                            <label class="stitch-field compact round-name-field">
+                              <span>Round {{ index + 1 }}</span>
+                              <div class="round-name-input-wrap">
+                                <input name="roundName{{ index }}" [(ngModel)]="round.name" [disabled]="!canEditContent()" />
                               </div>
-                            } @else if (shouldSuggestHod(round, index)) {
-                              <span class="hod-warning-chip">
-                                <span class="material-symbols-outlined" aria-hidden="true">info</span>
-                                No department HOD configured
-                              </span>
-                            }
-                          </td>
-                          <td>
-                            <input class="table-input small" name="duration{{ index }}" type="number" min="15" max="240" [(ngModel)]="round.durationMinutes" [disabled]="!canEditContent()" />
-                          </td>
-                          <td>
-                            <select name="status{{ index }}" [(ngModel)]="round.status" [disabled]="!canEditContent()">
-                              <option value="Active">Active</option>
-                              <option value="Inactive">Inactive</option>
+                            </label>
+                          </div>
+
+                          <div class="round-controls">
+                            <label class="stitch-field compact round-minutes-field">
+                              <span>Minutes</span>
+                              <input name="duration{{ index }}" type="number" min="15" max="240" [(ngModel)]="round.durationMinutes" [disabled]="!canEditContent()" />
+                            </label>
+
+                            <label class="stitch-field compact round-status-field">
+                              <span>Status</span>
+                              <select name="status{{ index }}" [(ngModel)]="round.status" [disabled]="!canEditContent()">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                              </select>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div class="round-interviewer-cell">
+                          <div class="round-field-heading">
+                            <span>Interviewer</span>
+                            <small>{{ visibleInterviewerCountForRound(round, index) }} available</small>
+                          </div>
+
+                          <div class="selected-interviewer-summary" [class.unassigned]="!round.ownerUserId">
+                            <span class="interviewer-avatar" aria-hidden="true">{{ selectedInterviewerInitials(round) }}</span>
+                            <div>
+                              <strong>{{ selectedInterviewerName(round) }}</strong>
+                              <small>{{ selectedInterviewerMeta(round) }}</small>
+                            </div>
+                          </div>
+
+                          <div class="interviewer-filter-row">
+                            <label class="stitch-field compact interviewer-department-field">
+                              <span>Department</span>
+                              <select
+                                name="interviewerDepartment{{ index }}"
+                                [ngModel]="roundDepartmentFilter(round, index)"
+                                [disabled]="!canEditContent()"
+                                (ngModelChange)="setRoundDepartmentFilter(round, index, $event)"
+                              >
+                                <option value="">All departments</option>
+                                @for (department of interviewerDepartments(); track department) {
+                                  <option [value]="department">{{ department }}</option>
+                                }
+                              </select>
+                            </label>
+                            <label class="stitch-field compact interviewer-search-field">
+                              <span>Search</span>
+                              <input
+                                name="interviewerSearch{{ index }}"
+                                type="search"
+                                [value]="roundSearch(round, index)"
+                                [disabled]="!canEditContent()"
+                                (input)="setRoundSearch(round, index, $event)"
+                                placeholder="Name, role, email..."
+                              />
+                            </label>
+                          </div>
+
+                          <label class="stitch-field compact interviewer-select-field">
+                            <span>Assign interviewer</span>
+                            <select
+                              name="ownerUser{{ index }}"
+                              [ngModel]="round.ownerUserId ?? ''"
+                              [disabled]="!canEditContent()"
+                              (ngModelChange)="selectRoundInterviewer(index, $event)"
+                            >
+                              <option value="">Unassigned</option>
+                              @for (group of interviewerGroupsForRound(round, index); track group.departmentName) {
+                                <optgroup [label]="group.departmentName">
+                                  @for (interviewer of group.options; track interviewer.userId) {
+                                    <option [value]="interviewer.userId">
+                                      {{ interviewer.displayName }} - {{ interviewer.designation || interviewer.email }}
+                                    </option>
+                                  }
+                                </optgroup>
+                              }
                             </select>
-                          </td>
-                          <td>
-                            <button type="button" class="table-link-button" [disabled]="!canEditContent()" (click)="removeRound(index)">Remove</button>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+                          </label>
+                          @if (roundInterviewerHelper(round, index); as helper) {
+                            <small class="interviewer-helper">{{ helper }}</small>
+                          }
+                        </div>
+
+                        <div class="round-card-footer">
+                          @if (recommendedHodForRound(round, index); as hod) {
+                            <div class="hod-recommendation-strip" [class.applied]="round.ownerUserId === hod.id">
+                              <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
+                              <div>
+                                <span>Recommended HOD</span>
+                                <strong>{{ hod.name }}</strong>
+                                <small>{{ hodRecommendationReason(hod) }}</small>
+                              </div>
+                              @if (round.ownerUserId === hod.id) {
+                                <span class="status-badge success">Applied</span>
+                              } @else {
+                                <button
+                                  type="button"
+                                  class="btn secondary compact"
+                                  [disabled]="!canEditContent()"
+                                  (click)="applyRecommendedHod(index, hod)"
+                                >
+                                  Use recommendation
+                                </button>
+                              }
+                            </div>
+                          } @else if (shouldSuggestHod(round, index)) {
+                            <span class="hod-warning-chip">
+                              <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                              No department HOD configured
+                            </span>
+                          }
+
+                          <button type="button" class="round-remove-button" [disabled]="!canEditContent()" (click)="removeRound(index)">
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                    }
+                  }
                 </div>
               </section>
 
@@ -867,33 +1302,19 @@ type ScheduleInterviewForm = {
             }
           </div>
 
-          <section class="sourcing-bottom-cards">
-            <article class="ops-panel">
-              <h2>Sourcing Assignment</h2>
+          @if (data.assignment && canClaimSourcingAssignment(data.assignment)) {
+            <section class="sourcing-bottom-cards">
               @if (data.assignment; as assignment) {
-                <p class="muted">Recruiter group assignments must be claimed before job post actions.</p>
-                <dl class="side-facts">
-                  <div>
-                    <dt>Status</dt>
-                    <dd>{{ assignment.status }}</dd>
-                  </div>
-                  <div>
-                    <dt>Owner</dt>
-                    <dd>{{ assignmentOwnerName(assignment) }}</dd>
-                  </div>
-                </dl>
-                @if (!assignment.claimedByUserId) {
-                  <button type="button" class="btn primary full" (click)="claim(assignment.id)">Claim Sourcing Work</button>
+                @if (canClaimSourcingAssignment(assignment)) {
+                  <article class="ops-panel">
+                    <h2>Claim sourcing work</h2>
+                    <p class="muted">Claim this recruiter assignment before job post actions.</p>
+                    <button type="button" class="btn primary full" (click)="claim(assignment.id)">Claim Sourcing Work</button>
+                  </article>
                 }
-              } @else {
-                <p class="muted">No active recruiter sourcing assignment is available.</p>
               }
-            </article>
-            <article class="scope-soft-note">
-              <strong>LinkedIn</strong>
-              <p>LinkedIn posting stays manual/source-tracked in MVP. This screen publishes only the Talent Pilot job post.</p>
-            </article>
-          </section>
+            </section>
+          }
         </section>
       } @else {
         <section class="ops-panel">Recruiter sourcing work was not found.</section>
@@ -931,9 +1352,6 @@ type ScheduleInterviewForm = {
                   />
                 </label>
               </section>
-              @if (cvParseMessage()) {
-                <p class="field-status success">{{ cvParseMessage() }}</p>
-              }
               @if (cvParseError()) {
                 <p class="field-status error">{{ cvParseError() }}</p>
               }
@@ -1002,19 +1420,25 @@ type ScheduleInterviewForm = {
                   <span>Source URL</span>
                   <input name="manualSourceUrl" [(ngModel)]="manualCandidateForm.sourceUrl" />
                 </label>
-                <label class="stitch-field">
-                  <span>Primary university</span>
-                  <input name="manualUniversity" [(ngModel)]="manualCandidateForm.universityName" />
-                </label>
-                <label class="stitch-field">
-                  <span>Degree</span>
-                  <input name="manualDegree" [(ngModel)]="manualCandidateForm.degreeName" />
-                </label>
-                <label class="stitch-field">
-                  <span>Graduation year</span>
-                  <input name="manualGraduation" type="number" min="1970" max="2100" [(ngModel)]="manualCandidateForm.graduationYear" />
-                </label>
               </div>
+
+              <section class="post-editor-section">
+                <h3>Education</h3>
+                <div class="modal-form-grid education-grid">
+                  <label class="stitch-field">
+                    <span>Institute</span>
+                    <input name="manualUniversity" [(ngModel)]="manualCandidateForm.universityName" />
+                  </label>
+                  <label class="stitch-field">
+                    <span>Degree name</span>
+                    <input name="manualDegree" [(ngModel)]="manualCandidateForm.degreeName" />
+                  </label>
+                  <label class="stitch-field">
+                    <span>Graduated in</span>
+                    <input name="manualGraduation" type="number" min="1970" max="2100" [(ngModel)]="manualCandidateForm.graduationYear" />
+                  </label>
+                </div>
+              </section>
 
               <section class="post-editor-section">
                 <div class="panel-header compact">
@@ -1136,6 +1560,46 @@ type ScheduleInterviewForm = {
         }
       }
 
+      @if (invitationLinkModalApplication(); as application) {
+        @if (trackedInvitationLink(application); as inviteLink) {
+          <div class="sourcing-modal-backdrop" role="presentation">
+            <section class="sourcing-modal-panel compact-modal invite-link-modal" role="dialog" aria-modal="true" aria-labelledby="inviteLinkTitle">
+              <header class="panel-header">
+                <div>
+                  <p class="eyebrow">Candidate invitation</p>
+                  <h2 id="inviteLinkTitle">{{ application.candidateName }}</h2>
+                  <p class="muted">This is the tracked portal link tied to this candidate invitation.</p>
+                </div>
+                <button class="icon-button" type="button" aria-label="Close" (click)="closeInvitationLinkModal()">
+                  <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+              </header>
+
+              <label class="stitch-field">
+                <span>Invitation link</span>
+                <textarea rows="3" readonly [value]="inviteLink"></textarea>
+              </label>
+
+              @if (invitationLinkCopyMessage()) {
+                <p class="field-status success">{{ invitationLinkCopyMessage() }}</p>
+              }
+
+              <div class="modal-actions">
+                <button class="btn secondary" type="button" (click)="closeInvitationLinkModal()">Close</button>
+                <button class="btn secondary" type="button" (click)="openInvitationLink(inviteLink)">
+                  <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+                  Open link
+                </button>
+                <button class="btn primary" type="button" (click)="copyInvitationLink(inviteLink)">
+                  <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+                  Copy link
+                </button>
+              </div>
+            </section>
+          </div>
+        }
+      }
+
       @if (scheduleModalOpen()) {
         @if (selectedApplication(); as application) {
           <div class="sourcing-modal-backdrop" role="presentation">
@@ -1144,21 +1608,24 @@ type ScheduleInterviewForm = {
                 <div>
                   <p class="eyebrow">Interview scheduling</p>
                   <h2>Schedule {{ application.candidateName }}</h2>
-                  <p class="muted">Creates an interview task for the selected round. Recruiters can later reschedule in the interview scheduling slice.</p>
+                  <p class="muted">Creates a Google Calendar event and sends invitations to the candidate, hiring manager, and interviewer.</p>
                 </div>
                 <button class="icon-button" type="button" aria-label="Close" (click)="closeScheduleModal()">
                   <span class="material-symbols-outlined" aria-hidden="true">close</span>
                 </button>
               </header>
 
-              <label class="stitch-field">
-                <span>Interview round</span>
-                <select name="scheduleRound" required [(ngModel)]="scheduleForm.jobPostInterviewRoundId">
-                  @for (round of activeInterviewRounds(); track round.jobPostInterviewRoundId ?? round.roundOrder) {
-                    <option [ngValue]="round.jobPostInterviewRoundId">{{ round.roundOrder }}. {{ round.name }} - {{ round.ownerUserName || 'No default interviewer' }}</option>
-                  }
-                </select>
-              </label>
+              @if (scheduleModalRound(application); as round) {
+                <section class="schedule-round-summary" aria-label="Selected interview round">
+                  <span class="material-symbols-outlined" aria-hidden="true">event</span>
+                  <div>
+                    <small>Next interview round</small>
+                    <strong>{{ round.roundOrder }}. {{ round.name }}</strong>
+                    <span>{{ round.ownerUserName || 'No default interviewer' }}</span>
+                  </div>
+                </section>
+                <p class="muted schedule-sequence-helper">Rounds must be completed in order. Later rounds unlock after prior rounds are completed or skipped.</p>
+              }
 
               <div class="modal-form-grid">
                 <label class="stitch-field">
@@ -1166,22 +1633,28 @@ type ScheduleInterviewForm = {
                   <input name="scheduleStartsAt" type="datetime-local" required [(ngModel)]="scheduleForm.startsAtLocal" />
                 </label>
                 <label class="stitch-field">
-                  <span>Meeting link</span>
-                  <input name="scheduleMeeting" placeholder="Google Meet / Zoom / Teams link" [(ngModel)]="scheduleForm.meetingLink" />
-                </label>
-                <label class="stitch-field full-span">
                   <span>Location / notes</span>
                   <input name="scheduleLocation" placeholder="Office room, remote note, or logistical detail" [(ngModel)]="scheduleForm.locationText" />
                 </label>
               </div>
+              <p class="muted">
+                Talent Pilot creates the meeting link from the connected Google Calendar organizer account for the selected time.
+              </p>
 
               @if (scheduleError()) {
-                <p class="field-status error">{{ scheduleError() }}</p>
+                <p class="field-status error">
+                  {{ scheduleError() }}
+                  @if (isGoogleCalendarScheduleError()) {
+                    Connect it in
+                    <a class="table-link-button" routerLink="/admin-center/integrations" (click)="closeScheduleModal()">Admin Center &gt; Integrations &gt; Google Calendar</a>.
+                    Tenant admin access is required.
+                  }
+                </p>
               }
 
               <div class="modal-actions">
                 <button class="btn secondary" type="button" (click)="closeScheduleModal()">Cancel</button>
-                <button class="btn primary" type="submit" [disabled]="scheduleSaving() || activeInterviewRounds().length === 0">
+                <button class="btn primary" type="submit" [disabled]="scheduleSaving() || !scheduleModalRound(application)">
                   {{ scheduleSaving() ? 'Scheduling...' : 'Schedule interview' }}
                 </button>
               </div>
@@ -1202,6 +1675,7 @@ type ScheduleInterviewForm = {
       .sourcing-tabs {
         border-bottom: 1px solid #dbe3ef;
         display: flex;
+        flex-wrap: wrap;
         gap: 18px;
         margin: 0 0 18px;
       }
@@ -1224,16 +1698,6 @@ type ScheduleInterviewForm = {
         color: #0b66c3;
       }
 
-      .sourcing-tabs strong {
-        align-items: center;
-        background: #e8f2ff;
-        border-radius: 999px;
-        color: #0b66c3;
-        display: inline-flex;
-        font-size: 12px;
-        padding: 0 7px;
-      }
-
       .panel-header {
         align-items: flex-start;
         display: flex;
@@ -1252,6 +1716,10 @@ type ScheduleInterviewForm = {
         flex-wrap: wrap;
         gap: 10px;
         justify-content: flex-end;
+      }
+
+      .applications-actions .ai-action {
+        min-width: 0;
       }
 
       .post-header-actions {
@@ -1289,7 +1757,7 @@ type ScheduleInterviewForm = {
         align-items: stretch;
         display: grid;
         gap: 16px;
-        grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       }
 
       .sourcing-summary-grid dt,
@@ -1373,9 +1841,36 @@ type ScheduleInterviewForm = {
         box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
         display: grid;
         gap: 16px;
+        grid-template-columns: minmax(0, 1fr);
+        max-height: calc(100vh - 72px);
         max-width: 920px;
+        min-width: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
         padding: 24px;
-        width: min(920px, 100%);
+        width: min(920px, calc(100vw - 36px));
+      }
+
+      .sourcing-modal-panel > *,
+      .sourcing-modal-panel .stitch-field,
+      .sourcing-modal-panel .post-editor-section,
+      .sourcing-modal-panel .skill-picker-panel,
+      .sourcing-modal-panel .selected-skill-strip {
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .sourcing-modal-panel input,
+      .sourcing-modal-panel select,
+      .sourcing-modal-panel textarea {
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .sourcing-modal-panel .skill-group-tabs {
+        margin: 6px 0 0;
+        max-width: 100%;
+        padding: 4px 4px 8px;
       }
 
       .cv-parser-panel {
@@ -1387,6 +1882,15 @@ type ScheduleInterviewForm = {
         gap: 16px;
         justify-content: space-between;
         padding: 14px;
+      }
+
+      .cv-parser-panel > div {
+        min-width: 0;
+      }
+
+      .cv-parser-panel strong,
+      .cv-parser-panel p {
+        overflow-wrap: anywhere;
       }
 
       .cv-parser-panel p {
@@ -1410,7 +1914,21 @@ type ScheduleInterviewForm = {
 
       .compact-modal {
         max-width: 720px;
-        width: min(720px, 100%);
+        width: min(720px, calc(100vw - 36px));
+      }
+
+      .sourcing-modal-panel .modal-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .sourcing-modal-panel .modal-form-grid .stitch-field:last-child {
+        grid-column: auto;
+      }
+
+      .sourcing-modal-panel .education-grid {
+        grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(120px, 0.55fr);
       }
 
       .full-span {
@@ -1419,21 +1937,6 @@ type ScheduleInterviewForm = {
 
       .ai-action {
         min-width: 190px;
-      }
-
-      .application-actions {
-        align-items: start;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .application-actions .table-link-button {
-        grid-column: 1 / -1;
-        justify-self: start;
-      }
-
-      .btn.danger {
-        border-color: #fecaca;
-        color: #b91c1c;
       }
 
       .manual-candidate-search {
@@ -1462,7 +1965,7 @@ type ScheduleInterviewForm = {
       .manual-candidate-header,
       .manual-candidate-row {
         display: grid;
-        grid-template-columns: minmax(180px, 1.1fr) minmax(190px, 1fr) minmax(145px, 0.75fr) minmax(190px, 1fr) minmax(150px, 0.7fr);
+        grid-template-columns: minmax(180px, 1fr) minmax(170px, 0.85fr) minmax(180px, 0.9fr) minmax(250px, 1.2fr) minmax(76px, 0.35fr);
       }
 
       .manual-candidate-header {
@@ -1543,21 +2046,48 @@ type ScheduleInterviewForm = {
         z-index: 20;
       }
 
-      .action-dropdown a {
+      .action-dropdown a,
+      .action-dropdown button {
         align-items: center;
+        background: transparent;
+        border: 0;
         border-radius: 6px;
         color: var(--text);
+        cursor: pointer;
         display: flex;
+        font: inherit;
         gap: 8px;
         padding: 9px 10px;
+        text-align: left;
         text-decoration: none;
       }
 
       .action-dropdown a:hover,
-      .action-dropdown a:focus-visible {
+      .action-dropdown a:focus-visible,
+      .action-dropdown button:hover,
+      .action-dropdown button:focus-visible {
         background: #eef6ff;
         color: var(--primary);
         outline: none;
+      }
+
+      .action-dropdown button:disabled {
+        color: #94a3b8;
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      .action-dropdown button:disabled:hover {
+        background: transparent;
+        color: #94a3b8;
+      }
+
+      .action-dropdown .danger-menu-item {
+        color: #b91c1c;
+      }
+
+      .action-dropdown .danger-menu-item .material-symbols-outlined {
+        color: #b91c1c;
       }
 
       .action-dropdown .material-symbols-outlined {
@@ -1570,69 +2100,6 @@ type ScheduleInterviewForm = {
         color: #0b66c3;
       }
 
-      .rediscovery-list {
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-
-      .rediscovery-list-header,
-      .rediscovery-row {
-        display: grid;
-        grid-template-columns: 96px minmax(180px, 1.1fr) minmax(180px, 1fr) minmax(180px, 1fr);
-      }
-
-      .rediscovery-list-header {
-        background: #f8fafc;
-        color: #475569;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-      }
-
-      .rediscovery-list-header span,
-      .rediscovery-row > div {
-        border-right: 1px solid #e2e8f0;
-        min-width: 0;
-        padding: 14px;
-      }
-
-      .rediscovery-list-header span:last-child,
-      .rediscovery-row > div:last-child {
-        border-right: 0;
-      }
-
-      .rediscovery-row {
-        border-top: 1px solid #e2e8f0;
-      }
-
-      .rediscovery-row > div {
-        align-content: start;
-        display: grid;
-        gap: 4px;
-      }
-
-      .rediscovery-row strong {
-        color: #0f172a;
-      }
-
-      .rediscovery-row small {
-        color: var(--muted);
-        display: block;
-        margin-top: 4px;
-      }
-
-      .rediscovery-rationale p {
-        line-height: 1.45;
-        margin: 0;
-      }
-
-      .rediscovery-rationale {
-        background: #fbfdff;
-        border-top: 1px solid #e2e8f0;
-        grid-column: 1 / -1;
-      }
-
       .fit-pill {
         background: var(--blue-soft);
         border-radius: 999px;
@@ -1640,7 +2107,7 @@ type ScheduleInterviewForm = {
         display: inline-block;
         font-size: 12px;
         font-weight: 800;
-        margin: 6px 0;
+        margin: 0;
         padding: 3px 8px;
       }
 
@@ -1661,26 +2128,6 @@ type ScheduleInterviewForm = {
         font-size: 12px;
         font-weight: 700;
         padding: 4px 8px;
-      }
-
-      .rationale-details-card {
-        background: #f8fafc;
-        border-top: 1px solid #e2e8f0;
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        padding: 16px;
-      }
-
-      .rationale-details-card h3 {
-        font-size: 13px;
-        margin: 0 0 8px;
-      }
-
-      .rationale-details-card ul {
-        color: var(--muted);
-        margin: 0;
-        padding-left: 18px;
       }
 
       .empty-state {
@@ -1713,7 +2160,15 @@ type ScheduleInterviewForm = {
           flex-direction: column;
         }
 
+        .sourcing-modal-panel .modal-form-grid {
+          grid-template-columns: 1fr;
+        }
+
         .post-header-actions {
+          justify-content: flex-start;
+        }
+
+        .applications-actions {
           justify-content: flex-start;
         }
 
@@ -1722,10 +2177,6 @@ type ScheduleInterviewForm = {
         }
 
         .manual-candidate-filters {
-          grid-template-columns: 1fr;
-        }
-
-        .application-actions {
           grid-template-columns: 1fr;
         }
 
@@ -1770,42 +2221,19 @@ type ScheduleInterviewForm = {
           grid-template-columns: 1fr;
         }
 
-        .rediscovery-list {
-          border: 0;
-          display: grid;
-          gap: 12px;
-          overflow: visible;
-        }
-
-        .rediscovery-list-header {
-          display: none;
-        }
-
-        .rediscovery-row {
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          display: grid;
-          grid-template-columns: 1fr;
-          overflow: hidden;
-        }
-
-        .rediscovery-row > div {
-          border-right: 0;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        .rediscovery-row > div:first-child {
-          border-top: 0;
-        }
       }
+
     `,
   ],
 })
-export class RecruiterSourcingComponent implements OnInit {
+export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnDestroy {
+  @ViewChild('applicationTrendCanvas') private applicationTrendCanvas?: ElementRef<HTMLCanvasElement>;
+
   readonly store = inject(TalentPilotStoreService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly fileDownloads = inject(FileDownloadService);
   readonly sourcing = signal<RecruiterSourcing | null>(null);
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -1814,23 +2242,31 @@ export class RecruiterSourcingComponent implements OnInit {
   readonly message = signal('');
   readonly error = signal('');
   readonly activeTab = signal<SourcingTab>('review');
+  readonly applicationAnalytics = computed(() => this.buildApplicationAnalytics(this.sourcing()?.applications ?? []));
   readonly expandedCandidateId = signal<string | null>(null);
   readonly expandedApplicantRankingId = signal<string | null>(null);
   readonly openManualCandidateMenuId = signal<string | null>(null);
+  readonly openApplicationActionMenuId = signal<string | null>(null);
   readonly manualCandidateModalOpen = signal(false);
   readonly manualCandidateSaving = signal(false);
   readonly manualCandidateError = signal('');
+  readonly manualCandidatePage = signal(1);
   readonly cvParsing = signal(false);
-  readonly cvParseMessage = signal('');
   readonly cvParseError = signal('');
   readonly selectedApplication = signal<RecruiterApplication | null>(null);
+  readonly invitationLinkModalApplication = signal<RecruiterApplication | null>(null);
+  readonly invitationLinkCopyMessage = signal('');
   readonly scheduleModalOpen = signal(false);
   readonly scheduleSaving = signal(false);
   readonly scheduleError = signal('');
   selectedTemplateId = '';
+  roundInterviewerDepartmentFilters: Record<string, string> = {};
+  roundInterviewerSearches: Record<string, string> = {};
+  readonly manualCandidatePageSize = 5;
   manualSearchText = '';
   manualSkillFilter = '';
   manualStatusFilter = 'All';
+  manualMinAiScore = '';
   manualMinPassedInterviews: number | null = null;
   manualMaxFailedInterviews: number | null = null;
   readonly postSkillSearch = signal('');
@@ -1840,9 +2276,34 @@ export class RecruiterSourcingComponent implements OnInit {
   manualCandidateForm = this.emptyManualCandidateForm();
   scheduleForm: ScheduleInterviewForm = this.emptyScheduleForm();
   form = this.emptyForm();
+  private applicationTrendChart: Chart<'bar', number[], string> | null = null;
+  private applicationTrendChartSignature = '';
 
   ngOnInit(): void {
+    this.applyInitialTab();
     void this.load();
+  }
+
+  ngAfterViewChecked(): void {
+    this.renderApplicationTrendChart();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyApplicationTrendChart();
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeActionMenusOnOutsideClick(event: MouseEvent): void {
+    if (!this.openManualCandidateMenuId() && !this.openApplicationActionMenuId()) {
+      return;
+    }
+
+    const target = event.target;
+    if (target instanceof Element && target.closest('.candidate-action-menu')) {
+      return;
+    }
+
+    this.closeActionMenus();
   }
 
   async load(): Promise<void> {
@@ -1974,7 +2435,6 @@ export class RecruiterSourcingComponent implements OnInit {
     this.manualCandidateForm = this.emptyManualCandidateForm();
     this.manualCandidateForm.invitationMessage = this.defaultInvitationMessage(jobPost?.title);
     this.manualCandidateError.set('');
-    this.cvParseMessage.set('');
     this.cvParseError.set('');
     this.manualSkillSearch.set('');
     this.manualActiveSkillGroup.set(DEFAULT_SKILL_GROUP_LABEL);
@@ -1988,7 +2448,6 @@ export class RecruiterSourcingComponent implements OnInit {
 
     this.manualCandidateModalOpen.set(false);
     this.manualCandidateError.set('');
-    this.cvParseMessage.set('');
     this.cvParseError.set('');
   }
 
@@ -2005,6 +2464,7 @@ export class RecruiterSourcingComponent implements OnInit {
         experienceYears: null,
         noticePeriodDays: null,
         skillIds: [],
+        parsedCvEvidence: null,
       };
       return;
     }
@@ -2018,6 +2478,7 @@ export class RecruiterSourcingComponent implements OnInit {
       experienceYears: candidate.experienceYears ?? null,
       noticePeriodDays: candidate.noticePeriodDays ?? null,
       skillIds: this.skillIdsForNames(candidate.skills),
+      parsedCvEvidence: null,
     };
   }
 
@@ -2025,7 +2486,6 @@ export class RecruiterSourcingComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    this.cvParseMessage.set('');
     this.cvParseError.set('');
 
     if (!file) {
@@ -2046,7 +2506,6 @@ export class RecruiterSourcingComponent implements OnInit {
     try {
       const parsed = await this.store.parseCandidateCv(file);
       this.applyParsedCv(parsed);
-      this.cvParseMessage.set(`${parsed.summary} Review the extracted fields before inviting.`);
     } catch {
       this.cvParseError.set('CV Parser Agent could not parse this DOCX. Manual entry is still available.');
     } finally {
@@ -2115,8 +2574,13 @@ export class RecruiterSourcingComponent implements OnInit {
     this.clearStatus();
     try {
       await this.store.forwardToHiringManager(application.jobApplicationId);
+      this.markApplicationForwarded(application.jobApplicationId);
       this.message.set(`${application.candidateName} forwarded to Hiring Manager Review.`);
-      await this.load();
+      try {
+        await this.load();
+      } catch {
+        this.message.set(`${application.candidateName} forwarded to Hiring Manager Review. Refresh the page to view the latest sourcing state.`);
+      }
       this.activeTab.set('applications');
     } catch {
       this.error.set('Candidate could not be forwarded. Confirm all active rounds are completed or skipped.');
@@ -2125,14 +2589,61 @@ export class RecruiterSourcingComponent implements OnInit {
     }
   }
 
+  trackedInvitationLink(application: RecruiterApplication): string | null {
+    const sourceUrl = application.sourceUrl?.trim();
+    if (!application.isInvited || !sourceUrl || !this.isTrackedInvitationUrl(sourceUrl)) {
+      return null;
+    }
+
+    return sourceUrl;
+  }
+
+  openInvitationLinkModal(application: RecruiterApplication): void {
+    if (!this.trackedInvitationLink(application)) {
+      this.error.set('No tracked invitation link is stored for this candidate.');
+      return;
+    }
+
+    this.clearStatus();
+    this.invitationLinkCopyMessage.set('');
+    this.invitationLinkModalApplication.set(application);
+  }
+
+  closeInvitationLinkModal(): void {
+    this.invitationLinkModalApplication.set(null);
+    this.invitationLinkCopyMessage.set('');
+  }
+
+  openInvitationLink(inviteLink: string): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.open(inviteLink, '_blank', 'noopener,noreferrer');
+  }
+
+  async copyInvitationLink(inviteLink: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      this.invitationLinkCopyMessage.set('Invitation link copied.');
+    } catch {
+      this.invitationLinkCopyMessage.set('Copy failed. Select the link and copy it manually.');
+    }
+  }
+
   openScheduleModal(application: RecruiterApplication): void {
     this.clearStatus();
-    const nextRound = this.nextSchedulableRound(application);
+    const eligibility = this.scheduleEligibility(application);
+    if (eligibility.status !== 'eligible' || !eligibility.round?.jobPostInterviewRoundId) {
+      this.scheduleError.set(eligibility.message);
+      return;
+    }
+
     this.selectedApplication.set(application);
     this.scheduleForm = {
       ...this.emptyScheduleForm(),
       jobApplicationId: application.jobApplicationId,
-      jobPostInterviewRoundId: nextRound?.jobPostInterviewRoundId ?? '',
+      jobPostInterviewRoundId: eligibility.round.jobPostInterviewRoundId,
       startsAtLocal: this.defaultScheduleLocalDateTime(),
     };
     this.scheduleError.set('');
@@ -2156,10 +2667,16 @@ export class RecruiterSourcingComponent implements OnInit {
       return;
     }
 
-    const round = this.activeInterviewRounds()
-      .find((item) => item.jobPostInterviewRoundId === this.scheduleForm.jobPostInterviewRoundId);
-    if (!round?.jobPostInterviewRoundId) {
-      this.scheduleError.set('Select an active interview round.');
+    const eligibility = this.scheduleEligibility(application);
+    if (eligibility.status !== 'eligible' || !eligibility.round?.jobPostInterviewRoundId) {
+      this.scheduleError.set(eligibility.message);
+      return;
+    }
+
+    const round = eligibility.round;
+    const jobPostInterviewRoundId = round.jobPostInterviewRoundId;
+    if (!jobPostInterviewRoundId) {
+      this.scheduleError.set(eligibility.message);
       return;
     }
 
@@ -2178,10 +2695,10 @@ export class RecruiterSourcingComponent implements OnInit {
     this.scheduleError.set('');
     try {
       await this.store.scheduleCandidateInterview(application.jobApplicationId, {
-        jobPostInterviewRoundId: round.jobPostInterviewRoundId,
+        jobPostInterviewRoundId,
         interviewerUserId: round.ownerUserId,
         startsAtUtc: startsAt.toISOString(),
-        meetingLink: this.blankToNull(this.scheduleForm.meetingLink),
+        meetingLink: null,
         locationText: this.blankToNull(this.scheduleForm.locationText),
       });
       this.message.set(`${round.name} scheduled for ${application.candidateName}.`);
@@ -2189,8 +2706,11 @@ export class RecruiterSourcingComponent implements OnInit {
       this.closeScheduleModal();
       await this.load();
       this.activeTab.set('applications');
-    } catch {
-      this.scheduleError.set('Interview could not be scheduled. Confirm prior rounds are completed or skipped, and that this round has an active default interviewer.');
+    } catch (error) {
+      this.scheduleError.set(this.toErrorMessage(
+        error,
+        'Interview could not be scheduled. Confirm prior rounds are completed or skipped, and that this round has an active default interviewer.',
+      ));
     } finally {
       this.scheduleSaving.set(false);
     }
@@ -2202,6 +2722,8 @@ export class RecruiterSourcingComponent implements OnInit {
       return;
     }
 
+    this.roundInterviewerDepartmentFilters = {};
+    this.roundInterviewerSearches = {};
     this.form.interviewRounds = template.rounds.map((round, index) => ({
       ...round,
       roundOrder: index + 1,
@@ -2227,21 +2749,169 @@ export class RecruiterSourcingComponent implements OnInit {
       .map((round, currentIndex) => ({ ...round, roundOrder: currentIndex + 1 }));
   }
 
+  roundDepartmentFilter(round: JobPostInterviewRound, index: number): string {
+    const key = this.roundFilterKey(round, index);
+    return Object.prototype.hasOwnProperty.call(this.roundInterviewerDepartmentFilters, key)
+      ? this.roundInterviewerDepartmentFilters[key]
+      : this.jobDepartmentName();
+  }
+
+  setRoundDepartmentFilter(round: JobPostInterviewRound, index: number, value: string): void {
+    this.roundInterviewerDepartmentFilters = {
+      ...this.roundInterviewerDepartmentFilters,
+      [this.roundFilterKey(round, index)]: value,
+    };
+  }
+
+  roundSearch(round: JobPostInterviewRound, index: number): string {
+    return this.roundInterviewerSearches[this.roundFilterKey(round, index)] ?? '';
+  }
+
+  setRoundSearch(round: JobPostInterviewRound, index: number, event: Event): void {
+    this.roundInterviewerSearches = {
+      ...this.roundInterviewerSearches,
+      [this.roundFilterKey(round, index)]: ((event.target as HTMLInputElement | null)?.value ?? '').toString(),
+    };
+  }
+
+  interviewerDepartments(): string[] {
+    const jobDepartment = this.jobDepartmentName();
+    return Array.from(
+      new Set((this.sourcing()?.interviewers ?? []).map((interviewer) => this.interviewerDepartmentName(interviewer))),
+    ).sort((left, right) => {
+      if (left === jobDepartment) {
+        return -1;
+      }
+      if (right === jobDepartment) {
+        return 1;
+      }
+      return left.localeCompare(right);
+    });
+  }
+
+  interviewerGroupsForRound(round: JobPostInterviewRound, index: number): InterviewerGroup[] {
+    const grouped = new Map<string, InterviewerOption[]>();
+    for (const interviewer of this.visibleInterviewersForRound(round, index)) {
+      const departmentName = this.interviewerDepartmentName(interviewer);
+      grouped.set(departmentName, [...(grouped.get(departmentName) ?? []), interviewer]);
+    }
+
+    return Array.from(grouped.entries())
+      .map(([departmentName, options]) => ({
+        departmentName,
+        options: options.sort((left, right) => this.compareInterviewers(left, right)),
+      }))
+      .sort((left, right) => this.compareDepartmentNames(left.departmentName, right.departmentName));
+  }
+
+  visibleInterviewerCountForRound(round: JobPostInterviewRound, index: number): number {
+    return this.visibleInterviewersForRound(round, index).length;
+  }
+
+  selectedInterviewerName(round: JobPostInterviewRound): string {
+    return this.findInterviewerById(round.ownerUserId)?.displayName || round.ownerUserName || 'Not assigned';
+  }
+
+  selectedInterviewerInitials(round: JobPostInterviewRound): string {
+    if (!round.ownerUserId) {
+      return 'NA';
+    }
+
+    const parts = this.selectedInterviewerName(round)
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+    if (parts.length === 0) {
+      return 'NA';
+    }
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+
+  selectedInterviewerMeta(round: JobPostInterviewRound): string {
+    const interviewer = this.findInterviewerById(round.ownerUserId);
+    if (interviewer) {
+      const parts = [
+        interviewer.designation,
+        this.interviewerDepartmentName(interviewer),
+        `${interviewer.completedInterviewCount} completed interview${interviewer.completedInterviewCount === 1 ? '' : 's'}`,
+      ].filter((part): part is string => typeof part === 'string' && part.trim().length > 0);
+
+      return parts.join(' - ');
+    }
+
+    if (round.ownerUserId) {
+      return 'Selected interviewer is not in the active employee list.';
+    }
+
+    return 'Select any active employee for this round.';
+  }
+
+  roundInterviewerHelper(round: JobPostInterviewRound, index: number): string {
+    const options = this.visibleInterviewersForRound(round, index);
+    if (options.length === 0) {
+      return 'No active employees match this filter.';
+    }
+
+    const selected = this.findInterviewerById(round.ownerUserId);
+    if (selected && !this.interviewerMatchesActiveFilters(selected, round, index)) {
+      return 'Selected interviewer is shown even though they do not match the active filter.';
+    }
+
+    return '';
+  }
+
+  selectRoundInterviewer(index: number, userId: string): void {
+    const selectedUserId = userId || null;
+    const interviewer = this.findInterviewerById(selectedUserId);
+    this.form.interviewRounds = this.form.interviewRounds.map((round, roundIndex) =>
+      roundIndex === index
+        ? {
+            ...round,
+            ownerUserId: selectedUserId,
+            ownerUserName: interviewer?.displayName ?? null,
+          }
+        : round,
+    );
+  }
+
   shouldSuggestHod(round: JobPostInterviewRound, index: number): boolean {
     const name = round.name.toLowerCase();
     return index === this.form.interviewRounds.length - 1 || name.includes('hod') || name.includes('department head') || name.includes('final');
   }
 
-  recommendedHodForRound(round: JobPostInterviewRound, index: number): LookupOption | undefined {
+  recommendedHodForRound(round: JobPostInterviewRound, index: number): RecommendedHod | undefined {
     if (!this.shouldSuggestHod(round, index)) {
       return undefined;
     }
 
-    return this.sourcing()?.hodInterviewers?.[0];
+    const fromInterviewers = (this.sourcing()?.interviewers ?? [])
+      .filter((interviewer) => interviewer.isDepartmentHod && interviewer.isJobDepartmentMatch)
+      .sort((left, right) => this.compareInterviewers(left, right))[0];
+    if (fromInterviewers) {
+      return {
+        id: fromInterviewers.userId,
+        name: fromInterviewers.displayName,
+        departmentName: fromInterviewers.departmentName,
+        description: fromInterviewers.designation,
+      };
+    }
+
+    const fallback = this.sourcing()?.hodInterviewers?.[0];
+    return fallback
+      ? {
+          id: fallback.id,
+          name: fallback.name,
+          description: fallback.description,
+        }
+      : undefined;
   }
 
-  hodRecommendationReason(): string {
-    const department = this.sourcing()?.jobPost?.department || this.sourcing()?.jobRequest.department || 'job post';
+  hodRecommendationReason(hod?: RecommendedHod): string {
+    const department = hod?.departmentName || this.sourcing()?.jobPost?.department || this.sourcing()?.jobRequest.department || 'job post';
     return `${department} HOD matched to this job post department`;
   }
 
@@ -2249,7 +2919,7 @@ export class RecruiterSourcingComponent implements OnInit {
     return formatJobDescription(description);
   }
 
-  applyRecommendedHod(index: number, hod: LookupOption): void {
+  applyRecommendedHod(index: number, hod: RecommendedHod): void {
     this.form.interviewRounds = this.form.interviewRounds.map((round, roundIndex) =>
       roundIndex === index
         ? {
@@ -2259,6 +2929,91 @@ export class RecruiterSourcingComponent implements OnInit {
           }
         : round,
     );
+  }
+
+  private visibleInterviewersForRound(round: JobPostInterviewRound, index: number): InterviewerOption[] {
+    const filtered = (this.sourcing()?.interviewers ?? [])
+      .filter((interviewer) => this.interviewerMatchesActiveFilters(interviewer, round, index))
+      .sort((left, right) => this.compareInterviewers(left, right));
+    const selected = this.findInterviewerById(round.ownerUserId);
+    if (!selected || filtered.some((interviewer) => interviewer.userId === selected.userId)) {
+      return filtered;
+    }
+
+    return [selected, ...filtered];
+  }
+
+  private interviewerMatchesActiveFilters(
+    interviewer: InterviewerOption,
+    round: JobPostInterviewRound,
+    index: number,
+  ): boolean {
+    const departmentFilter = this.roundDepartmentFilter(round, index);
+    if (departmentFilter && this.interviewerDepartmentName(interviewer) !== departmentFilter) {
+      return false;
+    }
+
+    const search = this.roundSearch(round, index).trim().toLowerCase();
+    if (!search) {
+      return true;
+    }
+
+    return [
+      interviewer.displayName,
+      interviewer.email,
+      interviewer.departmentName,
+      interviewer.designation,
+      ...(interviewer.roleNames ?? []),
+    ]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .some((value) => value.toLowerCase().includes(search));
+  }
+
+  private findInterviewerById(userId?: string | null): InterviewerOption | undefined {
+    if (!userId) {
+      return undefined;
+    }
+
+    return this.sourcing()?.interviewers.find((interviewer) => interviewer.userId === userId);
+  }
+
+  private compareInterviewers(left: InterviewerOption, right: InterviewerOption): number {
+    const departmentComparison = this.compareDepartmentNames(
+      this.interviewerDepartmentName(left),
+      this.interviewerDepartmentName(right),
+    );
+    if (departmentComparison !== 0) {
+      return departmentComparison;
+    }
+
+    return left.displayName.localeCompare(right.displayName);
+  }
+
+  private compareDepartmentNames(left: string, right: string): number {
+    const jobDepartment = this.jobDepartmentName();
+    if (left === right) {
+      return 0;
+    }
+    if (left === jobDepartment) {
+      return -1;
+    }
+    if (right === jobDepartment) {
+      return 1;
+    }
+
+    return left.localeCompare(right);
+  }
+
+  private interviewerDepartmentName(interviewer: InterviewerOption): string {
+    return interviewer.departmentName?.trim() || 'Unassigned';
+  }
+
+  private jobDepartmentName(): string {
+    return this.sourcing()?.jobPost?.department || this.sourcing()?.jobRequest.department || '';
+  }
+
+  private roundFilterKey(round: JobPostInterviewRound, index: number): string {
+    return round.jobPostInterviewRoundId || round.interviewTemplateRoundId || `round-${round.roundOrder}-${index}`;
   }
 
   skillSelected(skillId: string): boolean {
@@ -2335,6 +3090,14 @@ export class RecruiterSourcingComponent implements OnInit {
     return this.canUseSourcingAssignment();
   }
 
+  canClaimSourcingAssignment(assignment: WorkflowAssignment): boolean {
+    return assignment.status === 'Pending' && !assignment.claimedByUserId;
+  }
+
+  canShortlistApplication(application: RecruiterApplication): boolean {
+    return ['applied', 'invited'].includes(this.normalizeStatus(application.applicationStatus));
+  }
+
   canForwardToHiringManager(application: RecruiterApplication): boolean {
     if (
       !this.canUseSourcingAssignment() ||
@@ -2362,6 +3125,145 @@ export class RecruiterSourcingComponent implements OnInit {
           resolvedStatuses.has(interview.status),
       );
     });
+  }
+
+  canSubmitInterviewFeedback(interview: RecruiterApplicationInterview): boolean {
+    return this.interviewFeedbackActionLabel(interview) !== null;
+  }
+
+  interviewFeedbackActionLabel(interview: RecruiterApplicationInterview): 'Add feedback' | 'Admin override feedback' | null {
+    if (this.normalizeStatus(interview.status) !== 'scheduled') {
+      return null;
+    }
+
+    const currentUser = this.auth.currentUser();
+    if (!currentUser) {
+      return null;
+    }
+
+    if (interview.interviewerUserId === currentUser.id) {
+      return 'Add feedback';
+    }
+
+    if (this.auth.isAdmin() && this.isInactiveInterviewer(interview)) {
+      return 'Admin override feedback';
+    }
+
+    return null;
+  }
+
+  private isInactiveInterviewer(interview: RecruiterApplicationInterview): boolean {
+    return interview.interviewerIsDeleted || this.normalizeStatus(interview.interviewerAccountStatus) !== 'active';
+  }
+
+  private normalizeStatus(value: string | null | undefined): string {
+    return (value ?? '').replace(/\s+/g, '').toLowerCase();
+  }
+
+  canSubmitAssignedInterviewFeedback(interview: RecruiterApplicationInterview): boolean {
+    const currentUserId = this.auth.currentUser()?.id;
+    return (
+      !!currentUserId &&
+      interview.interviewerUserId === currentUserId &&
+      interview.status === 'Scheduled'
+    );
+  }
+
+  interviewTimelineEntries(application: RecruiterApplication): InterviewTimelineEntry[] {
+    const rounds = this.activeInterviewRounds();
+    if (rounds.length === 0) {
+      return application.interviews.map((interview) => ({
+        key: interview.interviewId,
+        roundName: interview.roundName,
+        status: interview.status,
+        startsAt: interview.startsAt,
+        interview,
+        isUnscheduled: false,
+      }));
+    }
+
+    const configuredRoundIds = new Set(rounds.map((round) => round.jobPostInterviewRoundId));
+    const entries = rounds.map((round): InterviewTimelineEntry => {
+      const interview = application.interviews.find((candidateInterview) =>
+        candidateInterview.jobPostInterviewRoundId === round.jobPostInterviewRoundId);
+      if (interview) {
+        return {
+          key: interview.interviewId,
+          roundName: interview.roundName,
+          status: interview.status,
+          startsAt: interview.startsAt,
+          interview,
+          isUnscheduled: false,
+        };
+      }
+
+      return {
+        key: `unscheduled-${round.jobPostInterviewRoundId}`,
+        roundName: round.name,
+        status: 'Not scheduled',
+        startsAt: null,
+        isUnscheduled: true,
+      };
+    });
+
+    const legacyInterviews = application.interviews
+      .filter((interview) => !interview.jobPostInterviewRoundId || !configuredRoundIds.has(interview.jobPostInterviewRoundId))
+      .map((interview): InterviewTimelineEntry => ({
+        key: interview.interviewId,
+        roundName: interview.roundName,
+        status: interview.status,
+        startsAt: interview.startsAt,
+        interview,
+        isUnscheduled: false,
+      }));
+
+    return [...entries, ...legacyInterviews];
+  }
+
+  interviewTimelineSummary(application: RecruiterApplication): string | null {
+    const rounds = this.activeInterviewRounds();
+    if (rounds.length === 0) {
+      return application.interviews.length > 0
+        ? `${application.interviews.length} round${application.interviews.length === 1 ? '' : 's'}`
+        : null;
+    }
+
+    const entries = this.interviewTimelineEntries(application);
+    const scheduledCount = entries.filter((entry) => !entry.isUnscheduled).length;
+    const unscheduledCount = entries.filter((entry) => entry.isUnscheduled).length;
+
+    if (unscheduledCount === 0) {
+      return `${scheduledCount} round${scheduledCount === 1 ? '' : 's'}`;
+    }
+
+    if (scheduledCount === 0) {
+      return `${unscheduledCount} not scheduled`;
+    }
+
+    return `${scheduledCount} round${scheduledCount === 1 ? '' : 's'}, ${unscheduledCount} not scheduled`;
+  }
+
+  interviewTimelineItemClass(entry: InterviewTimelineEntry): string {
+    return `interview-timeline-item ${this.interviewStatusToken(entry.status)}`;
+  }
+
+  interviewStatusChipClass(status: string): string {
+    return `interview-status-chip ${this.interviewStatusToken(status)}`;
+  }
+
+  formatInterviewSchedule(startsAt: string): string {
+    const date = new Date(startsAt);
+    if (Number.isNaN(date.getTime())) {
+      return 'Date not set';
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
   }
 
   activeInterviewRounds(): JobPostInterviewRound[] {
@@ -2416,6 +3318,272 @@ export class RecruiterSourcingComponent implements OnInit {
     this.clearStatus();
   }
 
+  private renderApplicationTrendChart(): void {
+    if (this.activeTab() !== 'analytics') {
+      this.destroyApplicationTrendChart();
+      return;
+    }
+
+    const canvas = this.applicationTrendCanvas?.nativeElement;
+    if (!canvas) {
+      this.destroyApplicationTrendChart();
+      return;
+    }
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return;
+    }
+
+    const analytics = this.applicationAnalytics();
+    const labels = analytics.points.map((point) => point.label);
+    const values = analytics.points.map((point) => point.count);
+    const signature = `${labels.join('|')}::${values.join('|')}`;
+    if (this.applicationTrendChart && this.applicationTrendChartSignature === signature) {
+      return;
+    }
+
+    this.destroyApplicationTrendChart();
+    this.applicationTrendChartSignature = signature;
+    this.applicationTrendChart = new Chart<'bar', number[], string>(context, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            data: values,
+            backgroundColor: values.map((value) => value > 0 ? 'rgba(11, 102, 195, 0.82)' : 'rgba(148, 163, 184, 0.22)'),
+            borderColor: values.map((value) => value > 0 ? '#0b66c3' : '#cbd5e1'),
+            borderRadius: 8,
+            borderSkipped: false,
+            borderWidth: 1,
+            categoryPercentage: 0.7,
+            maxBarThickness: 72,
+          },
+        ],
+      },
+      options: {
+        animation: false,
+        interaction: {
+          intersect: false,
+          mode: 'index',
+        },
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            callbacks: {
+              label: (tooltipItem) => `${tooltipItem.parsed.y} applicant(s)`,
+            },
+          },
+        },
+        responsive: true,
+        scales: {
+          x: {
+            grid: {
+              display: false,
+            },
+            ticks: {
+              color: '#64748b',
+              font: {
+                weight: 700,
+              },
+              padding: 8,
+              maxRotation: 0,
+            },
+          },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: '#e2e8f0',
+            },
+            suggestedMax: Math.max(2, analytics.maxDailyCount + 1),
+            ticks: {
+              color: '#64748b',
+              precision: 0,
+              stepSize: 1,
+            },
+            title: {
+              color: '#64748b',
+              display: true,
+              font: {
+                weight: 700,
+              },
+              text: 'Applicants',
+            },
+          },
+        },
+      },
+    });
+  }
+
+  private destroyApplicationTrendChart(): void {
+    this.applicationTrendChart?.destroy();
+    this.applicationTrendChart = null;
+    this.applicationTrendChartSignature = '';
+  }
+
+  trendDeltaLabel(analytics: ApplicationAnalytics): string {
+    if (analytics.totalApplications === 0) {
+      return 'No daily movement';
+    }
+
+    if (analytics.trendDelta > 0) {
+      return `+${analytics.trendDelta} from previous day`;
+    }
+
+    if (analytics.trendDelta < 0) {
+      return `${analytics.trendDelta} from previous day`;
+    }
+
+    return 'No change from previous day';
+  }
+
+  dailyApplicationsLabel(count: number): string {
+    return count === 1 ? '1 candidate applied' : `${count} candidates applied`;
+  }
+
+  applicationTrendSummary(analytics: ApplicationAnalytics): string {
+    const firstLabel = analytics.axisLabels[0]?.label;
+    const lastLabel = analytics.axisLabels[analytics.axisLabels.length - 1]?.label;
+    return firstLabel && lastLabel ? `${firstLabel} to ${lastLabel}` : 'Latest activity window';
+  }
+
+  applicationTrendAriaLabel(analytics: ApplicationAnalytics): string {
+    const points = analytics.points
+      .map((point) => `${point.label}: ${point.count}`)
+      .join(', ');
+    return `Daily application counts. ${points}`;
+  }
+
+  private applyInitialTab(): void {
+    const tab = this.toSourcingTab(this.route.snapshot.queryParamMap?.get('tab'));
+    if (tab) {
+      this.activeTab.set(tab);
+    }
+  }
+
+  private toSourcingTab(tab: string | null | undefined): SourcingTab | null {
+    return tab === 'review' ||
+      tab === 'applications' ||
+      tab === 'analytics' ||
+      tab === 'rediscovery' ||
+      tab === 'post'
+      ? tab
+      : null;
+  }
+
+  private buildApplicationAnalytics(applications: readonly RecruiterApplication[]): ApplicationAnalytics {
+    const activityDates = applications
+      .map((application) => this.toLocalDate(application.appliedAt))
+      .filter((date): date is Date => Boolean(date));
+    const endDate = activityDates.length > 0
+      ? activityDates.reduce((latest, current) => (current > latest ? current : latest))
+      : this.startOfLocalDay(new Date());
+    const firstActivityDate = activityDates.length > 0
+      ? activityDates.reduce((earliest, current) => (current < earliest ? current : earliest))
+      : this.addDays(endDate, -6);
+    const startDate = activityDates.length > 0 && this.daysBetween(firstActivityDate, endDate) === 0
+      ? this.addDays(endDate, -1)
+      : firstActivityDate;
+    const windowLength = this.daysBetween(startDate, endDate) + 1;
+    const countByDate = new Map<string, number>();
+
+    for (const date of activityDates) {
+      if (date < startDate || date > endDate) {
+        continue;
+      }
+
+      const key = this.toDateKey(date);
+      countByDate.set(key, (countByDate.get(key) ?? 0) + 1);
+    }
+
+    const counts = Array.from({ length: windowLength }, (_, index) => {
+      const date = this.addDays(startDate, index);
+      return countByDate.get(this.toDateKey(date)) ?? 0;
+    });
+    const maxDailyCount = Math.max(0, ...counts);
+    const points = counts.map((count, index) => {
+      const date = this.addDays(startDate, index);
+      return {
+        dateKey: this.toDateKey(date),
+        label: this.formatApplicationTrendDate(date),
+        shortLabel: this.formatApplicationTrendShortDate(date),
+        count,
+      };
+    });
+    const latestDayCount = points[points.length - 1]?.count ?? 0;
+    const previousDayCount = points[points.length - 2]?.count ?? 0;
+    const trendDelta = latestDayCount - previousDayCount;
+    const trendDirection = trendDelta > 0 ? 'increasing' : trendDelta < 0 ? 'decreasing' : 'flat';
+    const trendLabel = applications.length === 0
+      ? 'No activity'
+      : trendDirection === 'increasing'
+        ? 'Increasing'
+        : trendDirection === 'decreasing'
+          ? 'Decreasing'
+          : 'Flat';
+    return {
+      totalApplications: applications.length,
+      lastSevenDaysTotal: points.slice(-7).reduce((total, point) => total + point.count, 0),
+      latestDayCount,
+      previousDayCount,
+      trendDelta,
+      trendDirection,
+      trendLabel,
+      maxDailyCount,
+      points,
+      axisLabels: this.toApplicationTrendAxisLabels(points),
+    };
+  }
+
+  private toLocalDate(value: string): Date | null {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : this.startOfLocalDay(parsed);
+  }
+
+  private startOfLocalDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  private daysBetween(startDate: Date, endDate: Date): number {
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / millisecondsPerDay));
+  }
+
+  private toDateKey(date: Date): string {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  private formatApplicationTrendDate(date: Date): string {
+    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+  }
+
+  private formatApplicationTrendShortDate(date: Date): string {
+    return new Intl.DateTimeFormat(undefined, { day: 'numeric' }).format(date);
+  }
+
+  private toApplicationTrendAxisLabels(points: readonly ApplicationTrendPoint[]): ApplicationTrendLabel[] {
+    if (points.length === 0) {
+      return [];
+    }
+
+    return Array.from(new Set([0, Math.floor((points.length - 1) / 2), points.length - 1]))
+      .map((index) => points[index])
+      .filter((point): point is ApplicationTrendPoint => Boolean(point))
+      .map((point) => ({ dateKey: point.dateKey, label: point.label }));
+  }
+
   toggleDetails(candidateId: string): void {
     this.expandedCandidateId.set(this.expandedCandidateId() === candidateId ? null : candidateId);
   }
@@ -2425,11 +3593,28 @@ export class RecruiterSourcingComponent implements OnInit {
   }
 
   toggleManualCandidateMenu(candidateId: string): void {
+    this.closeApplicationActionMenu();
     this.openManualCandidateMenuId.set(this.openManualCandidateMenuId() === candidateId ? null : candidateId);
   }
 
   closeManualCandidateMenu(): void {
     this.openManualCandidateMenuId.set(null);
+  }
+
+  toggleApplicationActionMenu(jobApplicationId: string): void {
+    this.closeManualCandidateMenu();
+    this.openApplicationActionMenuId.set(
+      this.openApplicationActionMenuId() === jobApplicationId ? null : jobApplicationId,
+    );
+  }
+
+  closeApplicationActionMenu(): void {
+    this.openApplicationActionMenuId.set(null);
+  }
+
+  closeActionMenus(): void {
+    this.closeManualCandidateMenu();
+    this.closeApplicationActionMenu();
   }
 
   latestRediscoveryRun(): string {
@@ -2443,7 +3628,7 @@ export class RecruiterSourcingComponent implements OnInit {
   }
 
   latestApplicantSemanticStatus(): string {
-    return this.sourcing()?.applicantRankings[0]?.semanticSimilarityStatus || 'Not run';
+    return this.semanticSimilarityStatusLabel(this.sourcing()?.applicantRankings[0]?.semanticSimilarityStatus);
   }
 
   applicantRankingFor(application: RecruiterApplication): ApplicantRankingMatch | undefined {
@@ -2454,6 +3639,7 @@ export class RecruiterSourcingComponent implements OnInit {
   filteredManualCandidates(): ManualCandidateSearchItem[] {
     const candidates = this.sourcing()?.candidateSearchItems ?? [];
     const text = this.manualSearchText.trim().toLowerCase();
+    const minAiScore = this.manualMinAiScore ? Number(this.manualMinAiScore) : null;
     const minPassed = this.manualMinPassedInterviews === null || this.manualMinPassedInterviews === undefined
       ? null
       : Number(this.manualMinPassedInterviews);
@@ -2462,12 +3648,24 @@ export class RecruiterSourcingComponent implements OnInit {
       : Number(this.manualMaxFailedInterviews);
 
     return candidates
+      .filter((candidate) => this.isRediscoverableCandidate(candidate))
       .filter((candidate) => !text || this.matchesManualSearch(candidate, text))
       .filter((candidate) => this.manualSkillFilter === '' || this.hasCandidateSkill(candidate, this.manualSkillFilter))
       .filter((candidate) => this.manualStatusFilter === 'All' || candidate.status === this.manualStatusFilter)
+      .filter((candidate) => minAiScore === null || this.candidateAiScore(candidate) >= minAiScore)
       .filter((candidate) => minPassed === null || candidate.passedInterviews >= minPassed)
       .filter((candidate) => maxFailed === null || candidate.failedInterviews <= maxFailed)
       .sort((left, right) => {
+        const scoreDelta = this.candidateAiScore(right) - this.candidateAiScore(left);
+        if (scoreDelta !== 0) {
+          return scoreDelta;
+        }
+
+        const matchedSkillDelta = right.matchedSkills.length - left.matchedSkills.length;
+        if (matchedSkillDelta !== 0) {
+          return matchedSkillDelta;
+        }
+
         const passedDelta = right.passedInterviews - left.passedInterviews;
         if (passedDelta !== 0) {
           return passedDelta;
@@ -2480,6 +3678,55 @@ export class RecruiterSourcingComponent implements OnInit {
 
         return left.displayName.localeCompare(right.displayName);
       });
+  }
+
+  pagedManualCandidates(): ManualCandidateSearchItem[] {
+    const candidates = this.filteredManualCandidates();
+    const start = (this.currentManualCandidatePage() - 1) * this.manualCandidatePageSize;
+    return candidates.slice(start, start + this.manualCandidatePageSize);
+  }
+
+  currentManualCandidatePage(): number {
+    return Math.min(Math.max(1, this.manualCandidatePage()), this.manualCandidateTotalPages());
+  }
+
+  manualCandidateTotalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredManualCandidates().length / this.manualCandidatePageSize));
+  }
+
+  manualCandidatePageNumbers(): number[] {
+    const total = this.manualCandidateTotalPages();
+    const visibleCount = Math.min(5, total);
+    const current = this.currentManualCandidatePage();
+    const start = Math.max(1, Math.min(current - 2, total - visibleCount + 1));
+    return Array.from({ length: visibleCount }, (_, index) => start + index);
+  }
+
+  manualCandidateShowingStart(): number {
+    const total = this.filteredManualCandidates().length;
+    return total === 0 ? 0 : (this.currentManualCandidatePage() - 1) * this.manualCandidatePageSize + 1;
+  }
+
+  manualCandidateShowingEnd(): number {
+    return Math.min(this.filteredManualCandidates().length, this.currentManualCandidatePage() * this.manualCandidatePageSize);
+  }
+
+  canGoToPreviousManualCandidatePage(): boolean {
+    return this.currentManualCandidatePage() > 1;
+  }
+
+  canGoToNextManualCandidatePage(): boolean {
+    return this.currentManualCandidatePage() < this.manualCandidateTotalPages();
+  }
+
+  goToManualCandidatePage(page: number): void {
+    this.manualCandidatePage.set(Math.min(Math.max(1, page), this.manualCandidateTotalPages()));
+    this.closeManualCandidateMenu();
+  }
+
+  resetManualCandidatePage(): void {
+    this.manualCandidatePage.set(1);
+    this.closeManualCandidateMenu();
   }
 
   manualCandidateStatusOptions(): string[] {
@@ -2500,9 +3747,376 @@ export class RecruiterSourcingComponent implements OnInit {
     this.manualSearchText = '';
     this.manualSkillFilter = '';
     this.manualStatusFilter = 'All';
+    this.manualMinAiScore = '';
     this.manualMinPassedInterviews = null;
     this.manualMaxFailedInterviews = null;
+    this.resetManualCandidatePage();
     this.closeManualCandidateMenu();
+  }
+
+  rediscoveryMatchForCandidate(candidate: ManualCandidateSearchItem): TalentRediscoveryMatch | undefined {
+    return this.sourcing()?.talentRediscoveryMatches
+      .find((match) => match.candidateId === candidate.candidateId);
+  }
+
+  candidateAiScore(candidate: ManualCandidateSearchItem): number {
+    const match = this.rediscoveryMatchForCandidate(candidate);
+    if (match) {
+      return Math.round(match.score);
+    }
+
+    const requiredSkillCount = Math.max((this.sourcing()?.jobRequest.skills.length ?? 0), 1);
+    const skillScore = Math.min(60, Math.round((candidate.matchedSkills.length / requiredSkillCount) * 60));
+    const interviewScore = Math.min(25, candidate.totalInterviews === 0
+      ? 0
+      : Math.round((candidate.passedInterviews / Math.max(candidate.totalInterviews, 1)) * 25));
+    const profileScore = candidate.experienceYears ? 10 : 0;
+    const recencyScore = candidate.latestApplication ? 5 : 0;
+
+    return Math.min(96, Math.max(35, skillScore + interviewScore + profileScore + recencyScore));
+  }
+
+  candidateReasonSummary(candidate: ManualCandidateSearchItem): string {
+    const match = this.rediscoveryMatchForCandidate(candidate);
+    if (match) {
+      if (candidate.matchedSkills.length === 0 && candidate.missingSkills.length > 0) {
+        return 'Ranked mainly from warm-history signals. Current-request skill evidence is weak, so review before outreach.';
+      }
+
+      return this.truncateText(match.explanation, 150);
+    }
+
+    if (candidate.matchedSkills.length > 0) {
+      return `Manual pool score is driven by ${candidate.matchedSkills.slice(0, 3).join(', ')} skill overlap and ${candidate.passedInterviews}/${candidate.totalInterviews} interviews passed.`;
+    }
+
+    return 'Manual pool score is based on profile history and interview evidence; no strong current-skill match is recorded.';
+  }
+
+  private isRediscoverableCandidate(candidate: ManualCandidateSearchItem): boolean {
+    const latestStatus = candidate.latestApplication?.status?.toLowerCase();
+    return latestStatus !== 'joined' && latestStatus !== 'hired';
+  }
+
+  candidateReasonCaveat(candidate: ManualCandidateSearchItem): string {
+    if (candidate.missingSkills.length > 0) {
+      return `Gaps: ${candidate.missingSkills.slice(0, 3).join(', ')}`;
+    }
+
+    const latest = candidate.latestApplication;
+    if (latest) {
+      return `Latest: ${this.displayApplicationTitle(latest)} - ${latest.status}`;
+    }
+
+    return 'No prior application detail is linked.';
+  }
+
+  rediscoveryScoreBreakdown(match: TalentRediscoveryMatch): RediscoveryScoreMetric[] {
+    const explanation = match.explanation ?? '';
+    return [
+      {
+        label: 'Skill coverage',
+        value: this.extractRationalePercent(explanation, /skill coverage score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'skill' as const,
+        description: 'Direct overlap between this candidate profile and the required skills for the current job post.',
+      },
+      {
+        label: 'Semantic match',
+        value: this.extractRationalePercent(explanation, /vector similarity score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'semantic' as const,
+        description: 'Vector similarity between the current requirement text and stored candidate profile, CV, cover-letter, and application evidence.',
+      },
+      {
+        label: 'Interview outcome',
+        value: this.extractRationalePercent(explanation, /historical outcome score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'history' as const,
+        description: 'Strength of prior application outcomes and interview feedback, such as passed rounds, on-hold profiles, or non-fit rejections.',
+      },
+      {
+        label: 'Similar role',
+        value: this.extractRationalePercent(explanation, /similar-role score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'role' as const,
+        description: 'How close the candidate previous applications are to this role title, department, client, and requested skills.',
+      },
+      {
+        label: 'Experience and availability',
+        value: this.extractRationalePercent(explanation, /experience\/availability score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'fit' as const,
+        description: 'Fit between the required experience range and candidate experience plus notice-period availability.',
+      },
+    ].filter((metric): metric is RediscoveryScoreMetric => metric.value !== null);
+  }
+
+  applicantRankingScoreBreakdown(match: ApplicantRankingMatch): ApplicantRankingScoreMetric[] {
+    const explanation = match.explanation ?? '';
+    return [
+      {
+        label: 'Skill coverage',
+        value: this.extractRationalePercent(explanation, /skill coverage score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'skill' as const,
+        description: 'How much of the job post required skills are supported by this applicant profile, CV, cover letter, and application evidence.',
+      },
+      {
+        label: 'Vector similarity',
+        value: this.extractRationalePercent(explanation, /vector similarity score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'semantic' as const,
+        description: 'Semantic similarity between the job requirement and the applicant profile, resume, cover letter, and parsed document evidence.',
+      },
+      {
+        label: 'Experience and notice fit',
+        value: this.extractRationalePercent(
+          explanation,
+          /(?:experience\/location\/notice fit|experience\/availability|experience and availability) score of\s+(\d+(?:\.\d+)?)%/i,
+        ),
+        tone: 'fit' as const,
+        description: 'Fit between the role location, required experience, notice-period expectations, and the applicant available profile data.',
+      },
+      {
+        label: 'Historical signal',
+        value: this.extractRationalePercent(explanation, /historical (?:signal|outcome) score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'history' as const,
+        description: 'Strength of prior application outcomes, interview results, and recruiter decisions for this applicant or similar roles.',
+      },
+      {
+        label: 'Evidence completeness',
+        value: this.extractRationalePercent(explanation, /evidence completeness score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'evidence' as const,
+        description: 'How complete the current application evidence is, including resume, cover letter, parsed document text, and application metadata.',
+      },
+      {
+        label: 'Application recency',
+        value: this.extractRationalePercent(explanation, /application recency score of\s+(\d+(?:\.\d+)?)%/i),
+        tone: 'recency' as const,
+        description: 'How recent the current application is compared with older applicant or rediscovery signals.',
+      },
+    ].filter((metric): metric is ApplicantRankingScoreMetric => metric.value !== null);
+  }
+
+  private extractRationalePercent(explanation: string, pattern: RegExp): number | null {
+    const match = explanation.match(pattern);
+    if (!match?.[1]) {
+      return null;
+    }
+
+    const parsed = Number.parseFloat(match[1]);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+
+    return Math.min(100, Math.max(0, Math.round(parsed)));
+  }
+
+  candidateAiLabel(candidate: ManualCandidateSearchItem): string {
+    const score = this.candidateAiScore(candidate);
+    if (score >= 90) {
+      return 'Strong fit';
+    }
+    if (score >= 80) {
+      return 'Good fit';
+    }
+    if (score >= 70) {
+      return 'Warm lead';
+    }
+    return 'Review';
+  }
+
+  candidateScoreTone(candidate: ManualCandidateSearchItem): string {
+    const score = this.candidateAiScore(candidate);
+    if (score >= 90) {
+      return 'strong-fit';
+    }
+    if (score >= 80) {
+      return 'good-fit';
+    }
+    if (score >= 70) {
+      return 'warm-lead';
+    }
+
+    return 'review-fit';
+  }
+
+  applicantAiScore(ranking: ApplicantRankingMatch): number {
+    return Math.min(100, Math.max(0, Math.round(ranking.score)));
+  }
+
+  applicantAiLabel(ranking: ApplicantRankingMatch): string {
+    const score = this.applicantAiScore(ranking);
+    if (score >= 90) {
+      return 'Strong fit';
+    }
+    if (score >= 80) {
+      return 'Good fit';
+    }
+    if (score >= 70) {
+      return 'Warm lead';
+    }
+
+    return 'Review';
+  }
+
+  applicantAiTone(ranking: ApplicantRankingMatch): string {
+    const score = this.applicantAiScore(ranking);
+    if (score >= 90) {
+      return 'strong-fit';
+    }
+    if (score >= 80) {
+      return 'good-fit';
+    }
+    if (score >= 70) {
+      return 'warm-lead';
+    }
+
+    return 'review-fit';
+  }
+
+  candidateInitials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('') || 'TP';
+  }
+
+  candidateKeySkills(candidate: ManualCandidateSearchItem): string[] {
+    return Array.from(new Set([
+      ...candidate.matchedSkills,
+      ...candidate.skills,
+    ]))
+      .filter(Boolean)
+      .slice(0, 4);
+  }
+
+  candidateActivityStatusLabel(candidate: ManualCandidateSearchItem): string {
+    const latest = candidate.latestApplication;
+    if (!latest) {
+      return 'Profile';
+    }
+
+    return this.formatActivityStatus(latest.status);
+  }
+
+  candidateActivityStatusClass(candidate: ManualCandidateSearchItem): string {
+    const status = (candidate.latestApplication?.status ?? 'profile')
+      .replace(/\s+/g, '')
+      .toLowerCase();
+
+    if (status === 'rejected') {
+      return 'activity-status-chip rejected';
+    }
+    if (status === 'onhold') {
+      return 'activity-status-chip on-hold';
+    }
+    if (status === 'offerdeclined') {
+      return 'activity-status-chip offer-declined';
+    }
+    if (['applied', 'screening', 'shortlisted', 'interviewing', 'hiringmanagerreview', 'offered'].includes(status)) {
+      return 'activity-status-chip active-application';
+    }
+    if (status === 'joined' || status === 'hired') {
+      return 'activity-status-chip joined';
+    }
+
+    return 'activity-status-chip neutral';
+  }
+
+  candidateActivityTime(candidate: ManualCandidateSearchItem): string {
+    const latest = candidate.latestApplication;
+    if (!latest) {
+      return 'Profile record';
+    }
+
+    return this.formatRelativeTime(latest.finalDecisionAt ?? latest.appliedAt);
+  }
+
+  candidateActivityTitle(candidate: ManualCandidateSearchItem): string {
+    const latest = candidate.latestApplication;
+    if (!latest) {
+      return candidate.currentDesignation || 'Candidate profile';
+    }
+
+    return this.displayApplicationTitle(latest);
+  }
+
+  candidateActivitySource(candidate: ManualCandidateSearchItem): string {
+    const latest = candidate.latestApplication;
+    if (!latest) {
+      return 'Candidate profile record';
+    }
+
+    return `via ${latest.sourceLabel || 'application history'}`;
+  }
+
+  private formatActivityStatus(status: string): string {
+    const normalized = status.replace(/\s+/g, '').toLowerCase();
+    const labels: Record<string, string> = {
+      applied: 'Applied',
+      screening: 'Screening',
+      shortlisted: 'Shortlisted',
+      interviewing: 'Interviewed',
+      hiringmanagerreview: 'Final Review',
+      offered: 'Offered',
+      onhold: 'On Hold',
+      offerdeclined: 'Offer Declined',
+      rejected: 'Rejected',
+      withdrawn: 'Withdrawn',
+      joined: 'Joined',
+      hired: 'Hired',
+    };
+
+    return labels[normalized] ?? status.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+
+  private formatRelativeTime(value: string): string {
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) {
+      return 'recently';
+    }
+
+    const diffMs = Date.now() - timestamp;
+    const diffDays = Math.max(0, Math.round(diffMs / 86_400_000));
+    if (diffDays === 0) {
+      return 'today';
+    }
+    if (diffDays === 1) {
+      return '1 day ago';
+    }
+    if (diffDays < 30) {
+      return `${diffDays} days ago`;
+    }
+
+    const diffMonths = Math.max(1, Math.round(diffDays / 30));
+    return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
+  }
+
+  private interviewStatusToken(status: string): string {
+    const normalized = status.replace(/\s+/g, '').toLowerCase();
+    if (normalized.includes('notscheduled') || normalized.includes('unscheduled')) {
+      return 'unscheduled';
+    }
+    if (normalized.includes('complete') || normalized.includes('pass')) {
+      return 'completed';
+    }
+    if (normalized.includes('cancel') || normalized.includes('reject') || normalized.includes('fail')) {
+      return 'failed';
+    }
+    if (normalized.includes('skip')) {
+      return 'skipped';
+    }
+    if (normalized.includes('schedule')) {
+      return 'scheduled';
+    }
+
+    return 'pending';
+  }
+
+  private truncateText(value: string, maxLength: number): string {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+
+    return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}...`;
   }
 
   visibleStrengthTags(match: TalentRediscoveryMatch): string[] {
@@ -2531,6 +4145,231 @@ export class RecruiterSourcingComponent implements OnInit {
       .join(' ');
   }
 
+  applicantRationaleStrengths(application: RecruiterApplication, match: ApplicantRankingMatch): string[] {
+    const strengths = this.cleanRankingList(match.strengths);
+    if (strengths.length > 0) {
+      return strengths;
+    }
+
+    return this.cleanRankingList([
+      `${application.candidateName} is ranked #${match.rank} with a ${this.applicantAiScore(match)}% AI match (${this.applicantAiLabel(match)}).`,
+      application.currentDesignation ? `Current role evidence: ${application.currentDesignation}.` : '',
+      application.experienceYears === null || application.experienceYears === undefined
+        ? ''
+        : `${this.formatExperience(application.experienceYears)} experience with ${this.formatNotice(application.noticePeriodDays)} notice.`,
+      application.coverLetterText ? 'Cover letter text is available for reviewer context.' : '',
+      application.isInvited ? 'Candidate was invited into this application flow.' : `Application source: ${application.sourceLabel}.`,
+    ]);
+  }
+
+  applicantMatchedSkills(match: ApplicantRankingMatch): string[] {
+    const storedSkills = this.cleanRankingList(match.matchedSkills);
+    if (storedSkills.length > 0) {
+      return storedSkills.slice(0, 8);
+    }
+
+    const explanation = [
+      match.explanation,
+      ...match.strengths,
+      ...match.documentEvidence,
+    ].join(' ').toLowerCase();
+    return this.cleanRankingList(this.sourcing()?.jobRequest.skills ?? [])
+      .filter((skill) => explanation.includes(skill.toLowerCase()))
+      .slice(0, 8);
+  }
+
+  applicantRationaleGaps(application: RecruiterApplication, match: ApplicantRankingMatch): string[] {
+    const explicitGaps = this.cleanRankingList([
+      ...match.missingSkills.map((skill) => `Missing requested skill evidence: ${skill}.`),
+      ...match.gaps,
+    ]);
+    if (explicitGaps.length > 0) {
+      return explicitGaps;
+    }
+
+    const fallback = [];
+    if (this.applicantMatchedSkills(match).length === 0) {
+      fallback.push('Matched skill breakdown was not stored separately for this saved ranking run.');
+    }
+    if (this.isSemanticSimilarityUnavailable(match.semanticSimilarityStatus)) {
+      fallback.push('Semantic similarity was unavailable; treat this as a directional AI ranking signal.');
+    }
+    fallback.push(
+      this.applicantAiScore(match) >= 80
+        ? 'No major gaps were flagged by AI; recruiter should still validate role, skills, and interview readiness.'
+        : 'Review this applicant manually before progressing because the AI match score is below the good-fit threshold.',
+    );
+
+    if (!application.coverLetterText) {
+      fallback.push('Cover letter text is not available in this application record.');
+    }
+
+    return this.cleanRankingList(fallback);
+  }
+
+  applicantDocumentEvidence(application: RecruiterApplication, match: ApplicantRankingMatch): string[] {
+    const evidence = this.cleanRankingList(match.documentEvidence)
+      .map((value) => this.sanitizeApplicantDocumentEvidence(value));
+    const values = evidence.length > 0 ? evidence : [
+      application.coverLetterText ? 'Cover letter submitted and available for review.' : 'No cover letter text is available.',
+      `${application.sourceLabel} application submitted ${this.formatShortDate(application.appliedAt)}.`,
+      application.sourceDetail ? `Source detail: ${application.sourceDetail}.` : '',
+    ];
+
+    const visibleValues = (application.documents?.length ?? 0) > 0
+      ? values.filter((value) => !this.isDocumentEvidenceLine(value))
+      : values;
+
+    return this.cleanRankingList(visibleValues);
+  }
+
+  applicationDocuments(application: RecruiterApplication): RecruiterApplicationDocument[] {
+    return application.documents ?? [];
+  }
+
+  applicationDocumentMeta(document: RecruiterApplicationDocument): string {
+    const parts = [
+      this.formatApplicationDocumentSize(document.sizeBytes),
+      document.hasTextEvidence ? 'text parsed for semantic matching' : this.formatDocumentExtractionStatus(document.extractionStatus),
+    ].filter(Boolean);
+
+    return parts.join(' - ');
+  }
+
+  async downloadApplicationDocument(document: RecruiterApplicationDocument): Promise<void> {
+    try {
+      const response = await this.store.downloadRecruiterApplicationDocument(
+        document.jobApplicationId,
+        document.applicationDocumentId,
+      );
+      const blob = response.body;
+      if (!blob) {
+        throw new Error('The document response was empty.');
+      }
+
+      const fileName = this.fileNameFromContentDisposition(response.headers.get('content-disposition')) ??
+        this.defaultApplicationDocumentFileName(document);
+      this.fileDownloads.saveBlob(blob, fileName);
+      this.message.set(`${document.displayName} download started.`);
+      this.error.set('');
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'Application document could not be downloaded.');
+    }
+  }
+
+  private sanitizeApplicantDocumentEvidence(value: string): string {
+    const withoutFileNames = value.replace(
+      /\b[\w ().,\-]+\.(?:docx|doc|pdf|txt)\b/gi,
+      'document',
+    );
+
+    return withoutFileNames
+      .replace(/^Resume:\s*document/i, 'Resume document')
+      .replace(/^CV:\s*document/i, 'Resume document')
+      .replace(/\s+/g, ' ')
+      .replace(/^document evidence:\s*/i, '')
+      .trim();
+  }
+
+  private isDocumentEvidenceLine(value: string): boolean {
+    const normalized = value.toLowerCase();
+    return normalized.includes('document') ||
+      normalized.includes('resume') ||
+      normalized.includes('cv ') ||
+      normalized.endsWith('cv') ||
+      normalized.includes('cover letter');
+  }
+
+  private formatApplicationDocumentSize(sizeBytes: number): string {
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      return 'Size not available';
+    }
+
+    if (sizeBytes < 1024) {
+      return `${sizeBytes} B`;
+    }
+
+    if (sizeBytes < 1024 * 1024) {
+      return `${(sizeBytes / 1024).toFixed(1)} KB`;
+    }
+
+    return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  private formatDocumentExtractionStatus(status: string | null | undefined): string {
+    const normalized = (status ?? '').trim();
+    if (!normalized) {
+      return 'text status unavailable';
+    }
+
+    const compact = normalized.replace(/\s+/g, '').toLowerCase();
+    if (compact.includes('complete') || compact.includes('success') || compact === 'parsed') {
+      return 'text parsed';
+    }
+    if (compact.includes('pending') || compact.includes('processing')) {
+      return 'text processing';
+    }
+    if (compact.includes('fail') || compact.includes('error')) {
+      return 'text parsing failed';
+    }
+
+    return normalized.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  }
+
+  private fileNameFromContentDisposition(header: string | null): string | null {
+    if (!header) {
+      return null;
+    }
+
+    const encodedMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encodedMatch?.[1]) {
+      return decodeURIComponent(encodedMatch[1].trim());
+    }
+
+    const quotedMatch = header.match(/filename="([^"]+)"/i);
+    if (quotedMatch?.[1]) {
+      return quotedMatch[1].trim();
+    }
+
+    const plainMatch = header.match(/filename=([^;]+)/i);
+    return plainMatch?.[1]?.trim() || null;
+  }
+
+  private defaultApplicationDocumentFileName(document: RecruiterApplicationDocument): string {
+    const extension = document.contentType.includes('pdf')
+      ? '.pdf'
+      : document.contentType.includes('wordprocessingml') || document.contentType.includes('msword')
+        ? '.docx'
+        : '';
+    const displayName = document.displayName.trim() || document.documentType || 'Application document';
+    return extension && displayName.toLowerCase().endsWith(extension) ? displayName : `${displayName}${extension}`;
+  }
+
+  applicantHistoryEvidence(application: RecruiterApplication, match: ApplicantRankingMatch): string[] {
+    const evidence = this.cleanRankingList(match.historicalOutcomeEvidence);
+    if (evidence.length > 0) {
+      return evidence;
+    }
+
+    if (application.interviews.length > 0) {
+      return application.interviews.map((interview) => {
+        const recommendation = interview.recommendation ? ` Recommendation: ${interview.recommendation}.` : '';
+        return `${interview.roundName} - ${interview.status} - ${this.formatInterviewSchedule(interview.startsAt)}.${recommendation}`;
+      });
+    }
+
+    return [`${application.interviewPassSummary || '0/0 passed'}. No interview evidence is recorded for this application yet.`];
+  }
+
+  applicantSemanticNote(match: ApplicantRankingMatch): string {
+    const status = this.semanticSimilarityStatusLabel(match.semanticSimilarityStatus);
+    if (this.isSemanticSimilarityUnavailable(match.semanticSimilarityStatus)) {
+      return `Semantic similarity: ${status}; ranking used application, profile, and workflow evidence.`;
+    }
+
+    return `Semantic similarity: ${status}.`;
+  }
+
   assignmentOwnerName(assignment: WorkflowAssignment): string {
     if (!assignment.claimedByUserId) {
       return assignment.assignedToGroupId || 'Unclaimed group assignment';
@@ -2550,6 +4389,52 @@ export class RecruiterSourcingComponent implements OnInit {
 
   formatNotice(value?: number | null): string {
     return value === null || value === undefined ? 'not recorded' : `${value} days`;
+  }
+
+  private cleanRankingList(values: readonly string[]): string[] {
+    return Array.from(new Set(values
+      .map((value) => value.trim())
+      .filter(Boolean)));
+  }
+
+  private semanticSimilarityStatusLabel(status: string | null | undefined): string {
+    const value = status?.trim();
+    if (!value) {
+      return 'Not run';
+    }
+
+    const normalized = value.toLowerCase();
+    if (!normalized.startsWith('unavailable')) {
+      return value;
+    }
+
+    if (
+      normalized.includes('actively refused') ||
+      normalized.includes('connection refused') ||
+      normalized.includes('no connection could be made') ||
+      normalized.includes('localhost:11434')
+    ) {
+      return 'Unavailable: embedding service is not reachable. Start or reconnect Ollama, then rerun applicant ranking';
+    }
+
+    return value.replace(/^unavailable\s*:\s*/i, 'Unavailable: ');
+  }
+
+  private isSemanticSimilarityUnavailable(status: string | null | undefined): boolean {
+    return (status ?? '').trim().toLowerCase().startsWith('unavailable');
+  }
+
+  private formatShortDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'date not recorded';
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
   }
 
   displayApplicationTitle(application: CandidateApplicationEvidence): string {
@@ -2599,15 +4484,90 @@ export class RecruiterSourcingComponent implements OnInit {
     return candidate.skills.some((skill) => skill.toLowerCase() === skillName.toLowerCase());
   }
 
-  private nextSchedulableRound(application: RecruiterApplication): JobPostInterviewRound | undefined {
-    const scheduledRoundIds = new Set(
-      application.interviews
-        .map((interview) => interview.jobPostInterviewRoundId)
-        .filter((roundId): roundId is string => typeof roundId === 'string' && roundId.length > 0),
-    );
+  scheduleEligibility(application: RecruiterApplication): ScheduleEligibility {
+    const rounds = this.activeInterviewRounds();
+    if (rounds.length === 0) {
+      return {
+        status: 'complete',
+        actionLabel: 'No active rounds',
+        message: 'This job post has no active interview rounds configured.',
+      };
+    }
 
-    return this.activeInterviewRounds()
-      .find((round) => !!round.jobPostInterviewRoundId && !scheduledRoundIds.has(round.jobPostInterviewRoundId));
+    const roundsWithIds = rounds.filter((round) => !!round.jobPostInterviewRoundId);
+    const allRoundsScheduledOrResolved = roundsWithIds.length > 0 && roundsWithIds.every((round) =>
+      application.interviews.some((interview) =>
+        interview.jobPostInterviewRoundId === round.jobPostInterviewRoundId &&
+        !['cancelled', 'canceled'].includes(this.normalizeStatus(interview.status))));
+    if (allRoundsScheduledOrResolved) {
+      return {
+        status: 'complete',
+        actionLabel: 'All rounds scheduled',
+        message: 'All active interview rounds are already scheduled, completed, or skipped.',
+      };
+    }
+
+    for (const round of rounds) {
+      if (!round.jobPostInterviewRoundId) {
+        continue;
+      }
+
+      const interviewsForRound = application.interviews
+        .filter((interview) => interview.jobPostInterviewRoundId === round.jobPostInterviewRoundId);
+      if (interviewsForRound.some((interview) => this.isResolvedInterviewStatus(interview.status))) {
+        continue;
+      }
+
+      const blockingInterview = interviewsForRound
+        .find((interview) => this.isPendingInterviewStatus(interview.status));
+      if (blockingInterview) {
+        return {
+          status: 'blocked',
+          actionLabel: `Complete ${round.name} first`,
+          message: `${round.name} is ${this.interviewStatusLabel(blockingInterview.status)}. Complete or skip this round before scheduling the next interview.`,
+          blockingRound: round,
+        };
+      }
+
+      if (!round.ownerUserId) {
+        return {
+          status: 'blocked',
+          actionLabel: `Assign ${round.name} interviewer`,
+          message: `${round.name} needs a default interviewer before it can be scheduled.`,
+          blockingRound: round,
+        };
+      }
+
+      return {
+        status: 'eligible',
+        actionLabel: `Schedule ${round.name}`,
+        message: `${round.name} is the next interview round to schedule.`,
+        round,
+      };
+    }
+
+    return {
+      status: 'complete',
+      actionLabel: 'All rounds complete',
+      message: 'All active interview rounds are already completed or skipped.',
+    };
+  }
+
+  scheduleModalRound(application: RecruiterApplication): JobPostInterviewRound | undefined {
+    const eligibility = this.scheduleEligibility(application);
+    return eligibility.status === 'eligible' ? eligibility.round : undefined;
+  }
+
+  private isResolvedInterviewStatus(status: string): boolean {
+    return ['completed', 'skipped'].includes(this.normalizeStatus(status));
+  }
+
+  private isPendingInterviewStatus(status: string): boolean {
+    return !['completed', 'skipped', 'cancelled', 'canceled'].includes(this.normalizeStatus(status));
+  }
+
+  private interviewStatusLabel(status: string): string {
+    return this.formatActivityStatus(status).toLowerCase();
   }
 
   private defaultScheduleLocalDateTime(): string {
@@ -2620,18 +4580,25 @@ export class RecruiterSourcingComponent implements OnInit {
 
   private canUseSourcingAssignment(): boolean {
     const sourcing = this.sourcing();
-    if (!sourcing) {
+    const assignment = sourcing?.assignment;
+    if (!sourcing || !assignment || !['Pending', 'Claimed'].includes(assignment.status)) {
       return false;
     }
 
     const userId = this.auth.currentUser()?.id;
     return this.auth.isAdmin() ||
-      (!!userId && (sourcing.assignment?.claimedByUserId === userId || sourcing.assignment?.assignedToUserId === userId));
+      (!!userId && (assignment.claimedByUserId === userId || assignment.assignedToUserId === userId));
+  }
+
+  isReadOnlySourcing(): boolean {
+    return !!this.sourcing() && !this.canUseSourcingAssignment();
   }
 
   private hydrateForm(sourcing: RecruiterSourcing): void {
     this.postSkillSearch.set('');
     this.postActiveSkillGroup.set(DEFAULT_SKILL_GROUP_LABEL);
+    this.roundInterviewerDepartmentFilters = {};
+    this.roundInterviewerSearches = {};
 
     if (sourcing.jobPost) {
       this.form = {
@@ -2670,6 +4637,10 @@ export class RecruiterSourcingComponent implements OnInit {
       candidateSearchItems: sourcing.candidateSearchItems ?? [],
       talentRediscoveryMatches: sourcing.talentRediscoveryMatches ?? [],
       interviewTemplates: sourcing.interviewTemplates ?? [],
+      interviewers: (sourcing.interviewers ?? []).map((interviewer) => ({
+        ...interviewer,
+        roleNames: interviewer.roleNames ?? [],
+      })),
       hodInterviewers: sourcing.hodInterviewers ?? [],
       skills: sourcing.skills ?? [],
     };
@@ -2710,6 +4681,7 @@ export class RecruiterSourcingComponent implements OnInit {
       degreeName: this.blankToNull(this.manualCandidateForm.degreeName),
       graduationYear: this.numberOrNull(this.manualCandidateForm.graduationYear),
       invitationMessage: this.blankToNull(this.manualCandidateForm.invitationMessage),
+      parsedCvEvidence: this.manualCandidateForm.parsedCvEvidence,
     };
   }
 
@@ -2753,6 +4725,7 @@ export class RecruiterSourcingComponent implements OnInit {
       degreeName: '',
       graduationYear: null,
       invitationMessage: this.defaultInvitationMessage(),
+      parsedCvEvidence: null,
     };
   }
 
@@ -2761,7 +4734,6 @@ export class RecruiterSourcingComponent implements OnInit {
       jobApplicationId: '',
       jobPostInterviewRoundId: '',
       startsAtLocal: '',
-      meetingLink: '',
       locationText: '',
     };
   }
@@ -2769,17 +4741,41 @@ export class RecruiterSourcingComponent implements OnInit {
   private defaultInvitationMessage(jobTitle?: string): string {
     const companyName = this.auth.currentUser()?.tenantDisplayName || 'Our company';
     const title = jobTitle || this.sourcing()?.jobPost?.title || this.sourcing()?.jobRequest.title || 'a new role';
-    return `${companyName} is looking for ${title}. Please apply at our job portal for this job post if you are interested.`;
+    const portalLink = this.candidatePortalJobLink();
+    return `${companyName} is looking for ${title}. If you are interested, please apply on our job portal: ${portalLink}`;
+  }
+
+  private candidatePortalJobLink(): string {
+    const jobPostId = this.sourcing()?.jobPost?.jobPostId;
+    const portalPath = jobPostId
+      ? `/candidate/jobs/${encodeURIComponent(jobPostId)}?source=invite`
+      : '/candidate/jobs?source=invite';
+
+    return `${this.appOrigin()}${portalPath}`;
+  }
+
+  private appOrigin(): string {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return window.location.origin;
+    }
+
+    return '';
+  }
+
+  private isTrackedInvitationUrl(value: string): boolean {
+    try {
+      const url = new URL(value, this.appOrigin() || 'http://localhost:4200');
+      return url.pathname.includes('/candidate/jobs/')
+        && url.searchParams.get('source')?.toLowerCase() === 'invite'
+        && url.searchParams.has('inviteId')
+        && url.searchParams.has('token');
+    } catch {
+      return false;
+    }
   }
 
   private applyParsedCv(parsed: ParseCandidateCvResult): void {
     const parsedSkillIds = this.skillIdsForNames(parsed.skills ?? []);
-    const notes = [
-      this.manualCandidateForm.recruiterNotes.trim(),
-      parsed.summary ? `CV Parser Agent: ${parsed.summary}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
 
     this.manualCandidateForm = {
       ...this.manualCandidateForm,
@@ -2793,7 +4789,17 @@ export class RecruiterSourcingComponent implements OnInit {
       universityName: parsed.universityName?.trim() || this.manualCandidateForm.universityName,
       degreeName: parsed.degreeName?.trim() || this.manualCandidateForm.degreeName,
       graduationYear: parsed.graduationYear ?? this.manualCandidateForm.graduationYear,
-      recruiterNotes: notes,
+      parsedCvEvidence: {
+        fileName: parsed.fileName,
+        contentType: parsed.contentType,
+        sizeBytes: parsed.sizeBytes,
+        contentHashSha256: parsed.contentHashSha256,
+        extractedText: parsed.extractedText,
+        summary: parsed.summary,
+        agentRunId: parsed.agentRunId,
+        model: parsed.model,
+        parsedAtUtc: parsed.generatedAtUtc,
+      },
     };
   }
 
@@ -2858,8 +4864,44 @@ export class RecruiterSourcingComponent implements OnInit {
     return normalized ? normalized : null;
   }
 
+  private toErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse) {
+      const responseMessage = error.error?.message;
+      if (typeof responseMessage === 'string' && responseMessage.trim()) {
+        return responseMessage;
+      }
+
+      if (error.status === 0) {
+        return 'Unable to reach the server. Check the API connection.';
+      }
+    }
+
+    return error instanceof Error && error.message ? error.message : fallback;
+  }
+
+  isGoogleCalendarScheduleError(): boolean {
+    const message = this.scheduleError().toLowerCase();
+    return message.includes('google calendar');
+  }
+
   private numberOrNull(value: number | null | undefined): number | null {
     return value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value);
+  }
+
+  private markApplicationForwarded(jobApplicationId: string): void {
+    const sourcing = this.sourcing();
+    if (!sourcing) {
+      return;
+    }
+
+    this.sourcing.set({
+      ...sourcing,
+      applications: sourcing.applications.map((application) =>
+        application.jobApplicationId === jobApplicationId
+          ? { ...application, applicationStatus: 'HiringManagerReview' }
+          : application,
+      ),
+    });
   }
 
   private clearStatus(): void {

@@ -27,6 +27,7 @@ export const AdminPagePermissions: Record<string, readonly PermissionId[]> = {
   'hiring-pipeline': [Permission.ManageAdminCenter],
   workflows: [Permission.ManageAdminCenter],
   notifications: [Permission.ManageNotifications, Permission.ManageAdminCenter],
+  'notification-outbox': [Permission.ManageNotifications, Permission.ManageAdminCenter],
   'ai-settings': [Permission.ViewAiSettings, Permission.ManageAdminCenter],
   'candidate-sources': [Permission.ManageAdminCenter],
   integrations: [Permission.ManageAdminCenter],

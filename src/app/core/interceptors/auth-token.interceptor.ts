@@ -2,6 +2,7 @@ import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn, HttpRequest } f
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../auth.service';
+import { NotificationService } from '../services/notification.service';
 
 const AUTH_REFRESH_RETRY = new HttpContextToken<boolean>(() => false);
 
@@ -11,6 +12,7 @@ export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
   }
 
   const auth = inject(AuthService);
+  const notifications = inject(NotificationService);
   const token = auth.getAccessToken();
   if (!token) {
     return next(request);
@@ -25,6 +27,8 @@ export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
       ) {
         return throwError(() => error);
       }
+
+      notifications.info('Refreshing session...');
 
       return auth.refreshSession().pipe(
         switchMap((newToken) =>

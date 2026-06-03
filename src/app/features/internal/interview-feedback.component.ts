@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { InterviewTask, SubmitInterviewFeedbackInput } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
+import { AuthService } from '../../core/auth.service';
 
 type FeedbackForm = {
   technicalScore: number;
@@ -162,15 +163,15 @@ type FeedbackForm = {
                 @if (task.meetingLink || task.locationText) {
                   <div class="task-location">
                     @if (task.meetingLink) {
-                      <a [href]="task.meetingLink" target="_blank" rel="noreferrer">
+                      <a [href]="task.meetingLink" target="_blank" rel="noopener noreferrer">
                         <span class="material-symbols-outlined" aria-hidden="true">videocam</span>
                         Open meeting link
                       </a>
                     }
                     @if (task.locationText) {
-                      <span>
-                        <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-                        {{ task.locationText }}
+                      <span class="task-note" aria-label="Interview notes">
+                        <span class="material-symbols-outlined" aria-hidden="true">notes</span>
+                        <span>{{ task.locationText }}</span>
                       </span>
                     }
                   </div>
@@ -190,15 +191,21 @@ type FeedbackForm = {
                     <p>{{ task.feedbackText }}</p>
                     <small>Submitted {{ task.submittedAt | date: 'medium' }}</small>
                   </section>
-                } @else {
+                } @else if (feedbackActionLabel(task); as feedbackActionLabel) {
                   <footer class="task-action-footer">
                     <span [class.overdue-text]="isOverdue(task)">
                       {{ isOverdue(task) ? 'Feedback is overdue for this scheduled interview.' : 'Submit feedback after the interview is completed.' }}
                     </span>
                     <button class="btn primary compact" type="button" (click)="openFeedback(task)">
                       <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
-                      Add feedback
+                      {{ feedbackActionLabel }}
                     </button>
+                  </footer>
+                } @else {
+                  <footer class="task-action-footer">
+                    <span>
+                      Feedback is assigned to {{ task.interviewerName }}.
+                    </span>
                   </footer>
                 }
               </article>
@@ -221,6 +228,12 @@ type FeedbackForm = {
                 <span class="material-symbols-outlined" aria-hidden="true">close</span>
               </button>
             </header>
+
+            @if (isAdminOverrideFeedback(task)) {
+              <p class="field-status warning admin-override-warning">
+                This feedback will be recorded as an admin override because the assigned interviewer is inactive.
+              </p>
+            }
 
             <div class="score-grid">
               <label class="stitch-field">
@@ -370,7 +383,7 @@ type FeedbackForm = {
 
       .task-context-row span,
       .task-location a,
-      .task-location > span {
+      .task-note {
         align-items: center;
         display: inline-flex;
         gap: 6px;
@@ -396,7 +409,7 @@ type FeedbackForm = {
       .task-meta-grid {
         display: grid;
         gap: 12px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         margin: 0;
       }
 
@@ -411,6 +424,7 @@ type FeedbackForm = {
       .task-meta-grid div {
         display: grid;
         gap: 3px;
+        min-width: 0;
       }
 
       .task-meta-grid .material-symbols-outlined {
@@ -427,6 +441,8 @@ type FeedbackForm = {
 
       .task-meta-grid dd {
         margin: 4px 0 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
 
       .task-location {
@@ -437,14 +453,20 @@ type FeedbackForm = {
       }
 
       .task-location a,
-      .task-location > span {
+      .task-note {
         background: #eef6ff;
         border: 1px solid #cfe1f5;
         border-radius: 8px;
         color: #005eb8;
-        font-weight: 700;
         padding: 8px 10px;
         text-decoration: none;
+      }
+
+      .task-note {
+        background: #f8fafc;
+        border-color: #d8e2ef;
+        color: #334155;
+        flex: 1 1 280px;
       }
 
       .completed-feedback {
@@ -556,7 +578,6 @@ type FeedbackForm = {
           flex-direction: column;
         }
 
-        .task-meta-grid,
         .score-grid {
           grid-template-columns: 1fr;
         }
@@ -566,6 +587,8 @@ type FeedbackForm = {
 })
 export class InterviewFeedbackComponent implements OnInit {
   private readonly store = inject(TalentPilotStoreService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -590,6 +613,7 @@ export class InterviewFeedbackComponent implements OnInit {
     try {
       const result = await this.store.loadMyInterviewTasks();
       this.tasks.set(result.items ?? []);
+      this.openRequestedFeedbackTask();
     } catch {
       this.error.set('Interview tasks could not be loaded.');
     } finally {
@@ -598,6 +622,11 @@ export class InterviewFeedbackComponent implements OnInit {
   }
 
   openFeedback(task: InterviewTask): void {
+    if (!this.feedbackActionLabel(task)) {
+      this.error.set('This interview is not available for feedback submission.');
+      return;
+    }
+
     this.feedbackTask.set(task);
     this.feedbackForm = this.emptyFeedbackForm();
     this.feedbackError.set('');
@@ -630,6 +659,31 @@ export class InterviewFeedbackComponent implements OnInit {
     return this.isOverdue(task) ? 'Overdue' : task.status;
   }
 
+  feedbackActionLabel(task: InterviewTask): 'Add feedback' | 'Admin override feedback' | null {
+    if (this.normalizeStatus(task.status) !== 'scheduled') {
+      return null;
+    }
+
+    const currentUser = this.auth.currentUser();
+    if (!currentUser) {
+      return null;
+    }
+
+    if (task.interviewerUserId === currentUser.id) {
+      return 'Add feedback';
+    }
+
+    if (this.auth.isAdmin() && this.isInactiveInterviewer(task)) {
+      return 'Admin override feedback';
+    }
+
+    return null;
+  }
+
+  isAdminOverrideFeedback(task: InterviewTask): boolean {
+    return this.feedbackActionLabel(task) === 'Admin override feedback';
+  }
+
   averageScore(task: InterviewTask): string {
     const scores = [task.technicalScore, task.communicationScore, task.cultureScore].filter(
       (score): score is number => typeof score === 'number'
@@ -648,11 +702,20 @@ export class InterviewFeedbackComponent implements OnInit {
       return;
     }
 
+    this.clearFeedback();
+  }
+
+  private clearFeedback(): void {
     this.feedbackTask.set(null);
     this.feedbackError.set('');
   }
 
   async submitFeedback(task: InterviewTask): Promise<void> {
+    if (!this.feedbackActionLabel(task)) {
+      this.feedbackError.set('This interview is not available for feedback submission.');
+      return;
+    }
+
     const payload: SubmitInterviewFeedbackInput = {
       technicalScore: Number(this.feedbackForm.technicalScore),
       communicationScore: Number(this.feedbackForm.communicationScore),
@@ -672,7 +735,7 @@ export class InterviewFeedbackComponent implements OnInit {
     try {
       await this.store.submitInterviewFeedback(task.interviewId, payload);
       this.message.set(`Feedback submitted for ${task.candidateName}.`);
-      this.closeFeedback();
+      this.clearFeedback();
       await this.load();
     } catch {
       this.feedbackError.set('Feedback could not be submitted. Confirm this interview is still assigned to you.');
@@ -697,5 +760,32 @@ export class InterviewFeedbackComponent implements OnInit {
     }
 
     return this.isOverdue(task) ? 0 : 1;
+  }
+
+  private openRequestedFeedbackTask(): void {
+    const interviewId = this.route.snapshot.queryParamMap.get('interviewId');
+    if (!interviewId || this.feedbackTask()) {
+      return;
+    }
+
+    const task = this.tasks().find((item) => item.interviewId === interviewId);
+    if (!task) {
+      this.error.set('That interview is not assigned to you or is no longer available for feedback.');
+      return;
+    }
+
+    if (task.status === 'Completed') {
+      return;
+    }
+
+    this.openFeedback(task);
+  }
+
+  private isInactiveInterviewer(task: InterviewTask): boolean {
+    return task.interviewerIsDeleted || this.normalizeStatus(task.interviewerAccountStatus) !== 'active';
+  }
+
+  private normalizeStatus(status: string | null | undefined): string {
+    return (status ?? '').trim().toLowerCase();
   }
 }

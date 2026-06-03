@@ -40,8 +40,8 @@
                   <small>{{ formatTime(notification.createdAt) }}</small>
                 </div>
                 <div class="drawer-notification-actions">
-                  @if (notification.entityType === 'JobRequest' && notification.entityId) {
-                    <a [routerLink]="['/app/job-requests', notification.entityId]" (click)="closeDrawer()">Open</a>
+                  @if (notificationRouterLink(notification); as link) {
+                    <a [routerLink]="link" [queryParams]="notificationQueryParams(notification)" (click)="openNotification(notification)">Open</a>
                   }
                   @if (!notification.readAt) {
                     <button type="button" (click)="markRead(notification.id)">Mark read</button>

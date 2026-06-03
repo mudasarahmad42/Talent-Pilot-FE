@@ -1,10 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpContext } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
 import { AuthResponse, BackendCurrentUserContext, CurrentUser, LoginOption, TalentPilotRole } from './models';
 import { PermissionId } from './permissions';
 import { ApiService } from './services/api.service';
 import { StorageArea, StorageService } from './services/storage.service';
+import { SUPPRESS_API_ERROR_TOAST } from './interceptors/api-error.interceptor';
 
 export const AUTH_ACCESS_TOKEN_KEY = 'talent-pilot.auth.access-token';
 
@@ -44,11 +46,11 @@ export class AuthService {
     });
   }
 
-  loginDemoUser(user: LoginOption, keepSignedIn = true): void {
-    this.loginWithCredentials(user.email, 'demo', keepSignedIn);
+  loginDemoUser(user: LoginOption, keepSignedIn = true, returnUrl?: string | null): void {
+    this.loginWithCredentials(user.email, 'demo', keepSignedIn, returnUrl);
   }
 
-  loginWithCredentials(email: string, password: string | null, keepSignedIn = true): void {
+  loginWithCredentials(email: string, password: string | null, keepSignedIn = true, returnUrl?: string | null): void {
     const normalizedEmail = email.trim();
     const normalizedPassword = password?.trim() ?? '';
     if (!normalizedEmail || !normalizedPassword || this.loginInProgressSignal()) {
@@ -65,7 +67,7 @@ export class AuthService {
       })
       .pipe(finalize(() => this.loginInProgressSignal.set(false)))
       .subscribe({
-        next: (response) => this.applyAuthResponse(response, storageArea),
+        next: (response) => this.applyAuthResponse(response, storageArea, true, returnUrl),
         error: (error) => this.loginErrorSignal.set(this.toLoginErrorMessage(error)),
       });
   }
@@ -105,7 +107,9 @@ export class AuthService {
     }
 
     this.refreshInProgress$ = this.api
-      .post<AuthResponse, { refreshToken: string }>('auth/refresh', { refreshToken })
+      .post<AuthResponse, { refreshToken: string }>('auth/refresh', { refreshToken }, {
+        context: new HttpContext().set(SUPPRESS_API_ERROR_TOAST, true),
+      })
       .pipe(
         tap((response) => this.applyAuthResponse(response, storageArea, false)),
         map((response) => response.accessToken),
@@ -159,7 +163,7 @@ export class AuthService {
     return routes.some((allowedRoute) => route === allowedRoute || route.startsWith(`${allowedRoute}/`));
   }
 
-  private applyAuthResponse(response: AuthResponse, storageArea: StorageArea, navigate = true): void {
+  private applyAuthResponse(response: AuthResponse, storageArea: StorageArea, navigate = true, returnUrl?: string | null): void {
     this.clearStoredAuth();
     this.activeStorageAreaSignal.set(storageArea);
     this.storage.setString(AUTH_ACCESS_TOKEN_KEY, response.accessToken, storageArea);
@@ -171,6 +175,12 @@ export class AuthService {
     this.storage.setJson(AUTH_USER_KEY, user, storageArea);
 
     if (!navigate) {
+      return;
+    }
+
+    const safeReturnUrl = this.safeReturnUrl(returnUrl);
+    if (safeReturnUrl) {
+      void this.router.navigateByUrl(safeReturnUrl);
       return;
     }
 
@@ -247,6 +257,15 @@ export class AuthService {
       this.storage.remove(AUTH_EXPIRES_AT_KEY, area);
       this.storage.remove(AUTH_USER_KEY, area);
     }
+  }
+
+  private safeReturnUrl(returnUrl?: string | null): string | null {
+    const value = returnUrl?.trim();
+    if (!value || !value.startsWith('/') || value.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
+      return null;
+    }
+
+    return value;
   }
 
   private toLoginErrorMessage(error: unknown): string {

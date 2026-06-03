@@ -51,3 +51,4 @@
 - Onboarding, payroll, orientation, or IT equipment tracking.
 - Automated external job-board posting/scraping.
 - Candidate-visible AI scores.
+- Auto-created Google Calendar or Google Meet scheduling in local/demo mode. Interview scheduling may accept an existing meeting link, but real calendar events require backend Google Calendar integration to be enabled.

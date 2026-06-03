@@ -55,7 +55,9 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
           ['talent-pilot/job-posts', { posts: [] }],
           ['talent-pilot/portal/job-posts', { jobs: [] }],
           ['talent-pilot/portal/job-posts/post-1', { jobPost: { id: 'post-1' } }],
+          ['talent-pilot/portal/invitations/invite-1?token=tracked-token', { candidateInvitationId: 'invite-1' }],
           ['talent-pilot/portal/my-applications', { applications: [] }],
+          ['talent-pilot/portal/profile', { displayName: 'Sara Malik', email: 'sara@example.com', skills: [], skillOptions: [] }],
           ['talent-pilot/interviews/my-tasks', { tasks: [] }],
           ['talent-pilot/hiring-manager/reviews', { reviews: [] }],
           ['talent-pilot/job-applications/app-1/hiring-review', { application: { id: 'app-1' } }],
@@ -93,6 +95,7 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
       put: vi.fn((path: string) => {
         const responses = new Map<string, unknown>([
           ['talent-pilot/job-posts/post-1', { id: 'post-1', jobRequestId: 'jr-1' }],
+          ['talent-pilot/portal/profile', { displayName: 'Sara Malik', email: 'sara@example.com', skills: [], skillOptions: [] }],
           ['talent-pilot/offer-letters/offer-1', { id: 'offer-1' }],
         ]);
         return of(responses.get(path));
@@ -186,6 +189,7 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
     await store.publishJobPost('post-1');
     await store.addManualCandidateToJobPost('post-1', { email: 'candidate@example.com' } as never);
     await store.rankApplicantRankings('post-1');
+    await store.loadPortalInvitation('invite-1', 'tracked-token');
     await store.applyToPortalJobPost('post-1', { coverLetter: 'Interested.' } as never);
     await store.scheduleCandidateInterview('app-1', { jobPostInterviewRoundId: 'round-1' } as never);
 
@@ -196,8 +200,23 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
     expect(api.post).toHaveBeenCalledWith('talent-pilot/job-posts/post-1/publish', {});
     expect(api.post).toHaveBeenCalledWith('talent-pilot/job-posts/post-1/manual-candidates', expect.any(Object));
     expect(api.post).toHaveBeenCalledWith('talent-pilot/job-posts/post-1/applicant-rankings/rank', {});
+    expect(api.get).toHaveBeenCalledWith('talent-pilot/portal/invitations/invite-1?token=tracked-token');
     expect(api.post).toHaveBeenCalledWith('talent-pilot/portal/job-posts/post-1/applications', expect.any(Object));
     expect(api.post).toHaveBeenCalledWith('talent-pilot/job-applications/app-1/interviews', expect.any(Object));
+  });
+
+  it('wires candidate portal profile GET and PUT endpoints', async () => {
+    const store = TestBed.inject(TalentPilotStoreService);
+
+    await store.loadPortalCandidateProfile();
+    await store.updatePortalCandidateProfile({
+      displayName: 'Sara Malik',
+      phone: '+92 300 555 0198',
+      skills: [{ skillId: 'react', skillLevel: 'Advanced', isPrimary: true }],
+    });
+
+    expect(api.get).toHaveBeenCalledWith('talent-pilot/portal/profile');
+    expect(api.put).toHaveBeenCalledWith('talent-pilot/portal/profile', expect.objectContaining({ displayName: 'Sara Malik' }));
   });
 
   it('wires interviewer feedback and hiring manager offer outcome endpoints', async () => {

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { HistoricalApplicationDetail } from '../../core/models';
+import { HistoricalApplicationDetail, HistoricalInterviewDetail } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
@@ -146,7 +146,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                     </div>
                     <div>
                       <strong>{{ interview.recommendation || interview.status }}</strong>
-                      <small>Submitted {{ interview.submittedAt ? (interview.submittedAt | date: 'mediumDate') : 'not submitted' }}</small>
+                      <small>{{ interviewFeedbackStatus(interview) }}</small>
                     </div>
                     <div>
                       <strong>{{ interview.averageScore !== null && interview.averageScore !== undefined ? interview.averageScore + '/5 avg' : 'No score' }}</strong>
@@ -221,5 +221,18 @@ export class HistoricalApplicationDetailComponent implements OnInit {
 
   outcomeSummary(data: HistoricalApplicationDetail): string {
     return `${data.application.interviewPassSummary}; final outcome was ${data.application.status}.`;
+  }
+
+  interviewFeedbackStatus(interview: HistoricalInterviewDetail): string {
+    if (interview.submittedAt) {
+      return 'Feedback submitted';
+    }
+
+    const startsAt = new Date(interview.startsAt).getTime();
+    if (Number.isFinite(startsAt) && startsAt <= Date.now()) {
+      return 'Feedback pending from interviewer';
+    }
+
+    return 'Feedback not due yet';
   }
 }

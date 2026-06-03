@@ -102,6 +102,7 @@ interface TenantProfileSettings {
   publicJobsEnabled: boolean;
   inviteExpiryDays: number;
   reapplyCooldownDays: number;
+  notificationEmailProvider: 'Resend' | 'MicrosoftGraph';
   userCount: number;
   roleCount: number;
   setupComplete: boolean;
@@ -132,6 +133,7 @@ interface UpdateTenantProfileSettingsInput {
   publicJobsEnabled: boolean;
   inviteExpiryDays: number;
   reapplyCooldownDays: number;
+  notificationEmailProvider: 'Resend' | 'MicrosoftGraph';
   logoFileName?: string | null;
   logoContentType?: string | null;
   logoContentBase64?: string | null;
@@ -150,6 +152,7 @@ Validation expected from backend:
 - `primaryColor`: required hex color.
 - `inviteExpiryDays`: 1 to 30.
 - `reapplyCooldownDays`: 1 to 365.
+- `notificationEmailProvider`: `Resend` or `MicrosoftGraph`.
 - Optional logo payload: PNG, JPEG, WebP, or SVG base64 content, maximum 512 KB.
 
 Backend side effects:
@@ -496,6 +499,10 @@ Backend behavior:
 
 Candidate interview APIs are planned operational endpoints. They use the job-post-specific round plan created from the selected hiring pipeline template.
 
+Recruiter scheduling currently creates the interview task, stores optional meeting link/location metadata, persists the meeting participants, and queues candidate/interviewer/hiring-manager notification emails. Calendar event fields are persisted for compatibility, but local/demo environments do not auto-create Google Calendar events or Google Meet links while `GoogleCalendar:Enabled` is false. Real calendar creation requires Google Calendar service-account credentials and an impersonated organizer account.
+
+`GET /api/talent-pilot/recruitment/candidates/{candidateId}/profile` includes `meetingEvents` so recruiters can review interview meeting history linked to the applicant/job. Each event includes `interviewId`, `jobApplicationId`, `jobRequestId`, optional `jobPostId`, `requestCode`, `jobTitle`, `client`, `roundName`, `status`, `startsAt`, `durationMinutes`, `meetingLink`, `calendarProvider`, `calendarEventId`, `calendarEventHtmlLink`, `locationText`, and `participants`. Each participant includes `displayName`, `email`, `role`, and `isOptional`.
+
 Required backend endpoints:
 
 | Method | Endpoint | Purpose | Implementation Status |
@@ -597,10 +604,13 @@ Required backend endpoints:
 | --- | --- | --- | --- |
 | `GET` | `/api/admin/notifications/templates?page={page}&pageSize={pageSize}&search={search}` | Load editable email templates with summary metrics. | Backend |
 | `PUT` | `/api/admin/notifications/templates/{templateId}` | Update template subject/body text. | Backend |
-| `POST` | `/api/admin/notifications/test-email` | Send a standalone Resend test email to a test recipient. Tenant Admin only. | Backend |
+| `POST` | `/api/admin/notifications/test-email` | Send a standalone test email through the tenant-configured provider. Tenant Admin only. | Backend |
+| `GET` | `/api/admin/notifications/email-senders` | Load non-secret configured sender metadata for supported email providers. Tenant Admin only. | Backend |
 | `POST` | `/api/admin/notifications/test-realtime` | Broadcast a SignalR test notification to connected clients in the current tenant. Tenant Admin only. | Backend |
 | `GET` | `/api/admin/notifications/events?page={page}&pageSize={pageSize}&search={search}` | Load the system event catalog for diagnostics/linking, not primary UI configuration. | Backend |
 | `GET` | `/api/admin/notifications/events/{eventId}` | Load one notification event and linked templates. | Backend |
+| `GET` | `/api/admin/notifications/outbox?page={page}&pageSize={pageSize}&search={search}&status={status}` | Load queued, sent, failed, and processing email outbox rows with worker status. Tenant Admin only. | Backend |
+| `POST` | `/api/admin/notifications/outbox/{outboxId}/retry` | Requeue a failed email outbox row for the worker to send again. Does not create a duplicate outbox row. Tenant Admin only. | Backend |
 
 `GET /api/admin/notifications/templates` response shape:
 
@@ -651,9 +661,22 @@ interface SendTestNotificationEmailInput {
 interface SendTestNotificationEmailResponse {
   toEmail: string;
   subject: string;
-  provider: 'Resend';
+  provider: 'Resend' | 'MicrosoftGraph';
   messageId: string;
   submittedAtUtc: string;
+}
+```
+
+`GET /api/admin/notifications/email-senders` response shape:
+
+```ts
+interface NotificationEmailSenderConfigurationResponse {
+  providers: Array<{
+    provider: 'Resend' | 'MicrosoftGraph';
+    providerLabel: string;
+    senderEmail?: string | null;
+    senderConfigured: boolean;
+  }>;
 }
 ```
 
@@ -666,6 +689,32 @@ interface SendTestRealtimeNotificationResponse {
   message: string;
   connectedClientCount: number;
   sentAtUtc: string;
+}
+```
+
+`GET /api/admin/notifications/outbox` and `POST /api/admin/notifications/outbox/{outboxId}/retry` item shape:
+
+```ts
+interface AdminNotificationOutboxItem {
+  outboxId: string;
+  eventCode: string;
+  eventName: string;
+  templateName: string;
+  senderDisplayName: string;
+  recipientDisplayName?: string | null;
+  recipientEmail?: string | null;
+  channel: 'Email';
+  status: 'Pending' | 'Processing' | 'Sent' | 'Failed';
+  attemptCount: number;
+  availableAtUtc: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  processedAtUtc?: string | null;
+  lastError?: string | null;
+  subject: string;
+  body: string;
+  entityType?: string | null;
+  entityId?: string | null;
 }
 ```
 
@@ -702,9 +751,9 @@ Backend behavior:
 - Keep event logic aligned with workflow routing rules.
 - Store email template subject/body in the database. Frontend owns only the editing UI and must use the allowed variables returned by the template API.
 - Validate that edited subject/body only use variables supported by the template.
-- Test email sends require the `TenantAdmin` role, use a standalone Resend delivery-check message instead of stored templates, and write `NotificationTestEmailSent` audit events.
+- Test email sends require the `TenantAdmin` role, use a standalone provider delivery-check message instead of stored templates, and write `NotificationTestEmailSent` audit events.
 - Realtime test sends require the `TenantAdmin` role, broadcast through SignalR to connected clients in the current tenant, and write `NotificationRealtimeTestSent` audit events.
-- Store `Resend:ApiKey` in user-secrets, environment variables, or deployment secrets only. Do not commit it.
+- Store provider secrets in user-secrets, environment variables, or deployment secrets only. Resend uses `Resend:ApiKey` and optional `Resend:FromEmail`; Microsoft Graph uses `MicrosoftGraphEmail:TenantId`, `MicrosoftGraphEmail:ClientId`, `MicrosoftGraphEmail:ClientSecret`, and `MicrosoftGraphEmail:FromEmail`.
 - Write audit events for template, event status, and test email changes.
 
 ### Admin AI Settings
@@ -845,8 +894,9 @@ Admin UI copy rules for backend-facing configuration:
 | `POST` | `/api/talent-pilot/job-requests/{id}/employee-referrals/decision` | Presales accepts/rejects PMO recommendations; accepted employees count toward fulfillment. |
 | `POST` | `/api/talent-pilot/job-requests/{id}/forward-to-recruiters` | PMO forwards the request to backend-owned recruiter sourcing routing. |
 | `GET` | `/api/talent-pilot/recruitment/queue` | Load recruiter-visible `Recruiter Sourcing` assignments and current Job Post state. |
-| `GET` | `/api/talent-pilot/job-requests/{id}/recruiter-sourcing` | Load the recruiter sourcing workspace: request summary, assignment, existing Job Post, linked applications, latest Talent Rediscovery rankings, interview templates, and active skills. |
+| `GET` | `/api/talent-pilot/job-requests/{id}/recruiter-sourcing` | Load the recruiter sourcing workspace: request summary, assignment, existing Job Post, linked applications, safe application document metadata, latest Talent Rediscovery rankings, interview templates, and active skills. |
 | `POST` | `/api/talent-pilot/job-requests/{id}/talent-rediscovery/rank` | Run the advisory Talent Rediscovery Agent after recruiter claim and persist latest ranked warm-candidate evidence. |
+| `GET` | `/api/talent-pilot/recruitment/applications/{jobApplicationId}/documents/{applicationDocumentId}/download` | Recruiter/Tenant Admin downloads an application document by id. The UI should show generic document labels and never expose raw stored filenames in ranking rationale text. |
 | `GET` | `/api/talent-pilot/job-posts` | Load recruiter-visible draft/published/closed Job Posts for Job Publishing. |
 | `POST` | `/api/talent-pilot/job-requests/{id}/job-posts` | Create a draft Job Post linked to the Job Request from recruiter edits and selected interview template rounds. |
 | `PUT` | `/api/talent-pilot/job-posts/{id}` | Update a draft Job Post's content, skills, and post-specific interview rounds. |
@@ -859,7 +909,10 @@ Admin UI copy rules for backend-facing configuration:
 | `POST` | `/api/talent-pilot/interviews/{id}/feedback` | Assigned interviewer/Tenant Admin submits scores, recommendation, and required feedback comments. Completing feedback marks the interview completed and queues recruiter notification. |
 | `GET` | `/api/talent-pilot/portal/job-posts` | Public candidate-safe list of published Job Posts only. |
 | `GET` | `/api/talent-pilot/portal/job-posts/{id}` | Public candidate-safe detail for one published Job Post. |
-| `POST` | `/api/talent-pilot/portal/job-posts/{id}/applications` | Candidate-authenticated apply endpoint. Creates or returns the active application linked to Candidate, Job Post, and Job Request. |
+| `GET` | `/api/talent-pilot/portal/invitations/{candidateInvitationId}?token={token}` | Public resolver for tracked candidate invite links. Validates the id/token pair and returns invitation/job status metadata without candidate profile details. |
+| `POST` | `/api/talent-pilot/portal/job-posts/{id}/applications` | Candidate-authenticated apply endpoint. Creates or returns the active application linked to Candidate, Job Post, and Job Request. Optional `candidateInvitationId` and `invitationToken` consume a matching invite and complete existing `Invited` applications. |
 | `GET` | `/api/talent-pilot/portal/my-applications` | Candidate-authenticated application history/status list for the signed-in Candidate. |
 | `GET` | `/api/notifications` | Load notifications for current user. |
 | `POST` | `/api/notifications/{notificationId}/read` | Mark notification as read. |
+
+Candidate application document metadata may include storage-provider fields for backend/admin traceability. Candidate-facing screens must not display provider names, container/path values, or implementation notes about local server storage versus future Azure Blob storage. Show user-relevant document fields only: file name, document type, upload date, size, and evidence/indexing status.

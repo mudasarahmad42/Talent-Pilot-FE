@@ -87,7 +87,7 @@ type JobPostFilter = 'All' | JobPostStatus;
                     <td>{{ item.requestCode }}</td>
                     <td>{{ item.client }}</td>
                     <td>{{ item.department }}</td>
-                    <td><span class="status-badge info">{{ item.status }}</span></td>
+                    <td><span [class]="jobPostStatusClass(item.status)">{{ item.status }}</span></td>
                     <td>{{ item.recruiterOwnerName }}</td>
                     <td>{{ item.updatedAt | date: 'mediumDate' }}</td>
                   </tr>
@@ -128,5 +128,15 @@ export class JobPublishingComponent implements OnInit {
 
   countByStatus(status: JobPostStatus): number {
     return this.items().filter((item) => item.status === status).length;
+  }
+
+  jobPostStatusClass(status: JobPostStatus): string {
+    const classByStatus: Record<JobPostStatus, string> = {
+      Draft: 'status-badge--draft',
+      Published: 'status-badge--success',
+      Closed: 'status-badge--closed',
+    };
+
+    return `status-badge ${classByStatus[status] ?? 'status-badge--neutral'}`;
   }
 }

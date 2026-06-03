@@ -1,5 +1,7 @@
+import { HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { SUPPRESS_API_ERROR_TOAST } from './interceptors/api-error.interceptor';
 import { ApiService } from './services/api.service';
 
 export interface FileDownload {
@@ -12,6 +14,7 @@ export interface AdminListQuery {
   roleId?: string;
   groupId?: string;
   accountStatus?: string;
+  status?: string;
   page?: number;
   pageSize?: number;
   includeInactive?: boolean;
@@ -260,6 +263,7 @@ export interface AdminNotificationEventsResponse {
     activeEventCount: number;
     editableTemplateCount: number;
     pendingOutboxCount: number;
+    sentOutboxCount: number;
     failedOutboxCount: number;
   };
   items: AdminNotificationEventListItem[];
@@ -284,6 +288,53 @@ export interface AdminNotificationTemplatesResponse {
   page: number;
   pageSize: number;
   totalCount: number;
+}
+
+export interface AdminNotificationOutboxResponse {
+  workerStatus?: AdminNotificationWorkerStatus | null;
+  items: AdminNotificationOutboxItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface AdminNotificationWorkerStatus {
+  state: string;
+  label: string;
+  message: string;
+  lastHeartbeatUtc?: string | null;
+  startedAtUtc?: string | null;
+  lastProcessedAtUtc?: string | null;
+  lastProcessedCount?: number | null;
+  hostName?: string | null;
+  processId?: number | null;
+  lastError?: string | null;
+  pollIntervalSeconds: number;
+  staleAfterSeconds: number;
+  pendingDueCount: number;
+  processingCount: number;
+}
+
+export interface AdminNotificationOutboxItem {
+  outboxId: string;
+  eventCode: string;
+  eventName: string;
+  templateName: string;
+  senderDisplayName: string;
+  recipientDisplayName?: string | null;
+  recipientEmail?: string | null;
+  channel: string;
+  status: string;
+  attemptCount: number;
+  availableAtUtc: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  processedAtUtc?: string | null;
+  lastError?: string | null;
+  subject: string;
+  body: string;
+  entityType?: string | null;
+  entityId?: string | null;
 }
 
 export interface NotificationTemplateSummary {
@@ -314,6 +365,17 @@ export interface SendTestNotificationEmailResponse {
   provider: string;
   messageId: string;
   submittedAtUtc: string;
+}
+
+export interface NotificationEmailSenderConfigurationResponse {
+  providers: NotificationEmailSenderProviderConfiguration[];
+}
+
+export interface NotificationEmailSenderProviderConfiguration {
+  provider: string;
+  providerLabel: string;
+  senderEmail?: string | null;
+  senderConfigured: boolean;
 }
 
 export interface SendTestRealtimeNotificationResponse {
@@ -498,6 +560,26 @@ export interface AdminAiRuntimeResponse {
   runtimeEditable: boolean;
 }
 
+export interface AdminLlmHealthResponse {
+  available: boolean;
+  status: string;
+  message: string;
+  provider: string;
+  llmModel: string;
+  ollamaBaseUrl: string;
+}
+
+export interface AdminSemanticSimilarityHealthResponse {
+  available: boolean;
+  status: string;
+  message: string;
+  provider: string;
+  embeddingModel: string;
+  embeddingDimensions: number;
+  vectorStore: string;
+  ollamaBaseUrl: string;
+}
+
 export interface AdminAiAgentListResponse {
   activeAgentCount: number;
   items: AdminAiAgentDefinition[];
@@ -671,6 +753,21 @@ export class AdminCenterApiService {
     );
   }
 
+  listNotificationOutbox(query: AdminListQuery = {}): Promise<AdminNotificationOutboxResponse> {
+    return firstValueFrom(
+      this.api.get<AdminNotificationOutboxResponse>(`admin/notifications/outbox?${this.toQueryString(query)}`),
+    );
+  }
+
+  retryNotificationOutboxEmail(outboxId: string): Promise<AdminNotificationOutboxItem> {
+    return firstValueFrom(
+      this.api.post<AdminNotificationOutboxItem, Record<string, never>>(
+        `admin/notifications/outbox/${encodeURIComponent(outboxId)}/retry`,
+        {},
+      ),
+    );
+  }
+
   updateNotificationTemplate(
     templateId: string,
     input: UpdateNotificationTemplateInput,
@@ -692,6 +789,12 @@ export class AdminCenterApiService {
     );
   }
 
+  listNotificationEmailSenders(): Promise<NotificationEmailSenderConfigurationResponse> {
+    return firstValueFrom(
+      this.api.get<NotificationEmailSenderConfigurationResponse>('admin/notifications/email-senders'),
+    );
+  }
+
   sendNotificationRealtimeTest(): Promise<SendTestRealtimeNotificationResponse> {
     return firstValueFrom(
       this.api.post<SendTestRealtimeNotificationResponse, Record<string, never>>(
@@ -709,6 +812,20 @@ export class AdminCenterApiService {
 
   getAiRuntime(): Promise<AdminAiRuntimeResponse> {
     return firstValueFrom(this.api.get<AdminAiRuntimeResponse>('admin/ai-settings/runtime'));
+  }
+
+  getAiLlmHealth(): Promise<AdminLlmHealthResponse> {
+    return firstValueFrom(this.api.get<AdminLlmHealthResponse>(
+      'admin/ai-settings/runtime/llm',
+      { context: new HttpContext().set(SUPPRESS_API_ERROR_TOAST, true) },
+    ));
+  }
+
+  getAiSemanticSimilarityHealth(): Promise<AdminSemanticSimilarityHealthResponse> {
+    return firstValueFrom(this.api.get<AdminSemanticSimilarityHealthResponse>(
+      'admin/ai-settings/runtime/semantic-similarity',
+      { context: new HttpContext().set(SUPPRESS_API_ERROR_TOAST, true) },
+    ));
   }
 
   getAiAgents(): Promise<AdminAiAgentListResponse> {
@@ -844,6 +961,10 @@ export class AdminCenterApiService {
 
     if (query.accountStatus) {
       params.set('accountStatus', query.accountStatus);
+    }
+
+    if (query.status) {
+      params.set('status', query.status);
     }
 
     params.set('page', String(query.page ?? 1));
