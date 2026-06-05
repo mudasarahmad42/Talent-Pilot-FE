@@ -4,10 +4,11 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { BenchEmployee, BenchMatch, EmployeeProjectEvidence, PmoReview } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
+import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.component';
 
 @Component({
   selector: 'app-pmo-review',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, RagAssistantPanelComponent],
   template: `
     <main class="page ops-page">
       @if (review(); as review) {
@@ -18,8 +19,9 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
             <p>{{ review.jobRequest.code }} - {{ review.jobRequest.client }} - {{ review.jobRequest.department }}</p>
           </div>
           <div class="ops-header-actions">
-            <a class="btn secondary compact" routerLink="/app/pmo/queue">PMO Queue</a>
-            <span class="status-badge">{{ review.assignment?.status ?? review.jobRequest.stage }}</span>
+            <span [class]="assignmentStatusBadgeClass(review)" aria-label="PMO review assignment status">
+              Assignment: {{ assignmentStatusLabel(review) }}
+            </span>
           </div>
         </header>
 
@@ -412,13 +414,34 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
             }
           </div>
 
+          <app-rag-assistant-panel
+            class="pmo-assistant-rail"
+            title="Request Copilot"
+            subtitle="Evidence from request, bench matches, referrals, and workflow context."
+            placeholder="Ask about bench fit, request status, or next step..."
+            contextType="PmoRequest"
+            [contextEntityId]="jobRequestId"
+            [suggestedQuestions]="pmoAssistantQuestions"
+          />
+
         </section>
       } @else {
         <section class="ops-panel">
           @if (loadError()) {
-            <h1>PMO Review unavailable</h1>
-            <p class="muted">{{ loadError() }}</p>
-            <button type="button" class="btn secondary compact" [disabled]="busy()" (click)="load()">Try again</button>
+            <h1>{{ pmoUnavailableTitle() }}</h1>
+            <p class="muted">{{ pmoUnavailableMessage() }}</p>
+            <div class="unavailable-actions">
+              <button type="button" class="btn secondary compact" [disabled]="busy()" (click)="load()">Try again</button>
+              @if (!currentUserCanViewPmo()) {
+                <a
+                  class="btn primary compact"
+                  routerLink="/auth/login"
+                  [queryParams]="{ returnUrl: '/app/pmo/review/' + jobRequestId }"
+                >
+                  Switch account
+                </a>
+              }
+            </div>
           } @else {
             <h1>Loading PMO review</h1>
             <p class="muted">Fetching request, assignment, and eligible employee data.</p>
@@ -456,12 +479,26 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
       .pmo-review-grid {
         align-items: start;
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) 330px;
       }
 
       .pmo-review-grid .ops-main-stack,
-      .pmo-review-grid .ops-panel {
+      .pmo-review-grid .ops-panel,
+      .pmo-assistant-rail {
         min-width: 0;
+      }
+
+      .unavailable-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      @media (max-width: 980px) {
+        .pmo-review-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       .bench-bottom-actions {
@@ -739,7 +776,13 @@ export class PmoReviewComponent {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly jobRequestId = this.route.snapshot.paramMap.get('jobRequestId') ?? '';
+  readonly jobRequestId = this.route.snapshot.paramMap.get('jobRequestId') ?? '';
+  readonly pmoAssistantQuestions = [
+    'Which bench employee is closest?',
+    'Why was this forwarded?',
+    'What skills are missing?',
+    'Summarize for Presales',
+  ];
 
   readonly searchText = signal('');
   readonly departmentFilter = signal('');
@@ -755,6 +798,22 @@ export class PmoReviewComponent {
   readonly loadError = signal('');
   readonly expandedEmployeeIds = signal<string[]>([]);
   readonly activeTab = signal<'overview' | 'bench'>('overview');
+  readonly currentUserCanViewPmo = computed(() => {
+    const roles = this.auth.currentUser()?.roles ?? [];
+    return roles.includes('PMO') || roles.includes('TenantAdmin');
+  });
+  readonly pmoUnavailableTitle = computed(() =>
+    this.currentUserCanViewPmo() ? 'PMO Review unavailable' : 'PMO Review not visible for this role',
+  );
+  readonly pmoUnavailableMessage = computed(() => {
+    if (this.currentUserCanViewPmo()) {
+      return this.loadError();
+    }
+
+    const user = this.auth.currentUser();
+    const signedInAs = user?.displayName || user?.name || user?.email || 'the current user';
+    return `You are signed in as ${signedInAs}. Switch to a PMO or Tenant Admin demo account to open this PMO review.`;
+  });
 
   readonly review = computed(() => this.store.getPmoReviewByRequestId(this.jobRequestId));
   readonly departments = computed(() => {
@@ -857,7 +916,7 @@ export class PmoReviewComponent {
         this.presalesUserId.set(review.defaultPresalesUserId ?? review.presalesUsers[0]?.id ?? '');
       }
     } catch {
-      this.loadError.set('The PMO Review work item could not be loaded. Refresh after the API is running and the database migrations are applied.');
+      this.loadError.set('The PMO Review work item could not be loaded. Check that the API is running and this request is visible to your role, then try again.');
     } finally {
       this.busy.set(false);
     }
@@ -1071,6 +1130,22 @@ export class PmoReviewComponent {
   selectedPresalesName(review: PmoReview): string {
     const selectedId = this.presalesUserId() || review.defaultPresalesUserId;
     return review.presalesUsers.find((user) => user.id === selectedId)?.name ?? 'Not selected';
+  }
+
+  assignmentStatusLabel(review: PmoReview): string {
+    return review.assignment?.status ?? review.jobRequest.stage;
+  }
+
+  assignmentStatusBadgeClass(review: PmoReview): string {
+    const normalizedStatus = this.assignmentStatusLabel(review).toLowerCase().replace(/\s+/g, '');
+    const classByStatus = new Map([
+      ['pending', 'status-badge--hold'],
+      ['claimed', 'status-badge--claimed'],
+      ['completed', 'status-badge--success'],
+      ['pmoreview', 'status-badge--review'],
+    ]);
+
+    return `status-badge ${classByStatus.get(normalizedStatus) ?? 'status-badge--neutral'}`;
   }
 
   private clearMessages(): void {

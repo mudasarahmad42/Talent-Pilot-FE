@@ -3,15 +3,19 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { convertToParamMap, provideRouter } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import { ApplicantRankingMatch, InterviewerOption, JobPostInterviewRound, ParseCandidateCvResult, RecruiterSourcing } from '../../core/models';
+import { ApplicantRankingMatch, InterviewerOption, JobPostInterviewRound, OnlineCandidateLead, ParseCandidateCvResult, RecruiterSourcing } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 import { RecruiterSourcingComponent } from './recruiter-sourcing.component';
 
 describe('RecruiterSourcingComponent skill picker behavior', () => {
   const currentUser = signal({ id: 'recruiter-1', roles: ['Recruiter'] });
+  const recruiterSourcingRefresh = signal<{ jobRequestId: string; reason: string; at: string } | null>(null);
   const store = {
     loadRecruiterSourcing: vi.fn(),
     scheduleCandidateInterview: vi.fn(),
+    searchOnlineCandidates: vi.fn(),
+    updateOnlineCandidateLeadStatus: vi.fn(),
+    recruiterSourcingRefresh: recruiterSourcingRefresh.asReadonly(),
   };
   const auth = {
     currentUser: currentUser.asReadonly(),
@@ -41,8 +45,11 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     fixture = TestBed.createComponent(RecruiterSourcingComponent);
     component = fixture.componentInstance;
     currentUser.set({ id: 'recruiter-1', roles: ['Recruiter'] });
+    recruiterSourcingRefresh.set(null);
     store.loadRecruiterSourcing.mockReset();
     store.scheduleCandidateInterview.mockReset();
+    store.searchOnlineCandidates.mockReset();
+    store.updateOnlineCandidateLeadStatus.mockReset();
     auth.isAdmin.mockReturnValue(false);
   });
 
@@ -135,6 +142,168 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
       `If you are interested, please apply on our job portal: ${window.location.origin}/candidate/jobs/post-1?source=invite`,
     );
     expect(component.manualCandidateForm.invitationMessage).not.toContain('<JOB-LINK>');
+  });
+
+  it('runs AI Headhunting as lead-only search and prefills manual conversion from a lead', async () => {
+    const sourcing = buildSourcing('Published');
+    const lead = buildOnlineLead();
+    store.loadRecruiterSourcing.mockResolvedValue(sourcing);
+    store.searchOnlineCandidates.mockResolvedValue({
+      requestId: 'request-1',
+      jobRequestId: 'jr-1',
+      requestedByUserId: 'recruiter-1',
+      status: 'Queued',
+      message: 'AI Headhunting is running in the background.',
+      requestedLimit: 20,
+      dailyLeadLimit: 100,
+      dailyLeadCountBeforeRun: 0,
+      sourceCodes: ['LinkedIn', 'GitHub', 'Portfolio', 'PublicSearch'],
+      queuedAtUtc: '2026-06-04T00:00:00Z',
+    });
+    component.sourcing.set(sourcing);
+    component.setTab('headhunting');
+    fixture.detectChanges();
+
+    await component.runOnlineHeadhunting();
+
+    expect(store.searchOnlineCandidates).toHaveBeenCalledWith('jr-1', {
+      limit: 20,
+      sourceCodes: ['LinkedIn', 'GitHub', 'Portfolio', 'PublicSearch'],
+      searchMoreFromRunId: null,
+    });
+    expect(component.onlineHeadhuntingQueued()).toBe(true);
+    expect(component.message()).toContain('background');
+
+    component.sourcing.set({
+      ...sourcing,
+      onlineHeadhunting: {
+        run: buildOnlineRun(),
+        leads: [lead],
+      },
+    });
+    component.selectedOnlineLeadId.set(lead.onlineCandidateLeadId);
+    expect(component.sourcing()?.onlineHeadhunting?.leads).toHaveLength(1);
+    expect(component.selectedOnlineLead()?.onlineCandidateLeadId).toBe('lead-1');
+
+    component.openManualCandidateModalFromLead(lead);
+
+    expect(component.manualCandidateModalOpen()).toBe(true);
+    expect(component.manualCandidateForm.onlineLeadId).toBe('lead-1');
+    expect(component.manualCandidateForm.email).toBe('');
+    expect(component.manualCandidateError()).toContain('Enter a verified email');
+    expect(component.manualCandidateForm.sourceUrl).toBe('https://github.com/hamza');
+  });
+
+  it('uses compact source labels in the online lead table', () => {
+    expect(component.onlineLeadSourceChipLabel(buildOnlineLead({
+      sourceCode: 'LinkedIn',
+      sourceDisplayName: 'LinkedIn Search Result',
+    }))).toBe('LinkedIn');
+    expect(component.onlineLeadSourceChipLabel(buildOnlineLead({
+      sourceCode: 'PublicSearch',
+      sourceDisplayName: 'Public Search',
+    }))).toBe('Web');
+  });
+
+  it('explains online lead actions through button tooltips', () => {
+    const lead = buildOnlineLead();
+
+    expect(component.onlineLeadActionTooltip('addToPipeline', lead)).toContain('pipeline');
+    expect(component.onlineLeadActionTooltip('viewSource', lead)).toContain('public source URL');
+    expect(component.onlineLeadActionTooltip('saveProspect', lead)).toContain('later review');
+    expect(component.onlineLeadActionTooltip('rejectLead', lead)).toContain('filtered out');
+  });
+
+  it('orders online leads by known location and contact evidence before match rank', () => {
+    const sourcing = buildSourcing('Published');
+    sourcing.onlineHeadhunting = {
+      run: buildOnlineRun(),
+      leads: [
+        buildOnlineLead({
+          onlineCandidateLeadId: 'unknown-email',
+          rank: 1,
+          displayName: 'Unknown Email',
+          locationText: null,
+          email: 'unknown@example.com',
+          phone: null,
+          matchScore: 99,
+        }),
+        buildOnlineLead({
+          onlineCandidateLeadId: 'known-no-contact',
+          rank: 2,
+          displayName: 'Known No Contact',
+          locationText: 'Lahore',
+          email: null,
+          phone: null,
+          matchScore: 97,
+        }),
+        buildOnlineLead({
+          onlineCandidateLeadId: 'known-phone',
+          rank: 3,
+          displayName: 'Known Phone',
+          locationText: 'Lahore',
+          email: null,
+          phone: '+92 300 555 0100',
+          matchScore: 82,
+        }),
+        buildOnlineLead({
+          onlineCandidateLeadId: 'known-email',
+          rank: 4,
+          displayName: 'Known Email',
+          locationText: 'Lahore',
+          email: 'known@example.com',
+          phone: null,
+          matchScore: 80,
+        }),
+      ],
+    };
+    component.sourcing.set(sourcing);
+
+    expect(component.filteredOnlineLeads().map((lead) => lead.onlineCandidateLeadId)).toEqual([
+      'known-email',
+      'known-phone',
+      'known-no-contact',
+    ]);
+    expect(component.onlineLeadContactLabel(sourcing.onlineHeadhunting.leads[2])).toBe('+92 300 555 0100');
+  });
+
+  it('hides job posting pages from online headhunting leads', () => {
+    const sourcing = buildSourcing('Published');
+    sourcing.onlineHeadhunting = {
+      run: buildOnlineRun(),
+      leads: [
+        buildOnlineLead({
+          onlineCandidateLeadId: 'expertini-job',
+          displayName: 'Java Microservices Engineer Spring Boot Kafka Lahore Abacus Jobs in Pakistan',
+          currentTitle: 'Job posting',
+          sourceCode: 'PublicSearch',
+          sourceDisplayName: 'Public Search',
+          sourceUrl: 'https://pk.expertini.com/jobs/in/java-microservices-engineer-spring-boot-kafka-lahore-abacus/',
+          evidenceSnippet: 'Apply now. Job description, salary, and posted on details are available.',
+          matchScore: 99,
+        }),
+        buildOnlineLead({
+          onlineCandidateLeadId: 'romania-profile',
+          displayName: 'Sebastian Stincescu',
+          locationText: 'Romania',
+          sourceCode: 'LinkedIn',
+          sourceDisplayName: 'LinkedIn Search Result',
+          sourceUrl: 'https://www.linkedin.com/in/sebastian-stincescu/',
+          evidenceSnippet: 'Romania Senior Java Software Engineer Microservices Kafka',
+          matchScore: 94,
+        }),
+        buildOnlineLead({
+          onlineCandidateLeadId: 'candidate-profile',
+          displayName: 'Hamza Ali',
+          sourceUrl: 'https://github.com/hamza',
+          profileUrl: 'https://github.com/hamza',
+          matchScore: 94,
+        }),
+      ],
+    };
+    component.sourcing.set(sourcing);
+
+    expect(component.filteredOnlineLeads().map((lead) => lead.onlineCandidateLeadId)).toEqual(['candidate-profile']);
   });
 
   it('removes the external sourcing note and shows job analytics as its own tab', async () => {
@@ -490,6 +659,53 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Sourcing Assignment');
   });
 
+  it('allows recruiters to close a published post without reopening content editing', async () => {
+    const sourcing = buildSourcing('Published');
+
+    await renderPostRounds(sourcing, []);
+
+    const closeButton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+      (button): button is HTMLButtonElement =>
+        button instanceof HTMLButtonElement && button.textContent?.includes('Close Post') === true,
+    );
+
+    expect(component.canEditContent()).toBe(false);
+    expect(component.canCloseJobPost()).toBe(true);
+    expect(closeButton?.disabled).toBe(false);
+  });
+
+  it('archives closed job posts and disables new intake actions', async () => {
+    const sourcing = buildSourcing('Closed');
+    const application = buildApplication();
+    sourcing.applications = [application];
+    sourcing.jobPost!.interviewRounds = [buildInterviewRound()];
+
+    await renderPostRounds(sourcing, sourcing.jobPost!.interviewRounds);
+
+    expect(component.isCurrentJobPostClosed()).toBe(true);
+    expect(component.canAddManualCandidate()).toBe(false);
+    expect(component.canManageApplications()).toBe(false);
+    expect(component.canRunRediscovery()).toBe(false);
+    expect(component.canRunOnlineHeadhunting()).toBe(false);
+    expect(component.canRankApplicants()).toBe(false);
+    expect(component.canCloseJobPost()).toBe(false);
+    expect(component.scheduleEligibility(application)).toEqual(expect.objectContaining({
+      actionLabel: 'Post closed',
+      status: 'blocked',
+    }));
+
+    component.setTab('applications');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('closed and archived');
+    expect(addSourcedCandidateButtons()[0].disabled).toBe(true);
+
+    component.openManualCandidateModal();
+
+    expect(component.manualCandidateModalOpen()).toBe(false);
+    expect(component.error()).toContain('closed and archived');
+  });
+
   it('formats request summary descriptions into readable sections', () => {
     const description =
       'Senior Java Developer Job Description Role Summary: Build scalable services. Responsibilities: * Design APIs * Review code Required Skills: Java SQL';
@@ -704,7 +920,7 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     fixture.detectChanges();
   }
 
-  function buildSourcing(jobPostStatus: 'Draft' | 'Published'): RecruiterSourcing {
+  function buildSourcing(jobPostStatus: 'Draft' | 'Published' | 'Closed'): RecruiterSourcing {
     return {
       jobRequest: {
         id: 'jr-1',
@@ -722,7 +938,7 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
         hiringManagerId: 'hm-1',
         createdById: 'presales-1',
         stage: 'Recruiter Sourcing',
-        publishStatus: 'Published',
+        publishStatus: jobPostStatus === 'Closed' ? 'Closed' : 'Published',
         createdAt: '2026-06-01T00:00:00Z',
       },
       assignment: {
@@ -748,8 +964,8 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
         status: jobPostStatus,
         recruiterOwnerUserId: 'recruiter-1',
         recruiterOwnerName: 'Sara Malik',
-        publishedAt: null,
-        closedAt: null,
+        publishedAt: jobPostStatus === 'Draft' ? null : '2026-06-01T00:00:00Z',
+        closedAt: jobPostStatus === 'Closed' ? '2026-06-05T00:00:00Z' : null,
         createdAt: '2026-06-01T00:00:00Z',
         updatedAt: '2026-06-01T00:00:00Z',
         skills: [{ skillId: 'skill-react', name: 'React' }],
@@ -766,6 +982,60 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
       talentRediscoveryMatches: [],
       applicantRankings: [],
       candidateSearchItems: [],
+    };
+  }
+
+  function buildOnlineRun() {
+    return {
+      onlineCandidateSourcingRunId: 'run-1',
+      jobRequestId: 'jr-1',
+      jobPostId: 'post-1',
+      aiAgentRunId: 'agent-run-1',
+      searchMoreFromRunId: null,
+      requestedLimit: 20,
+      dailyLeadLimit: 100,
+      dailyLeadCountBeforeRun: 0,
+      leadsReturned: 1,
+      searchStatus: 'Succeeded',
+      model: 'gpt-4o-recruiter',
+      sourceCodes: ['GitHub'],
+      queries: ['React TypeScript location:Lahore'],
+      createdAtUtc: '2026-06-01T00:00:00Z',
+    };
+  }
+
+  function buildOnlineLead(overrides: Partial<OnlineCandidateLead> = {}): OnlineCandidateLead {
+    return {
+      onlineCandidateLeadId: 'lead-1',
+      onlineCandidateSourcingRunId: 'run-1',
+      jobRequestId: 'jr-1',
+      rank: 1,
+      sourceCode: 'GitHub',
+      sourceDisplayName: 'GitHub',
+      sourceUrl: 'https://github.com/hamza',
+      displayName: 'Hamza Ali',
+      currentTitle: 'Lead Frontend Engineer',
+      currentCompany: 'TechFlow',
+      locationText: 'Lahore',
+      email: null,
+      phone: null,
+      profileUrl: 'https://github.com/hamza',
+      evidenceSnippet: 'Maintains public React and TypeScript repositories.',
+      matchScore: 94,
+      confidence: 'High',
+      fitSummary: 'Strong React and TypeScript public evidence.',
+      strengths: ['React', 'TypeScript'],
+      matchedSkills: ['React'],
+      gaps: ['Email unavailable'],
+      missingData: ['Email'],
+      duplicateStatus: 'NoMatch',
+      duplicateCandidateId: null,
+      duplicateCandidateName: null,
+      duplicateExplanation: 'No internal candidate match found.',
+      outreachDraft: 'Hi Hamza, we are hiring for Senior React Developer.',
+      status: 'New',
+      createdAtUtc: '2026-06-01T00:00:00Z',
+      ...overrides,
     };
   }
 

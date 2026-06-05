@@ -349,6 +349,7 @@ function buildHiringManagerDashboard() {
       { status: 'Offer draft', count: 1 },
       { status: 'Meeting scheduled', count: 0 },
       { status: 'Offered', count: 0 },
+      { status: 'Pending joining', count: 0 },
       { status: 'On hold', count: 0 },
       { status: 'Joined', count: 0 },
       { status: 'Rejected', count: 0 },
@@ -361,6 +362,7 @@ function buildHiringManagerDashboard() {
     ],
     outcomeSplit: [
       { status: 'Offered', count: 0 },
+      { status: 'Pending joining', count: 0 },
       { status: 'Rejected', count: 0 },
       { status: 'On hold', count: 0 },
       { status: 'Joined', count: 0 },

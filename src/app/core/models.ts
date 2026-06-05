@@ -79,6 +79,69 @@ export interface CurrentUserGroup {
   purpose: string;
 }
 
+export type RagAssistantContextType = 'RecruiterCandidateFit' | 'PmoRequest' | 'HiringDecisionBrief';
+
+export interface RagChatRequest {
+  contextType: RagAssistantContextType;
+  contextEntityId: string;
+  focusEntityId?: string | null;
+  conversationId?: string | null;
+  message: string;
+}
+
+export interface RagChatResponse {
+  conversationId: string;
+  userMessageId: string;
+  assistantMessageId: string;
+  answer: string;
+  citations: RagCitation[];
+  model: string;
+  agentRunId: string;
+  promptVersion: string;
+  generatedAtUtc: string;
+}
+
+export interface RagCitation {
+  citationId: string;
+  knowledgeChunkId: string;
+  label: string;
+  sourceTitle: string;
+  sourceType: string;
+  sourceEntityId: string;
+  sourceRoute?: string | null;
+  score: number;
+  excerpt: string;
+}
+
+export interface RagConversation {
+  conversationId: string;
+  contextType: RagAssistantContextType;
+  contextEntityId: string;
+  focusEntityId?: string | null;
+  title: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  messages: RagMessage[];
+}
+
+export interface RagMessage {
+  messageId: string;
+  role: 'User' | 'Assistant' | 'System';
+  content: string;
+  model?: string | null;
+  agentRunId?: string | null;
+  promptVersion?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  createdAtUtc: string;
+  citations: RagCitation[];
+}
+
+export interface RagFeedbackRequest {
+  rating: 'Helpful' | 'NotHelpful';
+  notes?: string | null;
+}
+
 export interface OperationsPerson {
   userId: string;
   displayName: string;
@@ -541,6 +604,81 @@ export interface RecruiterSourcing {
   interviewers: InterviewerOption[];
   hodInterviewers: LookupOption[];
   skills: LookupOption[];
+  onlineHeadhunting?: OnlineHeadhuntingResult | null;
+  configuredAiModel?: string | null;
+}
+
+export interface OnlineHeadhuntingSearchInput {
+  limit?: number | null;
+  sourceCodes?: string[] | null;
+  searchMoreFromRunId?: string | null;
+}
+
+export interface OnlineHeadhuntingQueuedResult {
+  requestId: string;
+  jobRequestId: string;
+  requestedByUserId: string;
+  status: string;
+  message: string;
+  requestedLimit: number;
+  dailyLeadLimit: number;
+  dailyLeadCountBeforeRun: number;
+  sourceCodes: string[];
+  queuedAtUtc: string;
+}
+
+export interface OnlineHeadhuntingResult {
+  run: OnlineHeadhuntingRunSummary;
+  leads: OnlineCandidateLead[];
+}
+
+export interface OnlineHeadhuntingRunSummary {
+  onlineCandidateSourcingRunId: string;
+  jobRequestId: string;
+  jobPostId?: string | null;
+  aiAgentRunId?: string | null;
+  searchMoreFromRunId?: string | null;
+  requestedLimit: number;
+  dailyLeadLimit: number;
+  dailyLeadCountBeforeRun: number;
+  leadsReturned: number;
+  searchStatus: string;
+  model: string;
+  sourceCodes: string[];
+  queries: string[];
+  createdAtUtc: string;
+}
+
+export interface OnlineCandidateLead {
+  onlineCandidateLeadId: string;
+  onlineCandidateSourcingRunId: string;
+  jobRequestId: string;
+  rank: number;
+  sourceCode: string;
+  sourceDisplayName: string;
+  sourceUrl: string;
+  displayName?: string | null;
+  currentTitle?: string | null;
+  currentCompany?: string | null;
+  locationText?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  profileUrl?: string | null;
+  evidenceSnippet: string;
+  matchScore: number;
+  confidence: string;
+  fitSummary: string;
+  strengths: string[];
+  matchedSkills: string[];
+  gaps: string[];
+  missingData: string[];
+  duplicateStatus: string;
+  duplicateCandidateId?: string | null;
+  duplicateCandidateName?: string | null;
+  duplicateExplanation?: string | null;
+  outreachDraft: string;
+  status: string;
+  createdAtUtc: string;
 }
 
 export interface RecruiterApplication {
@@ -627,6 +765,7 @@ export interface JobPostListItem {
   department: string;
   location: string;
   status: JobPostStatus;
+  applicantCount: number;
   recruiterOwnerName: string;
   publishedAt?: string | null;
   closedAt?: string | null;
@@ -819,6 +958,7 @@ export interface PortalMyApplicationItem {
   appliedAt: string;
   finalDecisionAt?: string | null;
   finalDecisionReason?: string | null;
+  offerStartDate?: string | null;
   interviewsPassed: number;
   interviewsTotal: number;
   interviewPassSummary: string;
@@ -874,6 +1014,7 @@ export interface AddManualCandidateInput {
   graduationYear?: number | null;
   invitationMessage?: string | null;
   parsedCvEvidence?: ParsedCandidateCvEvidenceInput | null;
+  onlineLeadId?: string | null;
 }
 
 export interface ParsedCandidateCvEvidenceInput {
@@ -993,6 +1134,52 @@ export interface SubmitInterviewFeedbackResult {
   status: string;
   recommendation: string;
   submittedAt: string;
+}
+
+export interface GenerateInterviewQuestionRecommendationsInput {
+  regenerateReason?: string | null;
+}
+
+export interface InterviewQuestionRecommendationSet {
+  recommendationSetId: string;
+  interviewId: string;
+  jobApplicationId: string;
+  jobPostInterviewRoundId: string;
+  agentRunId: string;
+  model: string;
+  promptVersion: string;
+  versionNumber: number;
+  summary: string;
+  rationale?: string | null;
+  regenerateReason?: string | null;
+  coverage: InterviewQuestionCoverage;
+  status: string;
+  generatedAtUtc: string;
+  questions: InterviewQuestionRecommendation[];
+}
+
+export interface InterviewQuestionCoverage {
+  roundType: string;
+  targetQuestionCount: number;
+  bankItemsUsed: number;
+  semanticSimilarityStatus: string;
+  skillsCovered: string[];
+  candidateEvidenceUsed: string[];
+}
+
+export interface InterviewQuestionRecommendation {
+  questionRecommendationId: string;
+  sortOrder: number;
+  questionText: string;
+  questionType: string;
+  roundType: string;
+  skillName?: string | null;
+  difficulty: string;
+  rationale: string;
+  expectedSignal: string;
+  followUps: string[];
+  evaluationRubric: string[];
+  sourceBankItemId?: string | null;
 }
 
 export interface ForwardToHiringManagerResult {
@@ -1184,8 +1371,9 @@ export interface ScheduleOfferPresentationMeetingInput {
 }
 
 export interface HiringOutcomeInput {
-  outcome: 'Offered' | 'Rejected' | 'OnHold' | 'Joined' | string;
+  outcome: 'Offered' | 'OfferDeclined' | 'Rejected' | 'OnHold' | 'Hired' | 'Joined' | string;
   reason?: string | null;
+  joiningDate?: string | null;
 }
 
 export interface HiringOutcomeResult {
@@ -1193,6 +1381,7 @@ export interface HiringOutcomeResult {
   jobRequestId: string;
   applicationStatus: string;
   jobRequestStatus: string;
+  joiningDate?: string | null;
   fulfilledPositions: number;
   requiredPositions: number;
 }

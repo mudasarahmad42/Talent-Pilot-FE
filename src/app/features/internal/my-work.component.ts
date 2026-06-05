@@ -40,14 +40,16 @@ interface MyWorkRow {
       </header>
 
       <section class="ops-panel">
-        <div class="ops-toolbar">
+        <div class="ops-toolbar my-work-toolbar">
           <label class="ops-search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input placeholder="Search assigned work" [value]="searchTerm()" (input)="updateSearch($event)" />
           </label>
-          <span class="ops-filter-button">Requests: {{ requestWorkRows().length }}</span>
-          <span class="ops-filter-button">Reviews: {{ hiringReviewWorkRows().length }}</span>
-          <span class="ops-filter-button">Interviews: {{ interviewWorkRows().length }}</span>
+          <div class="my-work-counts" aria-label="Assigned work counts">
+            <span class="ops-filter-button">Requests: {{ requestWorkRows().length }}</span>
+            <span class="ops-filter-button">Reviews: {{ hiringReviewWorkRows().length }}</span>
+            <span class="ops-filter-button">Interviews: {{ interviewWorkRows().length }}</span>
+          </div>
         </div>
 
         @if (hiringReviewError()) {
@@ -119,6 +121,25 @@ interface MyWorkRow {
         font-size: 16px;
       }
 
+      .my-work-toolbar {
+        align-items: center;
+      }
+
+      .my-work-counts {
+        align-items: center;
+        display: flex;
+        flex: 0 0 auto;
+        gap: 8px;
+      }
+
+      .my-work-counts .ops-filter-button {
+        align-items: center;
+        display: inline-flex;
+        justify-content: center;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
       .status-badge.warning {
         background: #fef3c7;
         border-color: #fde68a;
@@ -129,6 +150,17 @@ interface MyWorkRow {
         background: #fee2e2;
         border-color: #fecaca;
         color: #b91c1c;
+      }
+
+      @media (max-width: 760px) {
+        .my-work-toolbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .my-work-counts {
+          flex-wrap: wrap;
+        }
       }
     `,
   ],
@@ -310,7 +342,7 @@ export class MyWorkComponent implements OnInit {
   }
 
   private isActiveHiringReview(review: HiringManagerReviewListItem): boolean {
-    return ['hiringmanagerreview', 'offered', 'onhold'].includes(this.normalizeStatus(review.status).replaceAll(' ', ''));
+    return ['hiringmanagerreview', 'offered', 'hired', 'onhold'].includes(this.normalizeStatus(review.status).replaceAll(' ', ''));
   }
 
   private formatHiringReviewStatus(status: string): string {

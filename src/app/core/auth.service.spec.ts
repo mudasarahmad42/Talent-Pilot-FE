@@ -33,6 +33,23 @@ describe('AuthService', () => {
     roles: authResponse.user.roles,
     groups: [],
   };
+  const candidateAuthResponse: AuthResponse = {
+    accessToken: 'candidate-access-token',
+    refreshToken: 'candidate-refresh-token',
+    expiresAtUtc: '2030-01-01T00:00:00Z',
+    user: {
+      userId: 'candidate-1',
+      tenantId: 'tenant-1',
+      tenantDisplayName: 'Recruitment Ops',
+      displayName: 'Amara Haq',
+      email: 'amara.haq@example.com',
+      roleDisplayName: 'Candidate',
+      roles: [{ roleId: 'role-candidate', code: 'Candidate', displayName: 'Candidate', priority: 10 }],
+      permissions: [],
+      groups: [],
+      routes: ['/candidate'],
+    },
+  };
 
   let api: {
     get: ReturnType<typeof vi.fn>;
@@ -120,6 +137,16 @@ describe('AuthService', () => {
     service.loginWithCredentials(loginOption.email, 'demo', true, 'https://example.com/candidate/apply/post-1');
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/app/dashboard');
+  });
+
+  it('prevents candidate logins from using an internal app return URL', () => {
+    api.post.mockReturnValueOnce(of(candidateAuthResponse));
+    const service = TestBed.inject(AuthService);
+
+    service.loginWithCredentials(candidateAuthResponse.user.email, 'demo', true, '/app/dashboard');
+
+    expect(service.currentUser()?.roles).toEqual(['Candidate']);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/candidate');
   });
 
   it('keeps the current user unset when password authentication fails', () => {

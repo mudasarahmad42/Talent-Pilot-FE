@@ -82,6 +82,7 @@ export class RealtimeNotificationService {
 
     connection.on('NotificationReceived', (notification: RealtimeNotification) => {
       this.store.addRealtimeNotification(notification, this.auth.currentUser()?.id);
+      this.handleRefreshNotification(notification);
       this.notifications.info(`${notification.title}: ${notification.message}`);
     });
 
@@ -94,5 +95,29 @@ export class RealtimeNotificationService {
 
   private hubUrl(): string {
     return `${this.configuration.app.apiBaseUrl.replace(/\/api\/?$/, '')}/hubs/notifications`;
+  }
+
+  private handleRefreshNotification(notification: RealtimeNotification): void {
+    if (notification.metadata?.['refreshEntityType'] !== 'RecruiterSourcing') {
+      return;
+    }
+
+    const jobRequestId = notification.metadata['jobRequestId'] ||
+      (notification.entityType === 'JobRequest' ? notification.entityId : null);
+    if (!jobRequestId) {
+      return;
+    }
+
+    const leadCountText = notification.metadata['leadCount'];
+    const leadCount = leadCountText && Number.isFinite(Number(leadCountText))
+      ? Number(leadCountText)
+      : null;
+
+    this.store.notifyRecruiterSourcingUpdated(
+      jobRequestId,
+      notification.metadata['action'] || 'realtime',
+      leadCount,
+    );
+    void this.store.loadActivityForEntity(jobRequestId).catch(() => undefined);
   }
 }

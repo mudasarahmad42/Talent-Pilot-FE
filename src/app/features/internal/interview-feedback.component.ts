@@ -1,10 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { InterviewTask, SubmitInterviewFeedbackInput } from '../../core/models';
+import { ActivatedRoute } from '@angular/router';
+import {
+  InterviewQuestionRecommendation,
+  InterviewQuestionRecommendationSet,
+  InterviewTask,
+  SubmitInterviewFeedbackInput,
+} from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 import { AuthService } from '../../core/auth.service';
+import { FileDownloadService } from '../../core/services/file-download.service';
 
 type FeedbackForm = {
   technicalScore: number;
@@ -14,9 +20,11 @@ type FeedbackForm = {
   feedbackText: string;
 };
 
+type FeedbackTaskTab = 'active' | 'past';
+
 @Component({
   selector: 'app-interview-feedback',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   template: `
     <main class="page ops-page interview-feedback-page">
       <header class="ops-page-header interview-feedback-header">
@@ -24,16 +32,6 @@ type FeedbackForm = {
           <p class="eyebrow">Interview operations</p>
           <h1>Interview Feedback</h1>
           <p>Complete assigned candidate interviews and submit structured feedback for the recruiter.</p>
-        </div>
-        <div class="ops-header-actions">
-          <a class="btn secondary compact" routerLink="/app/interview-scheduling">
-            <span class="material-symbols-outlined" aria-hidden="true">event</span>
-            Schedule
-          </a>
-          <a class="btn secondary compact" routerLink="/app/candidate-pipeline">
-            <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
-            Pipeline
-          </a>
         </div>
       </header>
 
@@ -85,10 +83,47 @@ type FeedbackForm = {
         <section class="ops-panel interview-feedback-workbench">
           <div class="panel-header">
             <div>
-              <h2>Assigned interviews</h2>
-              <p class="muted">Feedback completion moves the candidate back to recruiter control for the next round.</p>
+              <h2>Interview tasks</h2>
+              <p class="muted">Active interviews need attention. Past interviews keep submitted feedback history separate.</p>
             </div>
-            <span class="status-badge info">{{ pendingCount() }} pending</span>
+            <span class="status-badge info">
+              {{ activeFeedbackTab() === 'active' ? pendingCount() + ' active' : completedCount() + ' past' }}
+            </span>
+          </div>
+
+          <div class="feedback-tab-list" role="tablist" aria-label="Interview task views">
+            <button
+              class="btn compact feedback-tab-button"
+              type="button"
+              role="tab"
+              id="active-interviews-tab"
+              aria-controls="interview-task-panel"
+              [class.active]="activeFeedbackTab() === 'active'"
+              [class.primary]="activeFeedbackTab() === 'active'"
+              [class.secondary]="activeFeedbackTab() !== 'active'"
+              [attr.aria-selected]="activeFeedbackTab() === 'active'"
+              (click)="setFeedbackTab('active')"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">pending_actions</span>
+              Active interviews
+              <strong>{{ pendingCount() }}</strong>
+            </button>
+            <button
+              class="btn compact feedback-tab-button"
+              type="button"
+              role="tab"
+              id="past-interviews-tab"
+              aria-controls="interview-task-panel"
+              [class.active]="activeFeedbackTab() === 'past'"
+              [class.primary]="activeFeedbackTab() === 'past'"
+              [class.secondary]="activeFeedbackTab() !== 'past'"
+              [attr.aria-selected]="activeFeedbackTab() === 'past'"
+              (click)="setFeedbackTab('past')"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">history</span>
+              Past interviews
+              <strong>{{ completedCount() }}</strong>
+            </button>
           </div>
 
           @if (tasks().length === 0) {
@@ -97,9 +132,31 @@ type FeedbackForm = {
               <strong>No interview tasks assigned</strong>
               <p>Scheduled interviews assigned to you will appear here when a recruiter starts an interview round.</p>
             </article>
+          } @else if (visibleInterviewTasks().length === 0) {
+            <article
+              id="interview-task-panel"
+              class="empty-state feedback-empty-state"
+              role="tabpanel"
+              [attr.aria-labelledby]="activeFeedbackTab() === 'active' ? 'active-interviews-tab' : 'past-interviews-tab'"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">{{ activeFeedbackTab() === 'active' ? 'pending_actions' : 'history' }}</span>
+              <strong>{{ activeFeedbackTab() === 'active' ? 'No active interviews' : 'No past interviews' }}</strong>
+              <p>
+                {{
+                  activeFeedbackTab() === 'active'
+                    ? 'Interviews that still need feedback will appear here.'
+                    : 'Completed interviews will appear here after feedback is submitted.'
+                }}
+              </p>
+            </article>
           } @else {
-            <div class="interview-task-grid">
-              @for (task of sortedTasks(); track task.interviewId) {
+            <div
+              id="interview-task-panel"
+              class="interview-task-grid"
+              role="tabpanel"
+              [attr.aria-labelledby]="activeFeedbackTab() === 'active' ? 'active-interviews-tab' : 'past-interviews-tab'"
+            >
+              @for (task of visibleInterviewTasks(); track task.interviewId) {
               <article class="interview-task-card" [class.completed-card]="task.status === 'Completed'" [class.overdue-card]="isOverdue(task)">
                 <header class="task-card-header">
                   <div class="task-title-stack">
@@ -177,6 +234,58 @@ type FeedbackForm = {
                   </div>
                 }
 
+                <section class="ai-question-panel" aria-label="AI interview question recommendations">
+                  <header class="ai-question-header">
+                    <div>
+                      <p class="eyebrow">AI interview questions</p>
+                      <h4>{{ task.roundName }} guide</h4>
+                    </div>
+                    <div class="ai-question-actions">
+                      @if (questionSet(task.interviewId)) {
+                        <button class="btn primary compact" type="button" (click)="openQuestionModal(task)">
+                          <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+                          Open questions
+                        </button>
+                      } @else {
+                        <button
+                          class="btn primary compact"
+                          type="button"
+                          [disabled]="isQuestionGenerating(task.interviewId) || isQuestionLoading(task.interviewId)"
+                          (click)="generateQuestions(task, false)"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">psychology</span>
+                          {{ isQuestionGenerating(task.interviewId) ? 'Generating...' : 'Generate' }}
+                        </button>
+                      }
+                    </div>
+                  </header>
+
+                  @if (questionError(task.interviewId)) {
+                    <p class="field-status error">{{ questionError(task.interviewId) }}</p>
+                  }
+
+                  @if (isQuestionLoading(task.interviewId)) {
+                    <p class="muted">Loading saved recommendations...</p>
+                  } @else if (questionSet(task.interviewId); as set) {
+                    <div class="ai-question-summary">
+                      <p>{{ set.summary }}</p>
+                    </div>
+
+                    <div class="ai-question-preview-list">
+                      <strong>{{ set.questions.length }} recommended questions</strong>
+                      @for (question of previewQuestions(set); track question.questionRecommendationId) {
+                        <p>
+                          <span>{{ question.sortOrder }}</span>
+                          {{ question.questionText }}
+                        </p>
+                      }
+                    </div>
+                    <p class="ai-question-disclaimer">Human interviewer owns the final assessment.</p>
+                  } @else {
+                    <p class="muted">No saved AI question set for this interview.</p>
+                  }
+                </section>
+
                 @if (task.status === 'Completed') {
                   <section class="completed-feedback">
                     <div>
@@ -213,6 +322,86 @@ type FeedbackForm = {
             </div>
           }
         </section>
+      }
+
+      @if (questionModalSet(); as set) {
+        @if (questionModalTask(); as task) {
+          <div class="feedback-modal-backdrop question-modal-backdrop" role="presentation">
+            <section class="question-modal-panel" role="dialog" aria-modal="true" aria-label="AI interview questions">
+              <header class="question-modal-header">
+                <div>
+                  <p class="eyebrow">AI interview questions</p>
+                  <h2>{{ task.candidateName }} - {{ task.roundName }}</h2>
+                  <p>{{ set.summary }}</p>
+                </div>
+                <button class="icon-button" type="button" aria-label="Close questions" (click)="closeQuestionModal()">
+                  <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+              </header>
+
+              <div class="question-modal-toolbar">
+                <div class="question-modal-actions">
+                  <button
+                    class="btn secondary compact"
+                    type="button"
+                    [disabled]="isQuestionDownloading(task.interviewId)"
+                    (click)="downloadQuestions(task, set)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">download</span>
+                    {{ isQuestionDownloading(task.interviewId) ? 'Preparing...' : 'Download DOCX' }}
+                  </button>
+                  <button
+                    class="btn secondary compact"
+                    type="button"
+                    [disabled]="isQuestionGenerating(task.interviewId)"
+                    (click)="generateQuestions(task, true)"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">sync</span>
+                    {{ isQuestionGenerating(task.interviewId) ? 'Regenerating...' : 'Regenerate' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="question-modal-list">
+                @for (question of set.questions; track question.questionRecommendationId) {
+                  <article class="modal-question-item">
+                    <header>
+                      <span class="question-order">{{ question.sortOrder }}</span>
+                      <div>
+                        <h3>{{ question.questionText }}</h3>
+                        <small>{{ question.skillName || question.roundType }} - {{ question.difficulty }}</small>
+                      </div>
+                    </header>
+                    <div class="ai-question-detail">
+                      <p><strong>Expected signal</strong>{{ question.expectedSignal }}</p>
+                      <p><strong>Rationale</strong>{{ question.rationale }}</p>
+                      @if (question.followUps.length) {
+                        <div>
+                          <strong>Follow-ups</strong>
+                          <ul>
+                            @for (followUp of question.followUps; track followUp) {
+                              <li>{{ followUp }}</li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                      @if (question.evaluationRubric.length) {
+                        <div>
+                          <strong>Rubric</strong>
+                          <ul>
+                            @for (rubric of question.evaluationRubric; track rubric) {
+                              <li>{{ rubric }}</li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                    </div>
+                  </article>
+                }
+              </div>
+            </section>
+          </div>
+        }
       }
 
       @if (feedbackTask(); as task) {
@@ -294,6 +483,22 @@ type FeedbackForm = {
       .interview-feedback-workbench {
         display: grid;
         gap: 18px;
+      }
+
+      .feedback-tab-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .feedback-tab-button {
+        align-items: center;
+        display: inline-flex;
+        gap: 8px;
+      }
+
+      .feedback-tab-button strong {
+        font-size: 0.78rem;
       }
 
       .interview-task-grid {
@@ -469,6 +674,155 @@ type FeedbackForm = {
         flex: 1 1 280px;
       }
 
+      .ai-question-panel {
+        background: #f8fbff;
+        border: 1px solid #d8e7f7;
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .ai-question-header {
+        align-items: start;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }
+
+      .ai-question-header h4 {
+        margin: 0;
+      }
+
+      .ai-question-actions .btn {
+        align-items: center;
+        display: inline-flex;
+        gap: 6px;
+      }
+
+      .ai-question-actions .material-symbols-outlined {
+        font-size: 18px;
+      }
+
+      .ai-question-summary {
+        display: grid;
+        gap: 8px;
+      }
+
+      .ai-question-summary p {
+        margin: 0;
+      }
+
+      .ai-question-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .ai-question-preview-list {
+        background: #fff;
+        border: 1px solid #dbe5f0;
+        border-radius: 8px;
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .ai-question-preview-list strong {
+        color: #1f3349;
+      }
+
+      .ai-question-preview-list p {
+        align-items: start;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: auto minmax(0, 1fr);
+        margin: 0;
+      }
+
+      .ai-question-preview-list p span {
+        align-items: center;
+        background: #0b72d9;
+        border-radius: 999px;
+        color: #fff;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        height: 22px;
+        justify-content: center;
+        width: 22px;
+      }
+
+      .ai-question-item {
+        background: #fff;
+        border: 1px solid #dbe5f0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .ai-question-item summary {
+        align-items: start;
+        cursor: pointer;
+        display: grid;
+        gap: 4px 10px;
+        grid-template-columns: auto minmax(0, 1fr);
+        padding: 12px;
+      }
+
+      .question-order {
+        align-items: center;
+        background: #0b72d9;
+        border-radius: 999px;
+        color: #fff;
+        display: inline-flex;
+        font-size: 0.8rem;
+        font-weight: 800;
+        height: 24px;
+        justify-content: center;
+        width: 24px;
+      }
+
+      .ai-question-item summary > span:not(.question-order),
+      .ai-question-item summary small {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .ai-question-item summary small {
+        color: #64748b;
+        grid-column: 2;
+      }
+
+      .ai-question-detail {
+        border-top: 1px solid #e2e8f0;
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .ai-question-detail p {
+        margin: 0;
+      }
+
+      .ai-question-detail strong {
+        color: #1f3349;
+        display: block;
+        font-size: 0.78rem;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+      }
+
+      .ai-question-detail ul {
+        margin: 6px 0 0;
+        padding-left: 18px;
+      }
+
+      .ai-question-disclaimer {
+        color: #45566e;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin: 0;
+      }
+
       .completed-feedback {
         display: grid;
         gap: 10px;
@@ -552,6 +906,108 @@ type FeedbackForm = {
         width: min(720px, 100%);
       }
 
+      .question-modal-backdrop {
+        align-items: center;
+        padding: 32px;
+      }
+
+      .question-modal-panel {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 24px 80px rgb(15 23 42 / 0.28);
+        display: grid;
+        gap: 14px;
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        max-height: min(88vh, 900px);
+        max-width: 1040px;
+        overflow: hidden;
+        padding: 20px;
+        width: min(1040px, 100%);
+      }
+
+      .question-modal-header {
+        align-items: start;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding-bottom: 14px;
+      }
+
+      .question-modal-header > div {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .question-modal-header h2,
+      .question-modal-header p {
+        margin: 0;
+      }
+
+      .question-modal-toolbar {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        display: flex;
+        gap: 14px;
+        justify-content: flex-end;
+        padding: 10px 12px;
+      }
+
+      .question-modal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .question-modal-actions .btn {
+        align-items: center;
+        display: inline-flex;
+        gap: 6px;
+      }
+
+      .question-modal-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
+        overflow: auto;
+        padding: 2px 8px 2px 0;
+      }
+
+      .modal-question-item {
+        background: #fff;
+        border: 1px solid #dbe5f0;
+        border-radius: 8px;
+        flex: 0 0 auto;
+        overflow: hidden;
+      }
+
+      .modal-question-item > header {
+        align-items: start;
+        background: #f8fbff;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: auto minmax(0, 1fr);
+        padding: 14px;
+      }
+
+      .modal-question-item h3 {
+        font-size: 1rem;
+        margin: 0 0 4px;
+      }
+
+      .modal-question-item small {
+        color: #64748b;
+      }
+
+      .modal-question-item .ai-question-detail {
+        padding: 14px;
+      }
+
       .score-grid {
         display: grid;
         gap: 12px;
@@ -571,11 +1027,27 @@ type FeedbackForm = {
       }
 
       @media (max-width: 760px) {
+        .question-modal-backdrop {
+          padding: 12px;
+        }
+
+        .question-modal-panel {
+          max-height: 94vh;
+          padding: 14px;
+        }
+
         .task-card-header,
         .task-location,
+        .ai-question-header,
+        .question-modal-header,
+        .question-modal-toolbar,
         .task-action-footer {
           align-items: stretch;
           flex-direction: column;
+        }
+
+        .question-modal-actions {
+          justify-content: flex-start;
         }
 
         .score-grid {
@@ -589,17 +1061,30 @@ export class InterviewFeedbackComponent implements OnInit {
   private readonly store = inject(TalentPilotStoreService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
+  private readonly fileDownloads = inject(FileDownloadService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly tasks = signal<InterviewTask[]>([]);
+  readonly questionRecommendations = signal<Record<string, InterviewQuestionRecommendationSet | null>>({});
+  readonly questionLoading = signal<Record<string, boolean>>({});
+  readonly questionGenerating = signal<Record<string, boolean>>({});
+  readonly questionDownloading = signal<Record<string, boolean>>({});
+  readonly questionErrors = signal<Record<string, string>>({});
+  readonly questionModalInterviewId = signal<string | null>(null);
   readonly feedbackTask = signal<InterviewTask | null>(null);
+  readonly activeFeedbackTab = signal<FeedbackTaskTab>('active');
   readonly message = signal('');
   readonly error = signal('');
   readonly feedbackError = signal('');
   readonly completedCount = computed(() => this.tasks().filter((task) => task.status === 'Completed').length);
   readonly pendingCount = computed(() => this.tasks().filter((task) => task.status !== 'Completed').length);
   readonly overdueCount = computed(() => this.tasks().filter((task) => this.isOverdue(task)).length);
+  readonly activeInterviewTasks = computed(() => this.sortedTasks().filter((task) => task.status !== 'Completed'));
+  readonly pastInterviewTasks = computed(() => this.sortedTasks().filter((task) => task.status === 'Completed'));
+  readonly visibleInterviewTasks = computed(() =>
+    this.activeFeedbackTab() === 'active' ? this.activeInterviewTasks() : this.pastInterviewTasks(),
+  );
 
   feedbackForm: FeedbackForm = this.emptyFeedbackForm();
 
@@ -612,7 +1097,9 @@ export class InterviewFeedbackComponent implements OnInit {
     this.error.set('');
     try {
       const result = await this.store.loadMyInterviewTasks();
-      this.tasks.set(result.items ?? []);
+      const items = result.items ?? [];
+      this.tasks.set(items);
+      await this.loadQuestionRecommendationsForTasks(items);
       this.openRequestedFeedbackTask();
     } catch {
       this.error.set('Interview tasks could not be loaded.');
@@ -641,6 +1128,10 @@ export class InterviewFeedbackComponent implements OnInit {
 
       return new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime();
     });
+  }
+
+  setFeedbackTab(tab: FeedbackTaskTab): void {
+    this.activeFeedbackTab.set(tab);
   }
 
   isOverdue(task: InterviewTask): boolean {
@@ -695,6 +1186,99 @@ export class InterviewFeedbackComponent implements OnInit {
 
     const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     return average.toFixed(1);
+  }
+
+  questionSet(interviewId: string): InterviewQuestionRecommendationSet | null {
+    return this.questionRecommendations()[interviewId] ?? null;
+  }
+
+  isQuestionLoading(interviewId: string): boolean {
+    return this.questionLoading()[interviewId] ?? false;
+  }
+
+  isQuestionGenerating(interviewId: string): boolean {
+    return this.questionGenerating()[interviewId] ?? false;
+  }
+
+  isQuestionDownloading(interviewId: string): boolean {
+    return this.questionDownloading()[interviewId] ?? false;
+  }
+
+  questionError(interviewId: string): string {
+    return this.questionErrors()[interviewId] ?? '';
+  }
+
+  previewQuestions(set: InterviewQuestionRecommendationSet): InterviewQuestionRecommendation[] {
+    return set.questions.slice(0, 2);
+  }
+
+  questionModalSet(): InterviewQuestionRecommendationSet | null {
+    const interviewId = this.questionModalInterviewId();
+    return interviewId ? this.questionSet(interviewId) : null;
+  }
+
+  questionModalTask(): InterviewTask | null {
+    const interviewId = this.questionModalInterviewId();
+    return interviewId ? this.tasks().find((task) => task.interviewId === interviewId) ?? null : null;
+  }
+
+  openQuestionModal(task: InterviewTask): void {
+    if (!this.questionSet(task.interviewId)) {
+      return;
+    }
+
+    this.questionModalInterviewId.set(task.interviewId);
+  }
+
+  closeQuestionModal(): void {
+    this.questionModalInterviewId.set(null);
+  }
+
+  async downloadQuestions(task: InterviewTask, set: InterviewQuestionRecommendationSet): Promise<void> {
+    if (this.isQuestionDownloading(task.interviewId)) {
+      return;
+    }
+
+    this.setQuestionDownloading(task.interviewId, true);
+    this.setQuestionError(task.interviewId, '');
+    try {
+      const response = await this.store.downloadInterviewQuestionRecommendationsDocx(task.interviewId);
+      const blob = response.body;
+      if (!blob) {
+        throw new Error('The question download response was empty.');
+      }
+
+      const fileName = this.fileNameFromContentDisposition(response.headers.get('content-disposition')) ??
+        this.defaultQuestionFileName(task, set);
+      this.fileDownloads.saveBlob(blob, fileName);
+      this.message.set('Interview question DOCX download started.');
+    } catch {
+      this.setQuestionError(task.interviewId, 'Interview questions could not be downloaded.');
+    } finally {
+      this.setQuestionDownloading(task.interviewId, false);
+    }
+  }
+
+  async generateQuestions(task: InterviewTask, regenerate: boolean): Promise<void> {
+    if (this.isQuestionGenerating(task.interviewId)) {
+      return;
+    }
+
+    this.setQuestionGenerating(task.interviewId, true);
+    this.setQuestionError(task.interviewId, '');
+    try {
+      const result = await this.store.generateInterviewQuestionRecommendations(task.interviewId, {
+        regenerateReason: regenerate ? 'Interviewer requested a refreshed question set.' : null,
+      });
+      this.questionRecommendations.update((items) => ({ ...items, [task.interviewId]: result }));
+    } catch {
+      this.setQuestionError(
+        task.interviewId,
+        'AI questions could not be generated. Confirm the LLM runtime and seeded question bank are available.',
+      );
+    } finally {
+      this.setQuestionGenerating(task.interviewId, false);
+    }
   }
 
   closeFeedback(): void {
@@ -760,6 +1344,66 @@ export class InterviewFeedbackComponent implements OnInit {
     }
 
     return this.isOverdue(task) ? 0 : 1;
+  }
+
+  private async loadQuestionRecommendationsForTasks(tasks: InterviewTask[]): Promise<void> {
+    const interviewIds = tasks.map((task) => task.interviewId);
+    this.questionRecommendations.update((items) =>
+      Object.fromEntries(Object.entries(items).filter(([interviewId]) => interviewIds.includes(interviewId))),
+    );
+
+    await Promise.all(
+      interviewIds.map(async (interviewId) => {
+        this.setQuestionLoading(interviewId, true);
+        try {
+          const result = await this.store.loadInterviewQuestionRecommendations(interviewId);
+          this.questionRecommendations.update((items) => ({ ...items, [interviewId]: result }));
+        } finally {
+          this.setQuestionLoading(interviewId, false);
+        }
+      }),
+    );
+  }
+
+  private setQuestionLoading(interviewId: string, loading: boolean): void {
+    this.questionLoading.update((items) => ({ ...items, [interviewId]: loading }));
+  }
+
+  private setQuestionGenerating(interviewId: string, generating: boolean): void {
+    this.questionGenerating.update((items) => ({ ...items, [interviewId]: generating }));
+  }
+
+  private setQuestionDownloading(interviewId: string, downloading: boolean): void {
+    this.questionDownloading.update((items) => ({ ...items, [interviewId]: downloading }));
+  }
+
+  private setQuestionError(interviewId: string, error: string): void {
+    this.questionErrors.update((items) => ({ ...items, [interviewId]: error }));
+  }
+
+  private fileNameFromContentDisposition(header: string | null): string | null {
+    if (!header) {
+      return null;
+    }
+
+    const encodedMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encodedMatch?.[1]) {
+      return decodeURIComponent(encodedMatch[1].trim());
+    }
+
+    const quotedMatch = header.match(/filename="([^"]+)"/i);
+    if (quotedMatch?.[1]) {
+      return quotedMatch[1].trim();
+    }
+
+    const plainMatch = header.match(/filename=([^;]+)/i);
+    return plainMatch?.[1]?.trim() || null;
+  }
+
+  private defaultQuestionFileName(task: InterviewTask, set: InterviewQuestionRecommendationSet): string {
+    const normalizedCandidate = task.candidateName.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-');
+    const normalizedRound = task.roundName.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-');
+    return `${normalizedCandidate || 'candidate'}-${normalizedRound || 'interview'}-questions-v${set.versionNumber}.docx`;
   }
 
   private openRequestedFeedbackTask(): void {

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin.guard';
 import { authGuard } from './core/auth.guard';
 import { candidateGuard } from './core/candidate.guard';
+import { internalAppGuard } from './core/internal-app.guard';
 import { permissionGuard } from './core/permission.guard';
 import { Permission } from './core/permissions';
 
@@ -13,7 +14,7 @@ export const routes: Routes = [
   },
   {
     path: 'app',
-    canActivate: [authGuard],
+    canActivate: [authGuard, internalAppGuard],
     loadComponent: () => import('./features/shell/app-shell.component').then((component) => component.AppShellComponent),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },

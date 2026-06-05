@@ -1,5 +1,17 @@
 # Codex Contributor Log
 
+## 2026-06-04 - Branch: mudasar-ahmad
+
+- Commit summary: pending AI interview question panel.
+- Purpose: show persisted AI question recommendations on the Interview Feedback task page with a compact card, modal detail view, DOCX download, explicit generate/regenerate actions, structured expected signals, follow-ups, rubric, coverage metadata, and no feedback auto-fill.
+- Files touched: `src/app/core/models.ts`, `src/app/core/talent-pilot-store.service.ts`, `src/app/features/internal/interview-feedback.component.ts`, interview feedback spec, API/schema docs, contributor log.
+- Screens/routes changed: `/app/interview-feedback`.
+- API contracts changed: consumes `GET /api/talent-pilot/interviews/{interviewId}/question-recommendations`, `POST /api/talent-pilot/interviews/{interviewId}/question-recommendations/generate`, and `GET /api/talent-pilot/interviews/{interviewId}/question-recommendations/download`.
+- Schema changed: no frontend schema changes; documents backend persisted recommendation sets.
+- Tests/builds run: `npm run build` passed with style budget warnings; focused `npm test -- --include src/app/features/internal/interview-feedback.component.spec.ts` passed with 4 tests.
+- Known risks: `interview-feedback.component.ts` now exceeds the Angular component style budget by 3.45 kB; build still succeeds.
+- AI assistance: Codex implemented and reviewed the changes.
+
 ## 2026-06-03 - Branch: mudasar-ahmad
 
 - Commit summary: pending remove misleading calendar connector email.

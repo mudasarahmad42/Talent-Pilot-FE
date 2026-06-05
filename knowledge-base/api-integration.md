@@ -28,13 +28,21 @@
 - `GET /api/talent-pilot/snapshot`
 - `GET /api/talent-pilot/job-requests/intake-options`
 - `POST /api/talent-pilot/job-requests`
+- `GET /api/talent-pilot/interviews/my-tasks`
+- `GET /api/talent-pilot/interviews/{interviewId}/question-recommendations`
+- `POST /api/talent-pilot/interviews/{interviewId}/question-recommendations/generate`
+- `GET /api/talent-pilot/interviews/{interviewId}/question-recommendations/download`
+- `GET /api/talent-pilot/job-requests/{jobRequestId}/recruiter-sourcing`
+- `POST /api/talent-pilot/job-requests/{jobRequestId}/online-headhunting/search`
+- `PATCH /api/talent-pilot/online-headhunting/leads/{onlineCandidateLeadId}/status`
+- `POST /api/talent-pilot/job-posts/{jobPostId}/manual-candidates`
 - `POST /api/talent-pilot/workflow-assignments/{assignmentId}/claim`
 - `PATCH /api/talent-pilot/notifications/*`
 
 ## Missing Frontend Contracts
 
 - Candidate job listing, job detail, apply, profile, applications, and interview APIs.
-- Recruiter candidate prospect, invite, job publishing, and hiring pipeline command APIs.
+- Dedicated recruiter candidate prospect APIs remain future scope; AI Headhunting MVP persists online leads and converts them only through the manual candidate invite endpoint.
+- Online Headhunting search is asynchronous: the POST returns queued metadata, and the frontend listens for realtime notification metadata `refreshEntityType=RecruiterSourcing` to reload the sourcing workspace when results are ready.
 - Interview scheduling and feedback APIs.
 - Hiring Manager final review and offer outcome APIs.
-- SignalR client connection for realtime notification refresh.

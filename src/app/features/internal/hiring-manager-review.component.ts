@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -18,6 +18,7 @@ import {
 } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
+import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.component';
 
 type OfferForm = {
   compensationText: string;
@@ -49,9 +50,15 @@ type PrintableOfferLetter = {
   acceptanceLines: string[];
 };
 
+type ReviewStatusFilterOption = {
+  value: string;
+  label: string;
+  count: number;
+};
+
 @Component({
   selector: 'app-hiring-manager-review',
-  imports: [CommonModule, FormsModule, MatTooltipModule, RouterLink],
+  imports: [CommonModule, FormsModule, MatTooltipModule, RouterLink, RagAssistantPanelComponent],
   template: `
     <main class="page ops-page">
       <header class="ops-page-header">
@@ -63,12 +70,6 @@ type PrintableOfferLetter = {
           } @else {
             <p>Review candidates after recruiter-led interviews and record the final hiring outcome.</p>
           }
-        </div>
-        <div class="ops-header-actions">
-          @if (detail()) {
-            <button class="btn secondary compact" type="button" (click)="backToList()">Back to reviews</button>
-          }
-          <a class="btn secondary compact" routerLink="/app/offer-onboarding">Offer Outcome</a>
         </div>
       </header>
 
@@ -83,7 +84,8 @@ type PrintableOfferLetter = {
         }
 
         @if (detail(); as data) {
-          <section class="hiring-review-layout">
+          <section class="hiring-review-shell">
+            <div class="hiring-review-layout">
             <article class="ops-panel candidate-summary-card">
               <div class="panel-header">
                 <div>
@@ -386,11 +388,19 @@ type PrintableOfferLetter = {
                   <span>Outcome</span>
                   <select name="hiringOutcome" [(ngModel)]="outcomeForm.outcome">
                     <option value="Offered">Offered</option>
+                    <option value="Hired">Candidate accepted / Hired</option>
+                    <option value="Joined">Joined</option>
+                    <option value="OfferDeclined">Offer declined</option>
                     <option value="Rejected">Rejected</option>
                     <option value="OnHold">On Hold</option>
-                    <option value="Joined">Joined</option>
                   </select>
                 </label>
+                @if (outcomeRequiresJoiningDate(outcomeForm.outcome)) {
+                  <label class="stitch-field">
+                    <span>Joining date</span>
+                    <input name="hiringOutcomeJoiningDate" type="date" [(ngModel)]="outcomeForm.joiningDate" />
+                  </label>
+                }
                 <label class="stitch-field">
                   <span>Reason / notes</span>
                   <textarea name="hiringOutcomeReason" rows="4" [(ngModel)]="outcomeForm.reason"></textarea>
@@ -418,6 +428,19 @@ type PrintableOfferLetter = {
                 </button>
               }
             </article>
+            </div>
+            <app-rag-assistant-panel
+              class="hiring-assistant-rail"
+              title="Decision Assistant"
+              subtitle="Evidence from candidate profile, source, recruiter notes, and interviews."
+              placeholder="Ask about candidate evidence or comparison..."
+              contextType="HiringDecisionBrief"
+              [contextEntityId]="currentApplicationId()"
+              [focusEntityId]="currentApplicationId()"
+              [suggestedQuestions]="hiringAssistantQuestions"
+              [floatingLauncher]="true"
+              launcherLabel="Open decision assistant"
+            />
           </section>
         } @else {
           <section class="review-list-panel ops-panel">
@@ -426,7 +449,7 @@ type PrintableOfferLetter = {
                 <h2>Assigned Hiring Reviews</h2>
                 <p class="muted">Candidates forwarded by recruiters after interview rounds are completed or skipped.</p>
               </div>
-              <span class="status-badge info">{{ reviews().length }} review(s)</span>
+              <span class="status-badge info">{{ filteredReviews().length }} of {{ reviews().length }} review(s)</span>
             </div>
 
             @if (reviews().length === 0) {
@@ -435,30 +458,58 @@ type PrintableOfferLetter = {
                 <p>Recruiters forward candidates here after interviews are complete.</p>
               </div>
             } @else {
-              <div class="hm-review-table" role="table" aria-label="Hiring manager reviews">
-                <div class="hm-review-header" role="row">
-                  <span>Candidate</span>
-                  <span>Job</span>
+              <div class="review-list-toolbar" aria-label="Hiring review filters">
+                <label class="stitch-field review-status-filter">
                   <span>Status</span>
-                  <span>Updated</span>
-                  <span>Action</span>
-                </div>
-                @for (item of reviews(); track item.jobApplicationId) {
-                  <article class="hm-review-row" role="row">
-                    <div>
-                      <strong>{{ item.candidateName }}</strong>
-                      <small>{{ item.candidateEmail }}</small>
-                    </div>
-                    <div>
-                      <strong>{{ item.jobTitle }}</strong>
-                      <small>{{ item.requestCode }} - {{ item.client }} - {{ item.department }}</small>
-                    </div>
-                    <span class="status-badge info">{{ formatStatusLabel(item.status) }}</span>
-                    <span>{{ item.updatedAt | date: 'medium' }}</span>
-                    <a class="table-link-button" [routerLink]="reviewLink(item)">Open review</a>
-                  </article>
-                }
+                  <select
+                    name="hiringReviewStatusFilter"
+                    [ngModel]="reviewStatusFilter()"
+                    (ngModelChange)="reviewStatusFilter.set($event)"
+                  >
+                    @for (option of reviewStatusOptions(); track option.value) {
+                      <option [value]="option.value">{{ option.label }} ({{ option.count }})</option>
+                    }
+                  </select>
+                </label>
               </div>
+
+              @if (filteredReviews().length === 0) {
+                <div class="empty-state">
+                  <strong>No reviews match this status</strong>
+                  <p>Choose another status to see assigned candidates.</p>
+                </div>
+              } @else {
+                <div class="hm-review-table" role="table" aria-label="Hiring manager reviews">
+                  <div class="hm-review-header" role="row">
+                    <span>Candidate</span>
+                    <span>Job</span>
+                    <span>Status</span>
+                    <span>Updated</span>
+                    <span>Action</span>
+                  </div>
+                  @for (item of filteredReviews(); track item.jobApplicationId) {
+                    <article class="hm-review-row" role="row">
+                      <div>
+                        <strong>{{ item.candidateName }}</strong>
+                        <small>{{ item.candidateEmail }}</small>
+                      </div>
+                      <div>
+                        <strong>{{ item.jobTitle }}</strong>
+                        <small>{{ item.requestCode }} - {{ item.client }} - {{ item.department }}</small>
+                      </div>
+                      <div class="hm-review-status-cell">
+                        <span [class]="reviewStatusBadgeClass(item.status)">{{ formatStatusLabel(item.status) }}</span>
+                      </div>
+                      <div class="hm-review-date-cell">
+                        <span>{{ item.updatedAt | date: 'medium' }}</span>
+                      </div>
+                      <div class="hm-review-action-cell">
+                        <a class="table-link-button" [routerLink]="reviewLink(item)">Open review</a>
+                      </div>
+                    </article>
+                  }
+                </div>
+              }
             }
           </section>
         }
@@ -467,10 +518,27 @@ type PrintableOfferLetter = {
   `,
   styles: [
     `
+      .hiring-review-shell {
+        align-items: start;
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
       .hiring-review-layout {
         display: grid;
         gap: 16px;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        min-width: 0;
+      }
+
+      .hiring-assistant-rail {
+        min-width: 0;
+      }
+
+      .hiring-review-layout > .ops-panel {
+        max-width: 100%;
+        min-width: 0;
       }
 
       .full-span {
@@ -499,6 +567,25 @@ type PrintableOfferLetter = {
 
       .advisory-badge {
         cursor: help;
+      }
+
+      .review-list-toolbar {
+        align-items: flex-end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 4px 0 16px;
+      }
+
+      .review-status-filter {
+        margin: 0;
+        max-width: 280px;
+        min-width: 220px;
+        width: 100%;
+      }
+
+      .review-status-filter select {
+        min-height: 42px;
       }
 
       .review-meta-grid,
@@ -549,7 +636,9 @@ type PrintableOfferLetter = {
 
       .hm-review-header,
       .hm-review-row {
-        grid-template-columns: 1.2fr 1.6fr 0.8fr 0.9fr 0.7fr;
+        grid-template-columns:
+          minmax(180px, 1.2fr) minmax(250px, 1.55fr) minmax(112px, 0.65fr) minmax(140px, 0.82fr)
+          minmax(92px, 0.55fr);
       }
 
       .hiring-interview-header,
@@ -565,9 +654,36 @@ type PrintableOfferLetter = {
       .hiring-interview-row > *,
       .hm-review-header span,
       .hm-review-row > * {
+        align-content: center;
         border-bottom: 1px solid #e2e8f0;
         min-width: 0;
         padding: 14px 16px;
+      }
+
+      .hm-review-status-cell,
+      .hm-review-action-cell {
+        align-items: center;
+        display: flex;
+      }
+
+      .hm-review-status-cell .status-badge {
+        flex: 0 1 auto;
+        justify-content: center;
+        line-height: 1.15;
+        max-width: 100%;
+        min-height: auto;
+        padding: 5px 10px;
+        white-space: nowrap;
+        width: auto;
+      }
+
+      .hm-review-date-cell {
+        color: #0f172a;
+        line-height: 1.35;
+      }
+
+      .hm-review-action-cell .table-link-button {
+        line-height: 1.2;
       }
 
       .hiring-interview-row:last-child > *,
@@ -719,6 +835,7 @@ type PrintableOfferLetter = {
       }
 
       @media (max-width: 980px) {
+        .hiring-review-shell,
         .hiring-review-layout,
         .review-meta-grid,
         .offer-form-grid {
@@ -768,12 +885,19 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   readonly decisionBriefAgentTooltip =
     'Generated by AI Agent: Hiring Manager Decision Brief (hiring-manager-decision-brief). It summarizes candidate profile, source details, recruiter notes, job summary, interview statuses, scores, recommendations, and skipped-round reasons.';
+  readonly hiringAssistantQuestions = [
+    'Summarize the candidate evidence.',
+    'What concerns are raised in interviews?',
+    'Is there enough evidence to proceed?',
+    'What should I verify before deciding?',
+  ];
 
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
   readonly message = signal('');
   readonly reviews = signal<HiringManagerReviewListItem[]>([]);
+  readonly reviewStatusFilter = signal('all');
   readonly detail = signal<HiringReviewDetail | null>(null);
   readonly reportingManagerOptions = signal<ReportingManagerOption[]>([]);
   readonly reportingManagerSearchText = signal('');
@@ -784,12 +908,57 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
 
   offerForm: OfferForm = this.emptyOfferForm();
   meetingForm: MeetingForm = this.emptyMeetingForm();
-  outcomeForm: HiringOutcomeInput = { outcome: 'Offered', reason: '' };
+  outcomeForm: HiringOutcomeInput = { outcome: 'Offered', reason: '', joiningDate: '' };
   closeReason = '';
 
   private readonly reportingManagerPageSize = 20;
   private reportingManagerSearchDebounce?: ReturnType<typeof setTimeout>;
   private reportingManagerRequestId = 0;
+
+  readonly reviewStatusOptions = computed<ReviewStatusFilterOption[]>(() => {
+    const counts = new Map<string, ReviewStatusFilterOption>();
+    for (const review of this.reviews()) {
+      const value = this.normalizeStatus(review.status) || 'notrecorded';
+      const current = counts.get(value);
+      if (current) {
+        current.count += 1;
+      } else {
+        counts.set(value, {
+          value,
+          label: this.formatStatusLabel(review.status),
+          count: 1,
+        });
+      }
+    }
+
+    const statusOrder = new Map(
+      ['hiringmanagerreview', 'offered', 'hired', 'joined', 'onhold', 'rejected', 'offerdeclined'].map(
+        (status, index) => [status, index],
+      ),
+    );
+
+    return [
+      { value: 'all', label: 'All statuses', count: this.reviews().length },
+      ...Array.from(counts.values()).sort((left, right) => {
+        const leftOrder = statusOrder.get(left.value) ?? Number.MAX_SAFE_INTEGER;
+        const rightOrder = statusOrder.get(right.value) ?? Number.MAX_SAFE_INTEGER;
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder;
+        }
+
+        return left.label.localeCompare(right.label);
+      }),
+    ];
+  });
+
+  readonly filteredReviews = computed(() => {
+    const selectedStatus = this.reviewStatusFilter();
+    if (selectedStatus === 'all') {
+      return this.reviews();
+    }
+
+    return this.reviews().filter((review) => this.normalizeStatus(review.status) === selectedStatus);
+  });
 
   ngOnInit(): void {
     void this.load();
@@ -958,8 +1127,13 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
 
   async recordOutcome(data: HiringReviewDetail): Promise<void> {
     this.clearStatus();
-    if ((this.outcomeForm.outcome === 'Rejected' || this.outcomeForm.outcome === 'OnHold') && !this.outcomeForm.reason?.trim()) {
-      this.error.set('A reason is required for rejected or on-hold outcomes.');
+    if (this.outcomeRequiresReason(this.outcomeForm.outcome) && !this.outcomeForm.reason?.trim()) {
+      this.error.set('A reason is required for declined, rejected, or on-hold outcomes.');
+      return;
+    }
+
+    if (this.outcomeRequiresJoiningDate(this.outcomeForm.outcome) && !this.outcomeForm.joiningDate) {
+      this.error.set('Joining date is required when the candidate is hired or joined.');
       return;
     }
 
@@ -968,6 +1142,9 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
       const result = await this.store.recordHiringOutcome(this.currentApplicationId(), {
         outcome: this.outcomeForm.outcome,
         reason: this.blankToNull(this.outcomeForm.reason),
+        joiningDate: this.outcomeRequiresJoiningDate(this.outcomeForm.outcome)
+          ? this.blankToNull(this.outcomeForm.joiningDate)
+          : null,
       });
       await this.reloadDetail(result.jobApplicationId, `${data.candidate.displayName} marked ${result.applicationStatus}.`);
     } catch {
@@ -1661,6 +1838,27 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
       .trim();
   }
 
+  reviewStatusBadgeClass(status?: string | null): string {
+    const normalizedStatus = (status ?? '').toLowerCase().replace(/[\s_-]+/g, '');
+    if (['joined', 'accepted', 'offeraccepted'].includes(normalizedStatus)) {
+      return 'status-badge status-badge--success';
+    }
+
+    if (['rejected', 'declined', 'offerdeclined'].includes(normalizedStatus)) {
+      return 'status-badge status-badge--danger';
+    }
+
+    if (['onhold', 'hold'].includes(normalizedStatus)) {
+      return 'status-badge status-badge--hold';
+    }
+
+    if (['offered', 'offer', 'offerextended'].includes(normalizedStatus)) {
+      return 'status-badge status-badge--offer';
+    }
+
+    return 'status-badge info';
+  }
+
   isRequestClosed(data: HiringReviewDetail): boolean {
     return this.isSameStatus(data.job.requestStatus, 'Closed');
   }
@@ -1715,7 +1913,7 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
     this.message.set(message);
   }
 
-  private currentApplicationId(): string {
+  currentApplicationId(): string {
     return this.route.snapshot.paramMap.get('jobApplicationId') ?? this.detail()?.offerLetter?.jobApplicationId ?? '';
   }
 
@@ -1725,6 +1923,7 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
     this.outcomeForm = {
       outcome: this.hiringOutcomeFormStatus(detail.job.applicationStatus),
       reason: detail.job.finalOutcomeReason ?? '',
+      joiningDate: detail.offerLetter?.startDate?.slice(0, 10) ?? '',
     };
     this.closeReason = '';
     this.reportingManagerRequestId += 1;
@@ -1795,9 +1994,22 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
 
   private hiringOutcomeFormStatus(status?: string | null): HiringOutcomeInput['outcome'] {
     const normalized = status?.trim();
-    return normalized === 'Rejected' || normalized === 'OnHold' || normalized === 'Joined' || normalized === 'Offered'
+    return normalized === 'Rejected' ||
+      normalized === 'OnHold' ||
+      normalized === 'OfferDeclined' ||
+      normalized === 'Hired' ||
+      normalized === 'Joined' ||
+      normalized === 'Offered'
       ? normalized
       : 'Offered';
+  }
+
+  outcomeRequiresJoiningDate(outcome?: string | null): boolean {
+    return outcome === 'Hired' || outcome === 'Joined';
+  }
+
+  private outcomeRequiresReason(outcome?: string | null): boolean {
+    return outcome === 'Rejected' || outcome === 'OnHold' || outcome === 'OfferDeclined';
   }
 
   private isSameStatus(status: string | null | undefined, expected: string): boolean {

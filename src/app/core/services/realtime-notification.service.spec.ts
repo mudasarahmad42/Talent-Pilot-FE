@@ -43,6 +43,8 @@ describe('RealtimeNotificationService', () => {
   const currentUser = signal({ id: 'pmo-1' });
   const store = {
     addRealtimeNotification: vi.fn(),
+    loadActivityForEntity: vi.fn().mockResolvedValue(undefined),
+    notifyRecruiterSourcingUpdated: vi.fn(),
   };
   const notifications = {
     info: vi.fn(),
@@ -56,6 +58,9 @@ describe('RealtimeNotificationService', () => {
     stop.mockClear();
     on.mockClear();
     store.addRealtimeNotification.mockClear();
+    store.loadActivityForEntity.mockClear();
+    store.loadActivityForEntity.mockResolvedValue(undefined);
+    store.notifyRecruiterSourcingUpdated.mockClear();
     notifications.info.mockClear();
 
     TestBed.configureTestingModule({
@@ -113,5 +118,35 @@ describe('RealtimeNotificationService', () => {
     expect(notifications.info).toHaveBeenCalledWith(
       'New PMO Review: Senior React Developer is waiting for PMO review.',
     );
+  });
+
+  it('refreshes recruiter sourcing when a realtime headhunting notification arrives', async () => {
+    authenticated.set(true);
+    const service = TestBed.inject(RealtimeNotificationService);
+    await service.connect();
+
+    connectionHandlers.get('NotificationReceived')?.({
+      notificationId: 'notification-2',
+      title: 'AI Headhunting results ready',
+      message: '2 lead-only result(s) are ready for recruiter review.',
+      category: 'OnlineHeadhunting',
+      severity: 'Info',
+      entityType: 'JobRequest',
+      entityId: 'jr-1',
+      createdAtUtc: '2026-06-04T00:00:00Z',
+      metadata: {
+        refreshEntityType: 'RecruiterSourcing',
+        jobRequestId: 'jr-1',
+        action: 'online_headhunting_completed',
+        leadCount: '2',
+      },
+    });
+
+    expect(store.notifyRecruiterSourcingUpdated).toHaveBeenCalledWith(
+      'jr-1',
+      'online_headhunting_completed',
+      2,
+    );
+    expect(store.loadActivityForEntity).toHaveBeenCalledWith('jr-1');
   });
 });
