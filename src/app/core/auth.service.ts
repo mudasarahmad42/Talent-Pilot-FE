@@ -14,6 +14,16 @@ const AUTH_REFRESH_TOKEN_KEY = 'talent-pilot.auth.refresh-token';
 const AUTH_EXPIRES_AT_KEY = 'talent-pilot.auth.expires-at';
 const AUTH_USER_KEY = 'talent-pilot.auth.current-user';
 const ADMIN_ROLES: readonly TalentPilotRole[] = ['TenantAdmin'];
+const INTERNAL_APP_ROLES: readonly TalentPilotRole[] = [
+  'TenantAdmin',
+  'Presales',
+  'PMO',
+  'Recruiter',
+  'HiringManager',
+  'HOD',
+  'Interviewer',
+  'Employee',
+];
 const AUTH_STORAGE_AREAS: readonly StorageArea[] = ['session', 'local'];
 
 @Injectable({ providedIn: 'root' })
@@ -178,7 +188,7 @@ export class AuthService {
       return;
     }
 
-    const safeReturnUrl = this.safeReturnUrl(returnUrl);
+    const safeReturnUrl = this.safeReturnUrl(returnUrl, user);
     if (safeReturnUrl) {
       void this.router.navigateByUrl(safeReturnUrl);
       return;
@@ -259,13 +269,25 @@ export class AuthService {
     }
   }
 
-  private safeReturnUrl(returnUrl?: string | null): string | null {
+  private safeReturnUrl(returnUrl: string | null | undefined, user: CurrentUser): string | null {
     const value = returnUrl?.trim();
     if (!value || !value.startsWith('/') || value.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
       return null;
     }
 
+    if (this.isCandidateOnly(user) && this.isInternalAppUrl(value)) {
+      return '/candidate';
+    }
+
     return value;
+  }
+
+  private isCandidateOnly(user: CurrentUser): boolean {
+    return user.roles.includes('Candidate') && !user.roles.some((role) => INTERNAL_APP_ROLES.includes(role));
+  }
+
+  private isInternalAppUrl(value: string): boolean {
+    return ['/app', '/admin-center', '/settings'].some((prefix) => value === prefix || value.startsWith(`${prefix}/`));
   }
 
   private toLoginErrorMessage(error: unknown): string {

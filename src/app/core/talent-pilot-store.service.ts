@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { HttpResponse } from '@angular/common/http';
+import { HttpContext, HttpResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
   ActivityEvent,
@@ -15,6 +15,7 @@ import {
   DraftJobDescriptionResult,
   EmployeeReferralDecisionInput,
   ForwardToHiringManagerResult,
+  GenerateInterviewQuestionRecommendationsInput,
   GenerateOfferLetterInput,
   HistoricalApplicationDetail,
   HiringManagerDashboard,
@@ -22,12 +23,17 @@ import {
   HiringOutcomeInput,
   HiringOutcomeResult,
   HiringReviewDetail,
+  InterviewQuestionRecommendationSet,
   InterviewTaskList,
   JobPost,
   JobPublishing,
   JobRequest,
   JobRequestIntakeOptions,
   Notification,
+  OnlineCandidateLead,
+  OnlineHeadhuntingQueuedResult,
+  OnlineHeadhuntingResult,
+  OnlineHeadhuntingSearchInput,
   OperationsPerson,
   OperationsSnapshot,
   ParseCandidateCvResult,
@@ -42,6 +48,11 @@ import {
   PortalJobPostList,
   PortalMyApplications,
   RankApplicantRankingsResult,
+  RagAssistantContextType,
+  RagChatRequest,
+  RagChatResponse,
+  RagConversation,
+  RagFeedbackRequest,
   PortalUploadApplicationDocumentResult,
   RankBenchMatchesResult,
   RankTalentRediscoveryResult,
@@ -68,6 +79,7 @@ import {
   WorkflowAssignment,
 } from './models';
 import { AuthService } from './auth.service';
+import { SUPPRESS_API_ERROR_TOAST } from './interceptors/api-error.interceptor';
 import { ApiService } from './services/api.service';
 
 @Injectable({ providedIn: 'root' })
@@ -83,6 +95,12 @@ export class TalentPilotStoreService {
   private readonly intakeOptionsSignal = signal<JobRequestIntakeOptions | null>(null);
   private readonly pmoReviewsSignal = signal<Record<string, PmoReview>>({});
   private readonly loadingSignal = signal(false);
+  private readonly recruiterSourcingRefreshSignal = signal<{
+    jobRequestId: string;
+    reason: string;
+    leadCount?: number | null;
+    at: string;
+  } | null>(null);
 
   readonly people = this.peopleSignal.asReadonly();
   readonly jobRequests = this.jobRequestsSignal.asReadonly();
@@ -92,6 +110,7 @@ export class TalentPilotStoreService {
   readonly intakeOptions = this.intakeOptionsSignal.asReadonly();
   readonly pmoReviews = this.pmoReviewsSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
+  readonly recruiterSourcingRefresh = this.recruiterSourcingRefreshSignal.asReadonly();
 
   readonly openJobRequests = computed(() =>
     this.jobRequestsSignal().filter((request) => request.stage !== 'Closed'),
@@ -415,6 +434,73 @@ export class TalentPilotStoreService {
     );
   }
 
+  async searchOnlineCandidates(
+    jobRequestId: string,
+    input: OnlineHeadhuntingSearchInput,
+  ): Promise<OnlineHeadhuntingQueuedResult> {
+    return firstValueFrom(
+      this.api.post<OnlineHeadhuntingQueuedResult, OnlineHeadhuntingSearchInput>(
+        `talent-pilot/job-requests/${jobRequestId}/online-headhunting/search`,
+        input,
+      ),
+    );
+  }
+
+  notifyRecruiterSourcingUpdated(jobRequestId: string, reason = 'realtime', leadCount: number | null = null): void {
+    this.recruiterSourcingRefreshSignal.set({
+      jobRequestId,
+      reason,
+      leadCount,
+      at: new Date().toISOString(),
+    });
+  }
+
+  async updateOnlineCandidateLeadStatus(
+    onlineCandidateLeadId: string,
+    status: 'New' | 'Shortlisted' | 'Rejected',
+  ): Promise<OnlineCandidateLead> {
+    return firstValueFrom(
+      this.api.patch<OnlineCandidateLead, { status: string }>(
+        `talent-pilot/online-headhunting/leads/${onlineCandidateLeadId}/status`,
+        { status },
+      ),
+    );
+  }
+
+  async sendAssistantMessage(input: RagChatRequest): Promise<RagChatResponse> {
+    return firstValueFrom(this.api.post<RagChatResponse, RagChatRequest>('talent-pilot/ai-assistant/messages', input));
+  }
+
+  async loadAssistantConversation(
+    contextType: RagAssistantContextType,
+    contextEntityId: string,
+    focusEntityId?: string | null,
+  ): Promise<RagConversation | null> {
+    const params = new URLSearchParams();
+    params.set('contextType', contextType);
+    params.set('contextEntityId', contextEntityId);
+    if (focusEntityId) {
+      params.set('focusEntityId', focusEntityId);
+    }
+
+    const conversations = await firstValueFrom(
+      this.api.get<RagConversation[]>(`talent-pilot/ai-assistant/conversations?${params.toString()}`),
+    );
+    return conversations[0] ?? null;
+  }
+
+  async loadAssistantConversationById(conversationId: string): Promise<RagConversation> {
+    return firstValueFrom(
+      this.api.get<RagConversation>(`talent-pilot/ai-assistant/conversations/${conversationId}`),
+    );
+  }
+
+  async submitAssistantFeedback(messageId: string, input: RagFeedbackRequest): Promise<void> {
+    await firstValueFrom(
+      this.api.post<void, RagFeedbackRequest>(`talent-pilot/ai-assistant/messages/${messageId}/feedback`, input),
+    );
+  }
+
   async sendCandidateInvitations(
     jobRequestId: string,
     input: SendCandidateInvitationsInput,
@@ -573,6 +659,39 @@ export class TalentPilotStoreService {
 
   async loadMyInterviewTasks(): Promise<InterviewTaskList> {
     return firstValueFrom(this.api.get<InterviewTaskList>('talent-pilot/interviews/my-tasks'));
+  }
+
+  async loadInterviewQuestionRecommendations(interviewId: string): Promise<InterviewQuestionRecommendationSet | null> {
+    try {
+      return await firstValueFrom(
+        this.api.get<InterviewQuestionRecommendationSet>(
+          `talent-pilot/interviews/${interviewId}/question-recommendations`,
+          {
+            context: new HttpContext().set(SUPPRESS_API_ERROR_TOAST, true),
+          },
+        ),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  async generateInterviewQuestionRecommendations(
+    interviewId: string,
+    input: GenerateInterviewQuestionRecommendationsInput = {},
+  ): Promise<InterviewQuestionRecommendationSet> {
+    return firstValueFrom(
+      this.api.post<InterviewQuestionRecommendationSet, GenerateInterviewQuestionRecommendationsInput>(
+        `talent-pilot/interviews/${interviewId}/question-recommendations/generate`,
+        input,
+      ),
+    );
+  }
+
+  async downloadInterviewQuestionRecommendationsDocx(interviewId: string): Promise<HttpResponse<Blob>> {
+    return firstValueFrom(
+      this.api.download(`talent-pilot/interviews/${interviewId}/question-recommendations/download`),
+    );
   }
 
   async submitInterviewFeedback(

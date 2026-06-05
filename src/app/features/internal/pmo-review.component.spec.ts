@@ -6,7 +6,13 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 import { PmoReviewComponent } from './pmo-review.component';
 
 describe('PmoReviewComponent', () => {
-  const currentUser = signal({ id: 'pmo-1', roles: ['PMO'] });
+  const currentUser = signal<{
+    id: string;
+    roles: string[];
+    displayName?: string;
+    name?: string;
+    email?: string;
+  }>({ id: 'pmo-1', roles: ['PMO'] });
   const review = {
     jobRequest: {
       id: 'jr-1',
@@ -117,6 +123,24 @@ describe('PmoReviewComponent', () => {
     currentUser.set({ id: 'other-pmo', roles: ['PMO'] });
 
     expect(component.canRank()).toBe(false);
+  });
+
+  it('shows assignment status in the header without duplicating PMO Queue navigation', () => {
+    const text = fixture.nativeElement.textContent;
+    const statusBadge = fixture.nativeElement.querySelector('[aria-label="PMO review assignment status"]') as HTMLElement;
+
+    expect(text).not.toContain('PMO Queue');
+    expect(text).toContain('Assignment: Claimed');
+    expect(statusBadge.className).toContain('status-badge--claimed');
+  });
+
+  it('explains PMO review visibility when the current role cannot open the page', () => {
+    currentUser.set({ id: 'interviewer-1', roles: ['Interviewer'], displayName: 'Bilal Hussain' });
+    component.loadError.set('Generic unavailable message.');
+
+    expect(component.pmoUnavailableTitle()).toBe('PMO Review not visible for this role');
+    expect(component.pmoUnavailableMessage()).toContain('Bilal Hussain');
+    expect(component.pmoUnavailableMessage()).toContain('Switch to a PMO or Tenant Admin demo account');
   });
 
   it('runs Bench Matching AI without making PMO recommendation decisions automatically', async () => {

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AfterViewChecked, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -11,6 +11,7 @@ import {
   LinearScale,
   Tooltip,
 } from 'chart.js';
+import { Subscription } from 'rxjs';
 import {
   AddManualCandidateInput,
   ApplicantRankingMatch,
@@ -22,6 +23,8 @@ import {
   JobPostInterviewRound,
   LookupOption,
   ManualCandidateSearchItem,
+  OnlineCandidateLead,
+  OnlineHeadhuntingResult,
   ParseCandidateCvResult,
   ParsedCandidateCvEvidenceInput,
   RecruiterApplication,
@@ -34,6 +37,7 @@ import {
 } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
+import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.component';
 import {
   DEFAULT_SKILL_GROUP_LABEL,
   SkillGroupTab,
@@ -69,9 +73,11 @@ type ManualCandidateForm = {
   graduationYear: number | null;
   invitationMessage: string;
   parsedCvEvidence: ParsedCandidateCvEvidenceInput | null;
+  onlineLeadId: string;
 };
 
-type SourcingTab = 'review' | 'applications' | 'analytics' | 'rediscovery' | 'post';
+type SourcingTab = 'review' | 'applications' | 'analytics' | 'rediscovery' | 'headhunting' | 'post';
+type OnlineLeadFilter = 'All' | 'Shortlisted' | 'Rejected' | 'NeedsEmail' | 'PossibleDuplicates';
 
 type ApplicationTrendPoint = {
   dateKey: string;
@@ -150,7 +156,7 @@ type InterviewTimelineEntry = {
 
 @Component({
   selector: 'app-recruiter-sourcing',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, RagAssistantPanelComponent],
   template: `
     <main class="page ops-page">
       <header class="ops-page-header">
@@ -190,6 +196,18 @@ type InterviewTimelineEntry = {
           </button>
           <button
             type="button"
+            [class.active]="activeTab() === 'headhunting'"
+            [attr.aria-selected]="activeTab() === 'headhunting'"
+            (click)="setTab('headhunting')"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">travel_explore</span>
+            AI Headhunting
+            @if (onlineHeadhuntingLeadCount() > 0) {
+              <strong>{{ onlineHeadhuntingLeadCount() }}</strong>
+            }
+          </button>
+          <button
+            type="button"
             [class.active]="activeTab() === 'applications'"
             [attr.aria-selected]="activeTab() === 'applications'"
             (click)="setTab('applications')"
@@ -225,11 +243,16 @@ type InterviewTimelineEntry = {
             This recruiter sourcing work has moved forward and is available in read-only mode.
           </p>
         }
+        @if (isCurrentJobPostClosed()) {
+          <p class="field-status warning">
+            This job post is closed and archived. Candidates cannot apply, recruiters cannot add sourced candidates, and pipeline actions are read-only.
+          </p>
+        }
 
         <section class="recruiter-sourcing-layout">
           <div class="ops-main-stack">
             @if (activeTab() === 'review') {
-              <article class="ops-panel request-summary-panel">
+              <article id="rag-source-request-review" class="ops-panel request-summary-panel">
                 <div class="panel-header">
                   <h2>Request Summary</h2>
                   <span class="status-badge">{{ data.jobRequest.stage }}</span>
@@ -257,7 +280,7 @@ type InterviewTimelineEntry = {
             }
 
             @if (activeTab() === 'applications') {
-              <article class="ops-panel applications-panel">
+              <article id="rag-source-applications" class="ops-panel applications-panel">
                 <div class="panel-header">
                   <div>
                     <h2>
@@ -272,6 +295,7 @@ type InterviewTimelineEntry = {
                         class="btn secondary compact"
                         type="button"
                         [disabled]="!canAddManualCandidate()"
+                        [attr.title]="manualCandidateDisabledReason()"
                         (click)="openManualCandidateModal()"
                       >
                         <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
@@ -606,7 +630,7 @@ type InterviewTimelineEntry = {
 
             @if (activeTab() === 'analytics') {
               @if (applicationAnalytics(); as analytics) {
-                <article class="ops-panel job-analytics-panel">
+                <article id="rag-source-job-analytics" class="ops-panel job-analytics-panel">
                   <div class="panel-header">
                     <div>
                       <h2>Job Analytics</h2>
@@ -671,7 +695,7 @@ type InterviewTimelineEntry = {
             }
 
             @if (activeTab() === 'rediscovery') {
-              <article class="ops-panel talent-rediscovery-panel">
+              <article id="rag-source-talent-rediscovery" class="ops-panel talent-rediscovery-panel">
                 <div class="panel-header">
                   <div>
                     <div class="section-title-with-help">
@@ -984,19 +1008,270 @@ type InterviewTimelineEntry = {
               </article>
             }
 
+            @if (activeTab() === 'headhunting') {
+              <article id="rag-source-ai-headhunting" class="ops-panel online-headhunting-panel">
+                <div class="panel-header">
+                  <div>
+                    <h2>AI Headhunting</h2>
+                    <p class="muted">Lead-only online discovery. Recruiter review is required before any invitation or pipeline action.</p>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="btn primary compact ai-action" type="button" [disabled]="!canRunOnlineHeadhunting() || onlineHeadhuntingSearching() || onlineHeadhuntingQueued()" (click)="runOnlineHeadhunting()">
+                      <span class="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+                      {{ onlineRunButtonLabel() }}
+                    </button>
+                    <button class="btn secondary compact" type="button" [disabled]="!canSearchMoreOnlineLeads() || onlineHeadhuntingSearching() || onlineHeadhuntingQueued()" (click)="searchMoreOnlineLeads()">
+                      <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                      Search More
+                    </button>
+                  </div>
+                </div>
+
+                <div class="online-agent-strip" aria-label="Online headhunting status">
+                  <span class="status-dot"></span>
+                  <strong>{{ onlineAgentStatusLabel() }}</strong>
+                  <span>Lead limit: 20/run</span>
+                  <span>Daily cap: {{ onlineDailyUsageLabel() }}</span>
+                  <span>Model: {{ onlineModelLabel() }}</span>
+                  <span>Lead-only results</span>
+                </div>
+
+                <div class="online-source-filter" aria-label="Online source filters">
+                  @for (source of onlineSourceOptions; track source) {
+                    <span class="online-source-filter-item">
+                      <label>
+                        <input
+                          type="checkbox"
+                          [checked]="onlineSourceSelected(source)"
+                          [attr.aria-describedby]="onlineSourceTooltipId(source)"
+                          (change)="toggleOnlineSource(source)"
+                        />
+                        <span>{{ onlineSourceLabel(source) }}</span>
+                      </label>
+                      <span
+                        class="source-filter-help"
+                        tabindex="0"
+                        [attr.aria-label]="onlineSourceTooltip(source)"
+                        [attr.data-tooltip]="onlineSourceTooltip(source)"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                      </span>
+                      <span class="sr-only" [id]="onlineSourceTooltipId(source)">{{ onlineSourceTooltip(source) }}</span>
+                    </span>
+                  }
+                  <select [ngModel]="onlineLeadFilter()" (ngModelChange)="setOnlineLeadFilter($event)" aria-label="Filter online leads">
+                    <option value="All">All Leads</option>
+                    <option value="Shortlisted">Shortlisted</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="NeedsEmail">Needs Email</option>
+                    <option value="PossibleDuplicates">Possible Duplicates</option>
+                  </select>
+                </div>
+
+                @if (!data.onlineHeadhunting?.leads?.length) {
+                  <div class="empty-state">
+                    <strong>No online leads have been discovered for this request yet.</strong>
+                    <p>Run the agent to search approved online sources. Results stay as leads until a recruiter converts them.</p>
+                  </div>
+                } @else {
+                  <section class="online-headhunting-layout">
+                    <div class="online-lead-table" role="table" aria-label="AI headhunting online leads">
+                      <div class="online-lead-row table-head" role="row">
+                        <span>Candidate</span>
+                        <span>Title & Location</span>
+                        <span>Match</span>
+                        <span>Source</span>
+                        <span>Key Skills</span>
+                        <span>Duplicate</span>
+                        <span>Status</span>
+                      </div>
+                      @for (lead of filteredOnlineLeads(); track lead.onlineCandidateLeadId) {
+                        <button
+                          type="button"
+                          class="online-lead-row"
+                          role="row"
+                          [class.active]="lead.onlineCandidateLeadId === selectedOnlineLeadId()"
+                          [attr.aria-label]="'View details for ' + (lead.displayName || lead.sourceDisplayName || 'online lead')"
+                          (click)="selectOnlineLead(lead)"
+                        >
+                          <span class="candidate-cell" role="cell">
+                            <span class="avatar">{{ initials(lead.displayName || lead.sourceDisplayName) }}</span>
+                            <span>
+                              <strong>{{ lead.displayName || 'Unverified lead' }}</strong>
+                              <small>{{ onlineLeadContactLabel(lead) }}</small>
+                            </span>
+                          </span>
+                          <span role="cell">
+                            <strong>{{ lead.currentTitle || 'Title not verified' }}</strong>
+                            <small>{{ lead.locationText || 'Location unknown' }}</small>
+                          </span>
+                          <span role="cell">
+                            <strong>{{ lead.matchScore | number: '1.0-0' }}%</strong>
+                            <span class="score-bar"><span [style.width.%]="lead.matchScore"></span></span>
+                          </span>
+                          <span role="cell">
+                            <span class="source-chip" [attr.title]="lead.sourceDisplayName || onlineSourceLabel(lead.sourceCode)">
+                              {{ onlineLeadSourceChipLabel(lead) }}
+                            </span>
+                          </span>
+                          <span role="cell" class="chip-list">
+                            @for (skill of lead.matchedSkills.slice(0, 3); track skill) {
+                              <span class="skill-chip">{{ skill }}</span>
+                            }
+                            @if (!lead.matchedSkills.length) {
+                              <span class="muted">Snippet only</span>
+                            }
+                          </span>
+                          <span role="cell">
+                            <span [class]="onlineDuplicateClass(lead)">{{ onlineDuplicateLabel(lead) }}</span>
+                          </span>
+                          <span role="cell">
+                            <span [class]="onlineLeadStatusClass(lead)">{{ onlineLeadStatusLabel(lead) }}</span>
+                          </span>
+                        </button>
+                      }
+                    </div>
+                  </section>
+                }
+              </article>
+
+              @if (onlineLeadDetailOpen()) {
+                @if (selectedOnlineLead(); as lead) {
+                  <div class="sourcing-modal-backdrop" role="presentation">
+                    <section class="sourcing-modal-panel online-lead-modal" role="dialog" aria-modal="true" aria-labelledby="onlineLeadDetailTitle">
+                      <header class="panel-header online-lead-modal-header">
+                        <div class="drawer-header">
+                          <div class="avatar large">{{ initials(lead.displayName || lead.sourceDisplayName) }}</div>
+                          <div>
+                            <p class="eyebrow">Online lead detail</p>
+                            <h2 id="onlineLeadDetailTitle">{{ lead.displayName || 'Unverified lead' }}</h2>
+                            <p class="muted">{{ lead.currentTitle || 'Title not verified' }} {{ lead.currentCompany ? 'at ' + lead.currentCompany : '' }}</p>
+                            <div class="badge-row">
+                              <span class="status-badge info">Unverified Lead</span>
+                              <span class="status-badge">AI Inferred</span>
+                              @if (lead.duplicateStatus !== 'NoMatch') {
+                                <span class="status-badge warning">{{ onlineDuplicateLabel(lead) }}</span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        <button class="icon-button" type="button" aria-label="Close lead details" (click)="closeOnlineLeadModal()">
+                          <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                        </button>
+                      </header>
+
+                      <div class="online-lead-modal-grid">
+                        <section class="online-lead-modal-section online-lead-modal-wide">
+                          <h4>Source Evidence</h4>
+                          <p>{{ lead.evidenceSnippet }}</p>
+                          <a class="table-link-button" [href]="lead.sourceUrl" target="_blank" rel="noopener">View source</a>
+                        </section>
+
+                        <section class="online-lead-modal-section">
+                          <h4>AI Match Explanation</h4>
+                          <p>{{ lead.fitSummary }}</p>
+                          <div class="chip-list">
+                            @for (strength of lead.strengths.slice(0, 4); track strength) {
+                              <span class="skill-chip">{{ strength }}</span>
+                            }
+                          </div>
+                        </section>
+
+                        <section class="online-lead-modal-section">
+                          <h4>Duplicate Check</h4>
+                          <p>{{ lead.duplicateExplanation || onlineDuplicateLabel(lead) }}</p>
+                          @if (lead.duplicateCandidateId) {
+                            <a class="table-link-button" [routerLink]="candidateProfileLink(lead.duplicateCandidateId)" [queryParams]="{ returnUrl: currentReturnUrl() }">
+                              Open internal candidate
+                            </a>
+                          }
+                        </section>
+
+                        <section class="online-lead-modal-section online-lead-modal-wide">
+                          <h4>Outreach Draft</h4>
+                          <p class="outreach-draft">{{ lead.outreachDraft }}</p>
+                          @if (!lead.email) {
+                            <p class="field-status warning">Email required before Talent Pilot can send an invite.</p>
+                          }
+                        </section>
+                      </div>
+
+                      <div class="drawer-actions">
+                        <button
+                          class="btn primary compact drawer-primary-action lead-action-tooltip"
+                          type="button"
+                          [attr.title]="onlineLeadActionTooltip('addToPipeline', lead)"
+                          [attr.data-tooltip]="onlineLeadActionTooltip('addToPipeline', lead)"
+                          (click)="openManualCandidateModalFromLead(lead)"
+                        >
+                          <span class="material-symbols-outlined" aria-hidden="true">playlist_add_check</span>
+                          Add to Pipeline
+                        </button>
+                        <div class="drawer-action-grid" aria-label="Online lead actions">
+                          <a
+                            class="btn secondary compact lead-action-tooltip"
+                            [href]="lead.sourceUrl"
+                            target="_blank"
+                            rel="noopener"
+                            [attr.title]="onlineLeadActionTooltip('viewSource', lead)"
+                            [attr.data-tooltip]="onlineLeadActionTooltip('viewSource', lead)"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
+                            View Source
+                          </a>
+                          <button
+                            class="btn secondary compact lead-action-tooltip"
+                            type="button"
+                            [attr.title]="onlineLeadActionTooltip('saveProspect', lead)"
+                            [attr.data-tooltip]="onlineLeadActionTooltip('saveProspect', lead)"
+                            (click)="saveOnlineLead(lead)"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true">bookmark_add</span>
+                            Save Prospect
+                          </button>
+                          <button
+                            class="btn danger compact lead-action-tooltip"
+                            type="button"
+                            [attr.title]="onlineLeadActionTooltip('rejectLead', lead)"
+                            [attr.data-tooltip]="onlineLeadActionTooltip('rejectLead', lead)"
+                            (click)="rejectOnlineLead(lead)"
+                          >
+                            <span class="material-symbols-outlined" aria-hidden="true">block</span>
+                            Reject Lead
+                          </button>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                }
+              }
+            }
+
             @if (activeTab() === 'post') {
-              <form class="ops-panel job-post-editor" (ngSubmit)="saveDraft()">
+              <form id="rag-source-job-post" class="ops-panel job-post-editor" (ngSubmit)="saveDraft()">
               <div class="panel-header">
                 <div>
                   <h2>{{ data.jobPost ? 'Job Post Editor' : 'Create Draft Job Post' }}</h2>
-                  <p class="muted">Published posts appear on the Talent Pilot portal. Recruiters can also add sourced candidates manually.</p>
+                  <p class="muted">
+                    @if (isJobPostClosed(data.jobPost)) {
+                      This post is archived. It is hidden from the portal and no new candidates can be added.
+                    } @else {
+                      Published posts appear on the Talent Pilot portal. Recruiters can also add sourced candidates manually.
+                    }
+                  </p>
                 </div>
                 <div class="post-header-actions">
                   @if (data.jobPost) {
-                    <span class="status-badge info">{{ data.jobPost.status }}</span>
+                    <span [class]="jobPostStatusBadgeClass(data.jobPost.status)">{{ data.jobPost.status }}</span>
                   }
                 </div>
               </div>
+
+              @if (isJobPostClosed(data.jobPost)) {
+                <p class="field-status warning">
+                  Closed posts are archived for audit history. Public applications, manual sourcing, AI headhunting conversion, interview scheduling, and pipeline moves are disabled.
+                </p>
+              }
 
               @if (!data.jobPost) {
                 <label class="stitch-field">
@@ -1295,12 +1570,27 @@ type InterviewTimelineEntry = {
                   <button class="btn primary" type="button" [disabled]="!canEditContent() || saving()" (click)="publish()">Publish</button>
                 }
                 @if (data.jobPost && data.jobPost.status !== 'Closed') {
-                  <button class="btn secondary" type="button" [disabled]="!canEditContent() || saving()" (click)="closePost()">Close Post</button>
+                  <button class="btn secondary" type="button" [disabled]="!canCloseJobPost() || saving()" (click)="closePost()">Close Post</button>
                 }
               </div>
               </form>
             }
           </div>
+
+          @if (activeTab() === 'applications' && data.applications.length > 0) {
+            <app-rag-assistant-panel
+              class="recruiter-assistant-floating"
+              title="Applications Copilot"
+              subtitle="Evidence from the request, job post, all applications, interviews, and ranking logs."
+              placeholder="Ask about applicants, fit, gaps, or rankings..."
+              contextType="RecruiterCandidateFit"
+              [contextEntityId]="data.jobRequest.id"
+              [focusEntityId]="null"
+              [floatingLauncher]="true"
+              launcherLabel="Open applications copilot"
+              [suggestedQuestions]="applicationAssistantQuestions"
+            />
+          }
 
           @if (data.assignment && canClaimSourcingAssignment(data.assignment)) {
             <section class="sourcing-bottom-cards">
@@ -1407,7 +1697,6 @@ type InterviewTimelineEntry = {
                   <span>Source</span>
                   <select name="manualSource" [(ngModel)]="manualCandidateForm.sourceLabel">
                     <option value="LinkedIn">LinkedIn</option>
-                    <option value="Indeed">Indeed</option>
                     <option value="Referral">Referral</option>
                     <option value="Other">Other</option>
                   </select>
@@ -1667,6 +1956,7 @@ type InterviewTimelineEntry = {
   styles: [
     `
       .recruiter-sourcing-layout {
+        align-items: start;
         display: grid;
         gap: 18px;
         grid-template-columns: minmax(0, 1fr);
@@ -2239,12 +2529,17 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   readonly saving = signal(false);
   readonly rediscoveryRanking = signal(false);
   readonly applicantRanking = signal(false);
+  readonly onlineHeadhuntingSearching = signal(false);
+  readonly onlineHeadhuntingQueued = signal(false);
   readonly message = signal('');
   readonly error = signal('');
   readonly activeTab = signal<SourcingTab>('review');
   readonly applicationAnalytics = computed(() => this.buildApplicationAnalytics(this.sourcing()?.applications ?? []));
   readonly expandedCandidateId = signal<string | null>(null);
   readonly expandedApplicantRankingId = signal<string | null>(null);
+  readonly selectedOnlineLeadId = signal<string | null>(null);
+  readonly onlineLeadDetailOpen = signal(false);
+  readonly onlineLeadFilter = signal<OnlineLeadFilter>('All');
   readonly openManualCandidateMenuId = signal<string | null>(null);
   readonly openApplicationActionMenuId = signal<string | null>(null);
   readonly manualCandidateModalOpen = signal(false);
@@ -2259,6 +2554,12 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   readonly scheduleModalOpen = signal(false);
   readonly scheduleSaving = signal(false);
   readonly scheduleError = signal('');
+  readonly applicationAssistantQuestions = [
+    'Which applicant is strongest?',
+    'What skills are missing?',
+    'Compare the top applicants.',
+    'Summarize interview readiness.',
+  ];
   selectedTemplateId = '';
   roundInterviewerDepartmentFilters: Record<string, string> = {};
   roundInterviewerSearches: Record<string, string> = {};
@@ -2269,6 +2570,8 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   manualMinAiScore = '';
   manualMinPassedInterviews: number | null = null;
   manualMaxFailedInterviews: number | null = null;
+  readonly onlineSourceOptions = ['LinkedIn', 'GitHub', 'Portfolio', 'PublicSearch'];
+  onlineSourceCodes: string[] = ['LinkedIn', 'GitHub', 'Portfolio', 'PublicSearch'];
   readonly postSkillSearch = signal('');
   readonly postActiveSkillGroup = signal(DEFAULT_SKILL_GROUP_LABEL);
   readonly manualSkillSearch = signal('');
@@ -2278,17 +2581,33 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   form = this.emptyForm();
   private applicationTrendChart: Chart<'bar', number[], string> | null = null;
   private applicationTrendChartSignature = '';
+  private readonly routeEvents = new Subscription();
+  private pendingSourceFragment: string | null = null;
+  private readonly recruiterSourcingRefreshEffect = effect(() => {
+    const refresh = this.store.recruiterSourcingRefresh();
+    const jobRequestId = this.route.snapshot.paramMap.get('jobRequestId');
+    if (!refresh || !jobRequestId || refresh.jobRequestId !== jobRequestId) {
+      return;
+    }
+
+    void this.reloadAfterRealtimeRefresh(refresh.reason, refresh.leadCount ?? null);
+  });
 
   ngOnInit(): void {
     this.applyInitialTab();
+    if (this.route.fragment) {
+      this.routeEvents.add(this.route.fragment.subscribe((fragment) => this.applySourceFragment(fragment)));
+    }
     void this.load();
   }
 
   ngAfterViewChecked(): void {
     this.renderApplicationTrendChart();
+    this.scrollToPendingSource();
   }
 
   ngOnDestroy(): void {
+    this.routeEvents.unsubscribe();
     this.destroyApplicationTrendChart();
   }
 
@@ -2304,6 +2623,13 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     }
 
     this.closeActionMenus();
+  }
+
+  @HostListener('document:keydown.escape')
+  closeOnlineLeadDetailOnEscape(): void {
+    if (this.onlineLeadDetailOpen()) {
+      this.closeOnlineLeadModal();
+    }
   }
 
   async load(): Promise<void> {
@@ -2334,6 +2660,11 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       return;
     }
 
+    if (!this.canRunRediscovery()) {
+      this.error.set(this.applicationManagementDisabledReason());
+      return;
+    }
+
     this.rediscoveryRanking.set(true);
     this.clearStatus();
     try {
@@ -2357,6 +2688,11 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       return;
     }
 
+    if (!this.canRankApplicants()) {
+      this.error.set(this.applicationManagementDisabledReason());
+      return;
+    }
+
     this.applicantRanking.set(true);
     this.clearStatus();
     try {
@@ -2370,6 +2706,98 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       this.error.set('Applicant Ranking could not rank current applications. Manual application review was not changed.');
     } finally {
       this.applicantRanking.set(false);
+    }
+  }
+
+  canRunOnlineHeadhunting(): boolean {
+    return this.canUseSourcingAssignment() && !this.isCurrentJobPostClosed() && this.onlineSourceCodes.length > 0;
+  }
+
+  canSearchMoreOnlineLeads(): boolean {
+    const run = this.sourcing()?.onlineHeadhunting?.run;
+    if (!run || !this.canRunOnlineHeadhunting()) {
+      return false;
+    }
+
+    return run.dailyLeadCountBeforeRun + run.leadsReturned < run.dailyLeadLimit;
+  }
+
+  async runOnlineHeadhunting(): Promise<void> {
+    await this.searchOnlineLeads(null);
+  }
+
+  async searchMoreOnlineLeads(): Promise<void> {
+    const runId = this.sourcing()?.onlineHeadhunting?.run?.onlineCandidateSourcingRunId;
+    if (!runId) {
+      return;
+    }
+
+    await this.searchOnlineLeads(runId);
+  }
+
+  private async searchOnlineLeads(searchMoreFromRunId: string | null): Promise<void> {
+    const sourcing = this.sourcing();
+    if (!sourcing) {
+      return;
+    }
+
+    if (!this.canRunOnlineHeadhunting()) {
+      this.error.set(this.onlineHeadhuntingDisabledReason());
+      return;
+    }
+
+    this.onlineHeadhuntingSearching.set(true);
+    this.clearStatus();
+    try {
+      const queued = await this.store.searchOnlineCandidates(sourcing.jobRequest.id, {
+        limit: 20,
+        sourceCodes: this.onlineSourceCodes,
+        searchMoreFromRunId,
+      });
+      this.onlineHeadhuntingQueued.set(true);
+      this.message.set(
+        queued.message || 'AI Headhunting is running in the background. You will be notified when lead-only results are ready.',
+      );
+    } catch (error) {
+      this.error.set(this.toErrorMessage(error, 'AI Headhunting could not complete. No candidates or applications were created.'));
+    } finally {
+      this.onlineHeadhuntingSearching.set(false);
+    }
+  }
+
+  private async reloadAfterRealtimeRefresh(reason: string, leadCount: number | null = null): Promise<void> {
+    const jobRequestId = this.route.snapshot.paramMap.get('jobRequestId');
+    if (!jobRequestId) {
+      return;
+    }
+
+    try {
+      const sourcing = this.normalizeSourcing(await this.store.loadRecruiterSourcing(jobRequestId));
+      this.sourcing.set(sourcing);
+      this.hydrateForm(sourcing);
+      this.onlineHeadhuntingQueued.set(false);
+      this.onlineHeadhuntingSearching.set(false);
+
+      const leads = sourcing.onlineHeadhunting?.leads ?? [];
+      if (leads.length > 0) {
+        this.selectedOnlineLeadId.set(leads[0].onlineCandidateLeadId);
+      }
+
+      if (reason === 'online_headhunting_completed') {
+        if (leadCount === 0) {
+          this.message.set('AI Headhunting found no new lead-only results. Existing leads are unchanged.');
+        } else if (leadCount !== null) {
+          this.message.set(`AI Headhunting added ${leadCount} new lead-only result(s).`);
+        } else {
+          this.message.set(`AI Headhunting returned ${this.onlineHeadhuntingLeadCount()} lead-only result(s).`);
+        }
+      } else if (reason === 'online_headhunting_failed') {
+        this.error.set('AI Headhunting finished with an error. No candidates or applications were created.');
+      }
+    } catch {
+      this.error.set('AI Headhunting finished, but this page could not refresh automatically.');
+      this.onlineHeadhuntingQueued.set(false);
+      this.onlineHeadhuntingSearching.set(false);
     }
   }
 
@@ -2418,11 +2846,20 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       return;
     }
 
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        'Close and archive this job post? Candidates will no longer be able to apply, and recruiters will not be able to add or invite new candidates for this post.',
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     this.saving.set(true);
     this.clearStatus();
     try {
       this.applyJobPost(await this.store.closeJobPost(jobPost.jobPostId));
-      this.message.set('Job post closed.');
+      this.message.set('Job post closed and archived. Public applications and manual candidate invites are disabled.');
     } catch {
       this.error.set('Job post could not be closed.');
     } finally {
@@ -2432,12 +2869,18 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
 
   openManualCandidateModal(): void {
     const jobPost = this.sourcing()?.jobPost;
+    if (!this.canAddManualCandidate()) {
+      this.error.set(this.manualCandidateDisabledReason());
+      return;
+    }
+
     this.manualCandidateForm = this.emptyManualCandidateForm();
     this.manualCandidateForm.invitationMessage = this.defaultInvitationMessage(jobPost?.title);
     this.manualCandidateError.set('');
     this.cvParseError.set('');
     this.manualSkillSearch.set('');
     this.manualActiveSkillGroup.set(DEFAULT_SKILL_GROUP_LABEL);
+    this.closeOnlineLeadModal();
     this.manualCandidateModalOpen.set(true);
   }
 
@@ -2515,6 +2958,11 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
 
   async submitManualCandidate(jobPostId: string): Promise<void> {
     this.manualCandidateError.set('');
+    if (!this.canAddManualCandidate()) {
+      this.manualCandidateError.set(this.manualCandidateDisabledReason());
+      return;
+    }
+
     if (!this.manualCandidateForm.email.trim()) {
       this.manualCandidateError.set('Email is required to create or invite a candidate.');
       return;
@@ -2537,8 +2985,8 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   }
 
   async updateApplicationStatus(application: RecruiterApplication, decision: 'Shortlist' | 'Hold' | 'Reject'): Promise<void> {
-    if (!this.canUseSourcingAssignment()) {
-      this.error.set('Claim sourcing work before updating candidate applications.');
+    if (!this.canManageApplications()) {
+      this.error.set(this.applicationManagementDisabledReason());
       return;
     }
 
@@ -2560,8 +3008,8 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   }
 
   async forwardToHiringManager(application: RecruiterApplication): Promise<void> {
-    if (!this.canUseSourcingAssignment()) {
-      this.error.set('Claim sourcing work before forwarding candidates.');
+    if (!this.canManageApplications()) {
+      this.error.set(this.applicationManagementDisabledReason());
       return;
     }
 
@@ -3071,23 +3519,94 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   }
 
   canRunRediscovery(): boolean {
-    return this.canUseSourcingAssignment();
+    return this.canUseSourcingAssignment() && !this.isCurrentJobPostClosed();
   }
 
   canRankApplicants(): boolean {
     const sourcing = this.sourcing();
     return this.canUseSourcingAssignment() &&
+      this.isJobPostPublished(sourcing?.jobPost) &&
       !!sourcing?.jobPost &&
       (sourcing.applications?.length ?? 0) > 0;
   }
 
   canAddManualCandidate(): boolean {
     const jobPost = this.sourcing()?.jobPost;
-    return this.canUseSourcingAssignment() && jobPost?.status === 'Published';
+    return this.canUseSourcingAssignment() && this.isJobPostPublished(jobPost);
+  }
+
+  canCloseJobPost(): boolean {
+    const jobPost = this.sourcing()?.jobPost;
+    return this.canUseSourcingAssignment() && !!jobPost && !this.isJobPostClosed(jobPost);
   }
 
   canManageApplications(): boolean {
-    return this.canUseSourcingAssignment();
+    return this.canUseSourcingAssignment() && this.isJobPostPublished(this.sourcing()?.jobPost);
+  }
+
+  isCurrentJobPostClosed(): boolean {
+    return this.isJobPostClosed(this.sourcing()?.jobPost);
+  }
+
+  isJobPostClosed(jobPost: RecruiterSourcing['jobPost'] | null | undefined): boolean {
+    return this.normalizeStatus(jobPost?.status) === 'closed';
+  }
+
+  isJobPostPublished(jobPost: RecruiterSourcing['jobPost'] | null | undefined): boolean {
+    return this.normalizeStatus(jobPost?.status) === 'published';
+  }
+
+  jobPostStatusBadgeClass(status: string | null | undefined): string {
+    const normalized = this.normalizeStatus(status);
+    if (normalized === 'closed') {
+      return 'status-badge status-badge--closed';
+    }
+
+    if (normalized === 'published') {
+      return 'status-badge status-badge--success';
+    }
+
+    if (normalized === 'draft') {
+      return 'status-badge status-badge--draft';
+    }
+
+    return 'status-badge info';
+  }
+
+  manualCandidateDisabledReason(): string {
+    if (this.isCurrentJobPostClosed()) {
+      return 'This job post is closed and archived. New manual candidates cannot be added or invited.';
+    }
+
+    if (!this.canUseSourcingAssignment()) {
+      return 'Claim sourcing work before adding sourced candidates.';
+    }
+
+    return 'Publish the job post before adding sourced candidates.';
+  }
+
+  applicationManagementDisabledReason(): string {
+    if (this.isCurrentJobPostClosed()) {
+      return 'This job post is closed and archived. Existing applications are read-only.';
+    }
+
+    if (!this.canUseSourcingAssignment()) {
+      return 'Claim sourcing work before updating candidate applications.';
+    }
+
+    return 'Publish the job post before updating candidate applications.';
+  }
+
+  onlineHeadhuntingDisabledReason(): string {
+    if (this.isCurrentJobPostClosed()) {
+      return 'This job post is closed and archived. AI Headhunting cannot search or convert new leads for it.';
+    }
+
+    if (this.onlineSourceCodes.length === 0) {
+      return 'Select at least one source before running AI Headhunting.';
+    }
+
+    return 'Claim sourcing work before running AI Headhunting.';
   }
 
   canClaimSourcingAssignment(assignment: WorkflowAssignment): boolean {
@@ -3100,7 +3619,7 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
 
   canForwardToHiringManager(application: RecruiterApplication): boolean {
     if (
-      !this.canUseSourcingAssignment() ||
+      !this.canManageApplications() ||
       application.applicationStatus === 'HiringManagerReview' ||
       application.applicationStatus === 'Hiring Manager Review'
     ) {
@@ -3313,8 +3832,470 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     this.manualSkillSearch.set('');
   }
 
+  onlineAgentStatusLabel(): string {
+    if (this.onlineHeadhuntingSearching()) {
+      return 'Agent running';
+    }
+
+    if (this.onlineHeadhuntingQueued()) {
+      return 'Agent queued';
+    }
+
+    const run = this.sourcing()?.onlineHeadhunting?.run;
+    if (!run) {
+      return 'Agent ready';
+    }
+
+    return `${run.searchStatus || 'Completed'}: ${run.leadsReturned} lead${run.leadsReturned === 1 ? '' : 's'} returned`;
+  }
+
+  onlineRunButtonLabel(): string {
+    if (this.onlineHeadhuntingSearching()) {
+      return 'Queueing...';
+    }
+
+    if (this.onlineHeadhuntingQueued()) {
+      return 'Queued';
+    }
+
+    return 'Run Agent';
+  }
+
+  onlineDailyUsageLabel(): string {
+    const run = this.sourcing()?.onlineHeadhunting?.run;
+    if (!run) {
+      return '0/100';
+    }
+
+    return `${run.dailyLeadCountBeforeRun + run.leadsReturned}/${run.dailyLeadLimit}`;
+  }
+
+  onlineModelLabel(): string {
+    return this.sourcing()?.onlineHeadhunting?.run?.model ||
+      this.sourcing()?.configuredAiModel ||
+      'Not configured';
+  }
+
+  onlineSourceSelected(source: string): boolean {
+    return this.onlineSourceCodes.some((code) => code.toLowerCase() === source.toLowerCase());
+  }
+
+  toggleOnlineSource(source: string): void {
+    if (this.onlineSourceSelected(source)) {
+      if (this.onlineSourceCodes.length === 1) {
+        this.error.set('Select at least one online source.');
+        return;
+      }
+
+      this.onlineSourceCodes = this.onlineSourceCodes.filter((code) => code.toLowerCase() !== source.toLowerCase());
+      return;
+    }
+
+    this.onlineSourceCodes = [...this.onlineSourceCodes, source];
+  }
+
+  onlineSourceLabel(source: string): string {
+    const labels: Record<string, string> = {
+      GitHub: 'GitHub API',
+      LinkedIn: 'LinkedIn links',
+      Portfolio: 'Portfolio',
+      PublicSearch: 'Web search',
+    };
+
+    return labels[source] ?? source;
+  }
+
+  onlineSourceTooltip(source: string): string {
+    const descriptions: Record<string, string> = {
+      GitHub: 'Searches public GitHub users and repositories through the configured GitHub API/search path. Best for engineering roles and open-source evidence.',
+      LinkedIn: 'Uses web search/X-Ray queries to find public LinkedIn profile links only. Talent Pilot does not scrape LinkedIn pages or send LinkedIn messages.',
+      Portfolio: 'Searches public personal sites, resumes, CVs, and portfolio pages where candidates describe their work directly.',
+      PublicSearch: 'Searches broader public web results such as profile pages, technical articles, directories, and other indexable candidate evidence.',
+    };
+
+    return descriptions[source] ?? 'Includes this source in the next AI Headhunting search run.';
+  }
+
+  onlineLeadSourceChipLabel(lead: OnlineCandidateLead): string {
+    const labels: Record<string, string> = {
+      GitHub: 'GitHub',
+      LinkedIn: 'LinkedIn',
+      Portfolio: 'Portfolio',
+      PublicSearch: 'Web',
+    };
+
+    return labels[lead.sourceCode] ?? lead.sourceDisplayName ?? lead.sourceCode;
+  }
+
+  onlineSourceTooltipId(source: string): string {
+    return `online-source-help-${source.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  }
+
+  setOnlineLeadFilter(value: string): void {
+    const allowed: OnlineLeadFilter[] = ['All', 'Shortlisted', 'Rejected', 'NeedsEmail', 'PossibleDuplicates'];
+    const filter = allowed.includes(value as OnlineLeadFilter)
+      ? value as OnlineLeadFilter
+      : 'All';
+    this.onlineLeadFilter.set(filter);
+  }
+
+  filteredOnlineLeads(): OnlineCandidateLead[] {
+    const filter = this.onlineLeadFilter();
+    return this.visibleOnlineLeadCandidates()
+      .filter((lead) => {
+        if (filter === 'NeedsEmail') {
+          return !lead.email;
+        }
+        if (filter === 'PossibleDuplicates') {
+          return lead.duplicateStatus !== 'NoMatch';
+        }
+        if (filter === 'Shortlisted' || filter === 'Rejected') {
+          return lead.status === filter;
+        }
+        return true;
+      })
+      .sort((left, right) => this.compareOnlineLeadPriority(left, right));
+  }
+
+  onlineHeadhuntingLeadCount(): number {
+    return this.visibleOnlineLeadCandidates().length;
+  }
+
+  private visibleOnlineLeadCandidates(): OnlineCandidateLead[] {
+    const leads = this.sourcing()?.onlineHeadhunting?.leads ?? [];
+    return leads
+      .filter((lead) => !this.isLikelyJobPostingLead(lead))
+      .filter((lead) => this.isOnlineLeadLocationCompatible(lead));
+  }
+
+  onlineLeadContactLabel(lead: OnlineCandidateLead): string {
+    return lead.email?.trim() || lead.phone?.trim() || 'Needs email';
+  }
+
+  selectOnlineLead(lead: OnlineCandidateLead): void {
+    this.selectedOnlineLeadId.set(lead.onlineCandidateLeadId);
+    this.onlineLeadDetailOpen.set(true);
+  }
+
+  closeOnlineLeadModal(): void {
+    this.onlineLeadDetailOpen.set(false);
+  }
+
+  selectedOnlineLead(): OnlineCandidateLead | null {
+    const leads = this.filteredOnlineLeads();
+    if (leads.length === 0) {
+      return null;
+    }
+
+    return leads.find((lead) => lead.onlineCandidateLeadId === this.selectedOnlineLeadId()) ?? leads[0];
+  }
+
+  initials(name: string | null | undefined): string {
+    return this.candidateInitials(name || 'Talent Pilot');
+  }
+
+  onlineDuplicateClass(lead: OnlineCandidateLead): string {
+    const token = lead.duplicateStatus === 'ExactMatch'
+      ? 'exact'
+      : lead.duplicateStatus === 'PossibleDuplicate'
+        ? 'possible'
+        : 'clear';
+    return `duplicate-chip ${token}`;
+  }
+
+  onlineDuplicateLabel(lead: OnlineCandidateLead): string {
+    if (lead.duplicateStatus === 'ExactMatch') {
+      return 'Exact match';
+    }
+    if (lead.duplicateStatus === 'PossibleDuplicate') {
+      return 'Possible duplicate';
+    }
+
+    return 'No match';
+  }
+
+  onlineLeadStatusClass(lead: OnlineCandidateLead): string {
+    const token = this.normalizeStatus(lead.status);
+    if (token === 'rejected') {
+      return 'status-badge danger';
+    }
+    if (token === 'converted') {
+      return 'status-badge success';
+    }
+    if (token === 'shortlisted') {
+      return 'status-badge info';
+    }
+
+    return 'status-badge neutral';
+  }
+
+  onlineLeadStatusLabel(lead: OnlineCandidateLead): string {
+    return this.formatActivityStatus(lead.status || 'New');
+  }
+
+  onlineLeadActionTooltip(
+    action: 'addToPipeline' | 'viewSource' | 'saveProspect' | 'rejectLead',
+    lead: OnlineCandidateLead,
+  ): string {
+    switch (action) {
+      case 'addToPipeline':
+        return lead.email
+          ? 'Convert this reviewed lead into the job pipeline. No external message is sent automatically.'
+        : 'Open the pipeline form. Add a verified email before Talent Pilot can send an invite.';
+      case 'viewSource':
+        return 'Open the public source URL where the agent found this lead evidence.';
+      case 'saveProspect':
+        return 'Shortlist this lead for later review. It remains a lead until you add it to the pipeline.';
+      case 'rejectLead':
+        return 'Mark this lead as rejected so it can be filtered out. No candidate record is deleted.';
+    }
+  }
+
+  private compareOnlineLeadPriority(left: OnlineCandidateLead, right: OnlineCandidateLead): number {
+    const locationCompare = Number(!this.hasKnownOnlineLeadLocation(left)) - Number(!this.hasKnownOnlineLeadLocation(right));
+    if (locationCompare !== 0) {
+      return locationCompare;
+    }
+
+    const contactCompare = this.onlineLeadContactPriority(right) - this.onlineLeadContactPriority(left);
+    if (contactCompare !== 0) {
+      return contactCompare;
+    }
+
+    const scoreCompare = (right.matchScore ?? 0) - (left.matchScore ?? 0);
+    if (scoreCompare !== 0) {
+      return scoreCompare;
+    }
+
+    return left.rank - right.rank;
+  }
+
+  private onlineLeadContactPriority(lead: OnlineCandidateLead): number {
+    let priority = 0;
+    if (lead.phone?.trim()) {
+      priority += 1;
+    }
+
+    if (lead.email?.trim()) {
+      priority += 2;
+    }
+
+    return priority;
+  }
+
+  private hasKnownOnlineLeadLocation(lead: OnlineCandidateLead): boolean {
+    const location = lead.locationText?.trim().toLowerCase();
+    return !!location && !['unknown', 'location unknown', 'n/a', 'na', 'not available'].includes(location);
+  }
+
+  private isOnlineLeadLocationCompatible(lead: OnlineCandidateLead): boolean {
+    const targetLocation = this.sourcing()?.jobPost?.location || this.sourcing()?.jobRequest.location;
+    if (this.isFlexibleOnlineLocation(targetLocation)) {
+      return true;
+    }
+
+    const terms = this.onlineTargetLocationTerms(targetLocation);
+    if (!terms.length) {
+      return true;
+    }
+
+    const searchable = [
+      lead.locationText,
+      lead.currentTitle,
+      lead.currentCompany,
+      lead.evidenceSnippet,
+    ]
+      .filter((value): value is string => !!value?.trim())
+      .join(' ');
+
+    return terms.some((term) => this.containsOnlineTerm(searchable, term));
+  }
+
+  private isFlexibleOnlineLocation(location: string | null | undefined): boolean {
+    if (!location?.trim()) {
+      return true;
+    }
+
+    return ['remote', 'hybrid', 'anywhere', 'global'].some((term) => this.containsOnlineTerm(location, term));
+  }
+
+  private onlineTargetLocationTerms(location: string | null | undefined): string[] {
+    if (!location?.trim()) {
+      return [];
+    }
+
+    const terms = location
+      .split(/[\s,\/\\\-|()]+/u)
+      .map((term) => term.trim())
+      .filter((term) => term.length > 2)
+      .filter((term) => !['remote', 'hybrid'].includes(term.toLowerCase()));
+
+    if (terms.some((term) => ['lahore', 'karachi', 'islamabad', 'rawalpindi'].includes(term.toLowerCase()))) {
+      terms.push('Pakistan');
+    }
+
+    return Array.from(new Set(terms.map((term) => term.toLowerCase())));
+  }
+
+  private containsOnlineTerm(value: string, term: string): boolean {
+    if (!value.trim() || !term.trim()) {
+      return false;
+    }
+
+    return value.toLowerCase().includes(term.toLowerCase());
+  }
+
+  private isLikelyJobPostingLead(lead: OnlineCandidateLead): boolean {
+    const urls = [lead.sourceUrl, lead.profileUrl].filter((value): value is string => !!value?.trim());
+    for (const value of urls) {
+      try {
+        const url = new URL(value);
+        const host = url.hostname.toLowerCase();
+        const path = url.pathname.toLowerCase();
+        const jobBoardHosts = [
+          'indeed.',
+          'expertini.',
+          'rozee.',
+          'mustakbil.',
+          'glassdoor.',
+          'bayt.',
+          'naukri.',
+          'monster.',
+          'ziprecruiter.',
+          'simplyhired.',
+          'workable.com',
+          'greenhouse.io',
+          'lever.co',
+          'smartrecruiters.',
+          'bamboohr.',
+        ];
+        if (jobBoardHosts.some((hostToken) => host.includes(hostToken))) {
+          return true;
+        }
+
+        const jobPathSegments = ['/jobs', '/job/', '/careers', '/career/', '/company', '/companies', '/vacancy', '/vacancies', '/opening', '/openings', '/apply'];
+        if (jobPathSegments.some((segment) => path.includes(segment))) {
+          return true;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    const title = `${lead.displayName ?? ''} ${lead.currentTitle ?? ''}`.toLowerCase();
+    const text = `${lead.displayName ?? ''} ${lead.currentTitle ?? ''} ${lead.currentCompany ?? ''} ${lead.evidenceSnippet ?? ''}`.toLowerCase();
+    if (title.includes(' jobs in ') || title.endsWith(' jobs')) {
+      return true;
+    }
+
+    const jobSignals = ['apply now', 'job description', 'job summary', 'job vacancy', 'latest jobs', 'posted on', 'salary', 'apply for this job', 'career opportunity'];
+    return jobSignals.filter((signal) => text.includes(signal)).length >= 2;
+  }
+
+  async saveOnlineLead(lead: OnlineCandidateLead): Promise<void> {
+    await this.updateOnlineLeadStatus(lead, 'Shortlisted', 'Online lead saved for recruiter review.');
+  }
+
+  async rejectOnlineLead(lead: OnlineCandidateLead): Promise<void> {
+    await this.updateOnlineLeadStatus(lead, 'Rejected', 'Online lead rejected.');
+  }
+
+  openManualCandidateModalFromLead(lead: OnlineCandidateLead): void {
+    if (!this.canAddManualCandidate()) {
+      this.error.set(this.manualCandidateDisabledReason());
+      return;
+    }
+
+    this.clearStatus();
+    this.manualCandidateForm = {
+      ...this.emptyManualCandidateForm(),
+      displayName: lead.displayName ?? '',
+      email: lead.email ?? '',
+      phone: lead.phone ?? '',
+      linkedInUrl: this.profileUrlForManualLead(lead),
+      currentDesignation: lead.currentTitle ?? '',
+      currentCompany: lead.currentCompany ?? '',
+      skillIds: this.skillIdsForNames(lead.matchedSkills ?? []),
+      sourceLabel: lead.sourceDisplayName || this.onlineSourceLabel(lead.sourceCode),
+      sourceDetail: `AI Headhunting - ${lead.sourceDisplayName || this.onlineSourceLabel(lead.sourceCode)}`,
+      sourceUrl: lead.profileUrl || lead.sourceUrl,
+      recruiterNotes: this.onlineLeadRecruiterNotes(lead),
+      invitationMessage: lead.outreachDraft || this.defaultInvitationMessage(),
+      onlineLeadId: lead.onlineCandidateLeadId,
+    };
+    this.manualCandidateError.set(lead.email ? '' : 'Enter a verified email before sending an invitation.');
+    this.cvParseError.set('');
+    this.manualSkillSearch.set('');
+    this.manualActiveSkillGroup.set(DEFAULT_SKILL_GROUP_LABEL);
+    this.manualCandidateModalOpen.set(true);
+  }
+
+  private async updateOnlineLeadStatus(
+    lead: OnlineCandidateLead,
+    status: 'Shortlisted' | 'Rejected',
+    successMessage: string,
+  ): Promise<void> {
+    if (!this.canUseSourcingAssignment()) {
+      this.error.set('Claim sourcing work before updating online leads.');
+      return;
+    }
+
+    this.clearStatus();
+    try {
+      const updated = await this.store.updateOnlineCandidateLeadStatus(lead.onlineCandidateLeadId, status);
+      this.patchOnlineLead(updated);
+      this.message.set(successMessage);
+    } catch (error) {
+      this.error.set(this.toErrorMessage(error, 'Online lead status could not be updated.'));
+    }
+  }
+
+  private patchOnlineLead(updated: OnlineCandidateLead): void {
+    const sourcing = this.sourcing();
+    const onlineHeadhunting = sourcing?.onlineHeadhunting;
+    if (!sourcing || !onlineHeadhunting) {
+      return;
+    }
+
+    this.sourcing.set({
+      ...sourcing,
+      onlineHeadhunting: {
+        ...onlineHeadhunting,
+        leads: onlineHeadhunting.leads.map((lead) =>
+          lead.onlineCandidateLeadId === updated.onlineCandidateLeadId
+            ? { ...lead, ...updated }
+            : lead,
+        ),
+      },
+    });
+    this.selectedOnlineLeadId.set(updated.onlineCandidateLeadId);
+  }
+
+  private profileUrlForManualLead(lead: OnlineCandidateLead): string {
+    if (lead.profileUrl) {
+      return lead.profileUrl;
+    }
+
+    return lead.sourceCode === 'LinkedIn' ? lead.sourceUrl : '';
+  }
+
+  private onlineLeadRecruiterNotes(lead: OnlineCandidateLead): string {
+    return [
+      lead.fitSummary,
+      lead.gaps.length > 0 ? `Gaps: ${lead.gaps.join(', ')}` : null,
+      lead.missingData.length > 0 ? `Missing data: ${lead.missingData.join(', ')}` : null,
+      lead.duplicateExplanation ? `Duplicate check: ${lead.duplicateExplanation}` : null,
+      `Source: ${lead.sourceUrl}`,
+    ]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      .join('\n');
+  }
+
   setTab(tab: SourcingTab): void {
     this.activeTab.set(tab);
+    if (tab !== 'headhunting') {
+      this.closeOnlineLeadModal();
+    }
     this.clearStatus();
   }
 
@@ -3463,6 +4444,37 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     if (tab) {
       this.activeTab.set(tab);
     }
+
+    this.applySourceFragment(this.route.snapshot.fragment);
+  }
+
+  private applySourceFragment(fragment: string | null): void {
+    const tab = this.toSourcingTabFromFragment(fragment);
+    if (!tab) {
+      return;
+    }
+
+    this.activeTab.set(tab);
+    this.pendingSourceFragment = fragment;
+  }
+
+  private scrollToPendingSource(): void {
+    const fragment = this.pendingSourceFragment;
+    if (!fragment) {
+      return;
+    }
+
+    const target = document.getElementById(`rag-source-${fragment}`) ?? document.getElementById(fragment);
+    if (!target) {
+      return;
+    }
+
+    this.pendingSourceFragment = null;
+    window.setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.classList.add('rag-source-highlight');
+      window.setTimeout(() => target.classList.remove('rag-source-highlight'), 1400);
+    }, 0);
   }
 
   private toSourcingTab(tab: string | null | undefined): SourcingTab | null {
@@ -3470,9 +4482,30 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       tab === 'applications' ||
       tab === 'analytics' ||
       tab === 'rediscovery' ||
+      tab === 'headhunting' ||
       tab === 'post'
       ? tab
       : null;
+  }
+
+  private toSourcingTabFromFragment(fragment: string | null | undefined): SourcingTab | null {
+    switch (fragment) {
+      case 'request-review':
+        return 'review';
+      case 'applications':
+        return 'applications';
+      case 'job-analytics':
+        return 'analytics';
+      case 'talent-rediscovery':
+        return 'rediscovery';
+      case 'ai-headhunting':
+      case 'headhunting':
+        return 'headhunting';
+      case 'job-post':
+        return 'post';
+      default:
+        return null;
+    }
   }
 
   private buildApplicationAnalytics(applications: readonly RecruiterApplication[]): ApplicationAnalytics {
@@ -4485,6 +5518,14 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   }
 
   scheduleEligibility(application: RecruiterApplication): ScheduleEligibility {
+    if (!this.canManageApplications()) {
+      return {
+        status: 'blocked',
+        actionLabel: this.isCurrentJobPostClosed() ? 'Post closed' : 'Publish post first',
+        message: this.applicationManagementDisabledReason(),
+      };
+    }
+
     const rounds = this.activeInterviewRounds();
     if (rounds.length === 0) {
       return {
@@ -4636,6 +5677,7 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       applicantRankings: sourcing.applicantRankings ?? [],
       candidateSearchItems: sourcing.candidateSearchItems ?? [],
       talentRediscoveryMatches: sourcing.talentRediscoveryMatches ?? [],
+      onlineHeadhunting: this.normalizeOnlineHeadhunting(sourcing.onlineHeadhunting),
       interviewTemplates: sourcing.interviewTemplates ?? [],
       interviewers: (sourcing.interviewers ?? []).map((interviewer) => ({
         ...interviewer,
@@ -4643,6 +5685,28 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       })),
       hodInterviewers: sourcing.hodInterviewers ?? [],
       skills: sourcing.skills ?? [],
+    };
+  }
+
+  private normalizeOnlineHeadhunting(onlineHeadhunting: RecruiterSourcing['onlineHeadhunting']): OnlineHeadhuntingResult | null {
+    if (!onlineHeadhunting) {
+      return null;
+    }
+
+    return {
+      ...onlineHeadhunting,
+      run: {
+        ...onlineHeadhunting.run,
+        sourceCodes: onlineHeadhunting.run?.sourceCodes ?? [],
+        queries: onlineHeadhunting.run?.queries ?? [],
+      },
+      leads: (onlineHeadhunting.leads ?? []).map((lead) => ({
+        ...lead,
+        strengths: lead.strengths ?? [],
+        matchedSkills: lead.matchedSkills ?? [],
+        gaps: lead.gaps ?? [],
+        missingData: lead.missingData ?? [],
+      })),
     };
   }
 
@@ -4682,6 +5746,7 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       graduationYear: this.numberOrNull(this.manualCandidateForm.graduationYear),
       invitationMessage: this.blankToNull(this.manualCandidateForm.invitationMessage),
       parsedCvEvidence: this.manualCandidateForm.parsedCvEvidence,
+      onlineLeadId: this.blankToNull(this.manualCandidateForm.onlineLeadId),
     };
   }
 
@@ -4726,6 +5791,7 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       graduationYear: null,
       invitationMessage: this.defaultInvitationMessage(),
       parsedCvEvidence: null,
+      onlineLeadId: '',
     };
   }
 

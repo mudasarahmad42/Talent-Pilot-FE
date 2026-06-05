@@ -534,6 +534,244 @@ describe('CandidatePageComponent', () => {
     expect(text).toContain('Career Guide: Nailing the Technical Interview');
   });
 
+  it('shows hired applications as joining pending with the offer start date', () => {
+    routeData$.next({ pageId: 'my-applications' });
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplicationFilters.dateRange = 'all';
+    component.myApplications.set([
+      {
+        ...appliedReactApplication,
+        status: 'Hired',
+        finalDecisionAt: '2026-06-05T10:00:00Z',
+        finalDecisionReason: 'Candidate accepted the offer.',
+        offerStartDate: '2026-06-20',
+      },
+    ]);
+
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Hired');
+    expect(text).toContain('Joining Date');
+    expect(text).toContain('Jun 20, 2026');
+    expect(text).toContain('Joining is scheduled for Jun 20, 2026');
+    expect(text).toContain('Prepare Now');
+    expect(text).not.toContain('Archive');
+  });
+
+  it('keeps joined applications visible with read-only details', () => {
+    routeData$.next({ pageId: 'my-applications' });
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplicationFilters.dateRange = 'all';
+    component.myApplications.set([
+      {
+        ...appliedReactApplication,
+        status: 'Joined',
+        finalDecisionAt: '2026-06-21T10:00:00Z',
+        finalDecisionReason: 'Candidate joined successfully.',
+        offerStartDate: '2026-06-20',
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('.application-tracker-card') as HTMLElement;
+    const detailsLink = card.querySelector('.application-details-link') as HTMLAnchorElement;
+
+    expect(card.textContent).toContain('Joined');
+    expect(card.textContent).toContain('Joined Date');
+    expect(card.textContent).toContain('Jun 21, 2026');
+    expect(card.textContent).toContain('Candidate joined successfully.');
+    expect(detailsLink?.textContent).toContain('View Details');
+    expect(detailsLink?.getAttribute('href')).toContain('/candidate/applications/app-1/status');
+    expect(card.textContent).not.toContain('Archive');
+    expect(card.textContent).not.toContain('archive');
+    expect(card.textContent).not.toContain('Prepare Now');
+  });
+
+  it('keeps unsuccessful final applications archived on the candidate list', () => {
+    routeData$.next({ pageId: 'my-applications' });
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplicationFilters.dateRange = 'all';
+    component.myApplications.set([
+      {
+        ...appliedReactApplication,
+        status: 'Rejected',
+        finalDecisionAt: '2026-06-21T10:00:00Z',
+        finalDecisionReason: 'Hiring team selected another candidate.',
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('.application-tracker-card') as HTMLElement;
+
+    expect(card.textContent).toContain('Rejected');
+    expect(card.textContent).toContain('Archive');
+    expect(card.querySelector('.application-details-link')).toBeNull();
+    expect(card.textContent).not.toContain('Prepare Now');
+  });
+
+  it('marks the decision journey step complete for hired applications', () => {
+    routeData$.next({ pageId: 'application-status' });
+    routeParamMap$.next(convertToParamMap({ id: 'app-1' }));
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplications.set([
+      {
+        ...appliedReactApplication,
+        status: 'Hired',
+        finalDecisionAt: '2026-06-05T10:00:00Z',
+        finalDecisionReason: 'Candidate accepted the offer.',
+        offerStartDate: '2026-06-20',
+        timeline: [
+          {
+            kind: 'FinalOutcome',
+            title: 'Final outcome: Hired',
+            description: 'Offer accepted.',
+            occurredAt: '2026-06-05T10:00:00Z',
+            status: 'Hired',
+          },
+        ],
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const steps = fixture.nativeElement.querySelectorAll('.journey-steps li') as NodeListOf<HTMLElement>;
+    expect(steps).toHaveLength(6);
+    const decisionStep = steps[4];
+    const joiningStep = steps[5];
+    expect(decisionStep.textContent).toContain('Decision');
+    expect(decisionStep.classList.contains('done')).toBe(true);
+    expect(decisionStep.classList.contains('current')).toBe(false);
+    expect(joiningStep.textContent).toContain('Joining');
+    expect(joiningStep.textContent).toContain('Jun 20');
+    expect(joiningStep.classList.contains('current')).toBe(true);
+    expect(joiningStep.classList.contains('done')).toBe(false);
+  });
+
+  it('marks the joining journey step complete after the candidate joins', () => {
+    routeData$.next({ pageId: 'application-status' });
+    routeParamMap$.next(convertToParamMap({ id: 'app-1' }));
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplications.set([
+      {
+        ...appliedReactApplication,
+        status: 'Joined',
+        finalDecisionAt: '2026-06-21T10:00:00Z',
+        finalDecisionReason: 'Candidate joined successfully.',
+        offerStartDate: '2026-06-20',
+        timeline: [
+          {
+            kind: 'FinalOutcome',
+            title: 'Final outcome: Joined',
+            description: 'Candidate joined successfully.',
+            occurredAt: '2026-06-21T10:00:00Z',
+            status: 'Joined',
+          },
+        ],
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const steps = fixture.nativeElement.querySelectorAll('.journey-steps li') as NodeListOf<HTMLElement>;
+    expect(steps).toHaveLength(6);
+    const joiningStep = steps[5];
+    expect(joiningStep.textContent).toContain('Joining');
+    expect(joiningStep.classList.contains('done')).toBe(true);
+    expect(joiningStep.classList.contains('current')).toBe(false);
+  });
+
+  it('groups interview events by job on the candidate interviews page', () => {
+    routeData$.next({ pageId: 'interviews' });
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplications.set([
+      {
+        jobApplicationId: 'app-1',
+        jobPostId: 'post-1',
+        jobRequestId: 'jr-1',
+        requestCode: 'TP-REQ-001',
+        jobTitle: 'Senior React Developer',
+        companyName: 'TKXEL Careers',
+        client: 'Client ABC',
+        department: 'Engineering',
+        location: 'Lahore',
+        status: 'Interviewing',
+        sourceLabel: 'Portal',
+        appliedAt: '2026-06-01T00:00:00Z',
+        finalDecisionAt: null,
+        finalDecisionReason: null,
+        interviewsPassed: 2,
+        interviewsTotal: 2,
+        interviewPassSummary: '2/2 passed',
+        documents: [],
+        timeline: [
+          {
+            kind: 'Interview',
+            title: 'HR Screening completed',
+            description: 'Interviewer recommendation: Proceed.',
+            occurredAt: '2026-06-03T16:53:19Z',
+            status: 'Completed',
+          },
+          {
+            kind: 'Interview',
+            title: 'Technical Interview completed',
+            description: 'Interviewer recommendation: Proceed.',
+            occurredAt: '2026-06-03T19:31:47Z',
+            status: 'Completed',
+          },
+        ],
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(fixture.nativeElement.querySelectorAll('.candidate-interview-group-card')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelectorAll('.candidate-interview-event')).toHaveLength(2);
+    expect(text).toContain('Senior React Developer');
+    expect(text).toContain('2 interviews');
+    expect(text).toContain('HR Screening completed');
+    expect(text).toContain('Technical Interview completed');
+  });
+
+  it('describes TKXEL Careers as a cross-department hiring portal on application status', () => {
+    routeData$.next({ pageId: 'application-status' });
+    routeParamMap$.next(convertToParamMap({ id: 'app-1' }));
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplications.set([
+      {
+        ...appliedReactApplication,
+        status: 'Interviewing',
+        department: 'Engineering',
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('hiring across departments');
+    expect(text).toContain('HR');
+    expect(text).toContain('marketing');
+    expect(text).toContain('finance');
+    expect(text).not.toContain('is hiring for Engineering talent');
+  });
+
   it('hides the invited callout on regular job detail visits', () => {
     routeData$.next({ pageId: 'job-detail' });
     routeParamMap$.next(convertToParamMap({ id: 'post-1' }));

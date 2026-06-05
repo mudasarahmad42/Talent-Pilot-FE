@@ -1475,7 +1475,7 @@ interface RecruiterActiveJobPost {
               <div>
                 <span>Offer follow-ups</span>
                 <strong>{{ dashboard.summary.offerFollowUps }}</strong>
-                <small>Drafts, meetings, offered</small>
+                <small>Drafts, meetings, offered, joining</small>
               </div>
             </article>
             <article class="ops-stat-card">
@@ -1670,12 +1670,6 @@ interface RecruiterActiveJobPost {
             <h1>Good morning, {{ firstName() }}</h1>
             <p>Here is your interview schedule and feedback queue for today.</p>
           </div>
-          <div class="ops-header-actions">
-            <a class="btn secondary compact" routerLink="/app/interview-feedback">
-              <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
-              Interview Feedback
-            </a>
-          </div>
         </header>
 
         @if (interviewerLoading()) {
@@ -1748,6 +1742,21 @@ interface RecruiterActiveJobPost {
                   <span class="status-badge info">{{ todayInterviewTasks().length }} today</span>
                 </div>
                 @if (todayInterviewTasks().length > 0) {
+                  @if (todayInterviewFollowUpTasks().length > 0) {
+                    <div class="interviewer-feedback-reminder">
+                      <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
+                      <p>{{ todayInterviewFollowUpMessage() }}</p>
+                      @if (todayInterviewFollowUpActionTask(); as actionTask) {
+                        <a
+                          class="btn secondary compact"
+                          routerLink="/app/interview-feedback"
+                          [queryParams]="{ interviewId: actionTask.interviewId }"
+                        >
+                          Add feedback
+                        </a>
+                      }
+                    </div>
+                  }
                   <div class="interviewer-task-list">
                     @for (task of todayInterviewTasks(); track task.interviewId) {
                       <article class="interviewer-task-row" [class.overdue]="isInterviewTaskOverdue(task)">
@@ -1892,24 +1901,6 @@ interface RecruiterActiveJobPost {
                 }
               </article>
 
-              <aside class="ops-panel interviewer-panel interviewer-actions-panel">
-                <div class="panel-header">
-                  <div>
-                    <h2>Quick actions</h2>
-                    <p class="muted">Use the workbench for full feedback forms.</p>
-                  </div>
-                </div>
-                <div class="interviewer-action-stack">
-                  <a class="btn primary" routerLink="/app/interview-feedback">
-                    <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
-                    Add interview feedback
-                  </a>
-                  <a class="btn secondary" routerLink="/app/interview-feedback">
-                    <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
-                    Open assigned interviews
-                  </a>
-                </div>
-              </aside>
             </section>
           }
         }
@@ -2370,6 +2361,12 @@ export class DashboardComponent implements OnInit {
       .filter((task) => this.isSameLocalDay(task.startsAt, new Date()))
       .slice(0, 6),
   );
+  readonly todayInterviewFollowUpTasks = computed(() =>
+    this.todayInterviewTasks().filter((task) => this.isOneHourPastScheduledStart(task)),
+  );
+  readonly todayInterviewFollowUpActionTask = computed(
+    () => this.todayInterviewFollowUpTasks().find((task) => this.interviewFeedbackActionLabel(task)) ?? null,
+  );
   readonly upcomingInterviewTasks = computed(() => {
     const now = Date.now();
     return this.sortedInterviewTasks()
@@ -2593,7 +2590,7 @@ export class DashboardComponent implements OnInit {
     if (item.label === 'Hiring Manager Review') {
       return '/app/hiring-manager/reviews';
     }
-    if (item.label === 'Offered' || item.label === 'Joined') {
+    if (item.label === 'Offered' || item.label === 'Pending joining' || item.label === 'Joined') {
       return '/app/offer-onboarding';
     }
     return '/app/job-requests';
@@ -2774,6 +2771,17 @@ export class DashboardComponent implements OnInit {
     }).format(startsAt);
   }
 
+  todayInterviewFollowUpMessage(): string {
+    const tasks = this.todayInterviewFollowUpTasks();
+    const name = this.firstName();
+
+    if (tasks.length === 1) {
+      return `Hi ${name}, today's interview with ${tasks[0].candidateName} is now more than an hour past its scheduled time. If feedback has not been submitted yet, please add it promptly so the hiring process can move forward without delay.`;
+    }
+
+    return `Hi ${name}, ${tasks.length} of today's interviews are now more than an hour past their scheduled time. If feedback is still outstanding, please add it promptly so the hiring process can move forward without delay.`;
+  }
+
   formatTime(value: string | null | undefined): string {
     if (!value) {
       return 'Time not set';
@@ -2834,6 +2842,11 @@ export class DashboardComponent implements OnInit {
   isInterviewTaskOverdue(task: InterviewTask): boolean {
     const startsAt = new Date(task.startsAt).getTime();
     return !this.isCompletedInterviewTask(task) && !Number.isNaN(startsAt) && startsAt < Date.now();
+  }
+
+  isOneHourPastScheduledStart(task: InterviewTask): boolean {
+    const startsAt = new Date(task.startsAt).getTime();
+    return !Number.isNaN(startsAt) && Date.now() - startsAt >= 3_600_000;
   }
 
   averageInterviewTaskScore(task: InterviewTask): string {

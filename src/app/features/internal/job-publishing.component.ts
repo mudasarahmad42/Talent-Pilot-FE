@@ -63,11 +63,12 @@ type JobPostFilter = 'All' | JobPostStatus;
           <div class="empty-state">Loading job posts...</div>
         } @else if (visibleItems().length > 0) {
           <div class="table-wrap">
-            <table class="ops-table">
+            <table class="ops-table job-publishing-table">
               <thead>
                 <tr>
                   <th>Job Post</th>
                   <th>Request</th>
+                  <th>Applicants</th>
                   <th>Client</th>
                   <th>Department</th>
                   <th>Status</th>
@@ -85,6 +86,11 @@ type JobPostFilter = 'All' | JobPostStatus;
                       <small>{{ item.location }}</small>
                     </td>
                     <td>{{ item.requestCode }}</td>
+                    <td>
+                      <span class="job-post-applicant-count" [class.empty]="item.applicantCount === 0">
+                        {{ item.applicantCount }}
+                      </span>
+                    </td>
                     <td>{{ item.client }}</td>
                     <td>{{ item.department }}</td>
                     <td><span [class]="jobPostStatusClass(item.status)">{{ item.status }}</span></td>

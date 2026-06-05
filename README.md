@@ -6,6 +6,14 @@ The frontend is a real application shell, not a design mock. Business data must 
 
 For cross-system HTTP, SignalR, email, worker, and AI flows, keep the root workspace architecture reference updated: `../../ARCHITECTURE.md`.
 
+## Product Snapshot
+
+![Talent Pilot login page](docs/assets/login-page.png)
+
+The frontend currently supports role-card login, internal Talent Pilot workspaces, recruiter sourcing, AI-assisted candidate discovery, interview feedback, hiring-manager review, and the candidate portal. The login page is backed by the same auth endpoints used by demo and local MVP testing, so the screenshot reflects the running application rather than a static mock.
+
+Recent MVP additions include lead-only AI Headhunting for recruiters, background search notifications, grouped candidate interview timelines, hiring-manager outcome filters, hired/joined candidate states, and safeguards that stop manual intake, AI sourcing, and public applications when a job post is closed.
+
 ## Stack
 
 - Angular 21
@@ -114,8 +122,10 @@ http://127.0.0.1:4200/auth/login
 - Permission constants, route guards, and `PermissionService` checks.
 - Admin Center shell and pages for tenant profile, users, roles, groups, workflows, notifications, AI settings, integrations, and audit logs.
 - Tenant Profile tabs for profile, branding, career page, and security.
-- Talent Pilot internal shell for dashboard, job requests, create request, request detail, PMO queue, notifications, and backend-required placeholders for incomplete screens.
-- Candidate Experience shell and backend-required placeholders until candidate APIs are implemented.
+- Talent Pilot internal shell for dashboard, job requests, create request, request detail, PMO queue, recruiter sourcing, job publishing, interview feedback, hiring-manager review, notifications, and backend-required placeholders for incomplete screens.
+- Recruiter AI Headhunting tab with lead-only online discovery, source filters, duplicate warnings, search quotas, recruiter-controlled conversion, and no LinkedIn/Indeed scraping.
+- Candidate Experience shell for published jobs, applications, application status, grouped interviews, and read-only final hired/joined records.
+- Hiring-manager review flow with candidate status filters, final outcome recording, offer acceptance, joining-date tracking, and joined/not-joined status visibility.
 - UTC timestamp display formatting from backend ISO values.
 
 ## Current Integration Rules

@@ -6,6 +6,7 @@ export const Permission = {
   ManageTenantProfile: 'tenant.profile.manage',
   ManageNotifications: 'notifications.manage',
   ViewAiSettings: 'ai.settings.view',
+  AiAssistantUse: 'ai.assistant.use',
   ViewJobRequests: 'job.requests.view',
   CreateJobRequests: 'job.requests.create',
   ClaimWorkflowTasks: 'workflow.assignments.claim',

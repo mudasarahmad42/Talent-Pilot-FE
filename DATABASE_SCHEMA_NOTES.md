@@ -193,6 +193,10 @@ Suggested `CandidateSourceLabels` fields:
 
 Candidate applications and invitation records should reference the selected `CandidateSourceLabelId` so source reporting stays stable even if visible labels change later.
 
+## Interview Question Recommendations
+
+The Interview Feedback screen consumes persisted recommendation sets, not transient UI-only text. Backend persistence is versioned per interview and returns a natural-language summary, coverage metadata, and structured question rows with expected signal, follow-ups, rubric, source bank item id, model, prompt version, and generated timestamp. The UI should display this as advisory preparation material only and must not auto-fill interview feedback from it.
+
 ## AI Runtime And Agents
 
 AI runtime settings are read from backend appsettings/configuration and shown in Admin Center as read-only data. Persist operational agent runs separately from static appsettings values.

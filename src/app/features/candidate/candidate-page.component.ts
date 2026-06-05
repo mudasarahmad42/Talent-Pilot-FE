@@ -78,6 +78,13 @@ interface CandidateInterviewCard {
   isUpcoming: boolean;
 }
 
+interface CandidateInterviewGroup {
+  application: PortalMyApplicationItem;
+  interviews: CandidateInterviewCard[];
+  upcomingCount: number;
+  pastCount: number;
+}
+
 @Component({
   selector: 'app-candidate-page',
   imports: [CommonModule, FormsModule, RouterLink],
@@ -755,7 +762,8 @@ interface CandidateInterviewCard {
                   <article
                     class="application-tracker-card"
                     [class.invited]="myApplicationIsInvited(application)"
-                    [class.final]="myApplicationIsFinal(application)"
+                    [class.final]="myApplicationIsFinal(application) && !myApplicationIsSuccessfulFinal(application)"
+                    [class.completed]="myApplicationIsSuccessfulFinal(application)"
                   >
                     <div class="application-card-main">
                       <span class="application-card-icon material-symbols-outlined" aria-hidden="true">{{ myApplicationIcon(application) }}</span>
@@ -796,6 +804,11 @@ interface CandidateInterviewCard {
                           Complete Application
                         </a>
                         <button class="application-text-action" type="button" disabled>Not Interested</button>
+                      } @else if (myApplicationIsSuccessfulFinal(application)) {
+                        <a class="application-details-link" [routerLink]="['/candidate/applications', application.jobApplicationId, 'status']">
+                          View Details
+                          <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                        </a>
                       } @else if (myApplicationIsFinal(application)) {
                         <button class="application-text-action archive" type="button" disabled>
                           Archive
@@ -1019,7 +1032,7 @@ interface CandidateInterviewCard {
 
                     <article class="candidate-panel company-card">
                       <h2>About {{ application.companyName }}</h2>
-                      <p>{{ application.companyName }} is hiring for {{ application.department }} talent through Talent Pilot.</p>
+                      <p>{{ application.companyName }} uses Talent Pilot to manage hiring across departments including engineering, HR, marketing, sales, finance, and operations.</p>
                       <div class="company-meta">
                         <span class="company-meta-dot"></span>
                         <small>Talent Pilot portal</small>
@@ -1272,30 +1285,51 @@ interface CandidateInterviewCard {
 
           @case ('interviews') {
             <section class="portal-application-list candidate-interview-list">
-              @if (candidateInterviewCards().length === 0) {
+              @if (candidateInterviewGroups().length === 0) {
                 <article class="candidate-panel empty-state">
                   <strong>No interviews scheduled yet.</strong>
                   <p>Interview invitations and completed rounds appear here once recruiters update your application timeline.</p>
                   <a routerLink="/candidate/my-applications">View applications</a>
                 </article>
               } @else {
-                @for (card of candidateInterviewCards(); track card.application.jobApplicationId + card.event.occurredAt + card.event.title) {
-                  <article class="candidate-panel portal-application-card candidate-interview-card">
-                    <div class="portal-job-main">
-                      <span class="portal-job-icon material-symbols-outlined" aria-hidden="true">event_available</span>
-                      <div>
-                        <span class="candidate-status-pill">{{ card.isUpcoming ? 'Upcoming' : 'Past' }}</span>
-                        <h2>{{ card.event.title }}</h2>
-                        <p class="portal-job-meta">
-                          <span><span class="material-symbols-outlined" aria-hidden="true">work</span>{{ card.application.jobTitle }}</span>
-                          <span><span class="material-symbols-outlined" aria-hidden="true">schedule</span>{{ card.event.occurredAt | date: 'medium' }}</span>
-                        </p>
-                        <small>{{ card.event.description }}</small>
+                @for (group of candidateInterviewGroups(); track group.application.jobApplicationId) {
+                  <article class="candidate-panel candidate-interview-group-card">
+                    <header class="candidate-interview-group-header">
+                      <div class="portal-job-main">
+                        <span class="portal-job-icon material-symbols-outlined" aria-hidden="true">work</span>
+                        <div>
+                          <span class="candidate-status-pill">{{ group.upcomingCount > 0 ? 'Active interviews' : 'Past interviews' }}</span>
+                          <h2>{{ group.application.jobTitle }}</h2>
+                          <p class="portal-job-meta">
+                            <span><span class="material-symbols-outlined" aria-hidden="true">business</span>{{ group.application.companyName }}</span>
+                            <span><span class="material-symbols-outlined" aria-hidden="true">location_on</span>{{ group.application.location }}</span>
+                            <span><span class="material-symbols-outlined" aria-hidden="true">event_available</span>{{ group.interviews.length }} interview{{ group.interviews.length === 1 ? '' : 's' }}</span>
+                            <span><span class="material-symbols-outlined" aria-hidden="true">task_alt</span>{{ group.upcomingCount }} upcoming / {{ group.pastCount }} past</span>
+                          </p>
+                        </div>
                       </div>
+                      <a class="btn secondary" [routerLink]="['/candidate/applications', group.application.jobApplicationId, 'status']">
+                        View timeline
+                      </a>
+                    </header>
+
+                    <div class="candidate-interview-event-list">
+                      @for (card of group.interviews; track card.application.jobApplicationId + card.event.occurredAt + card.event.title) {
+                        <div class="candidate-interview-event" [class.upcoming]="card.isUpcoming">
+                          <span class="material-symbols-outlined" aria-hidden="true">{{ card.isUpcoming ? 'event' : 'event_available' }}</span>
+                          <div>
+                            <div class="candidate-interview-event-title">
+                              <span class="candidate-status-pill">{{ card.isUpcoming ? 'Upcoming' : 'Past' }}</span>
+                              <strong>{{ card.event.title }}</strong>
+                            </div>
+                            <p class="portal-job-meta">
+                              <span><span class="material-symbols-outlined" aria-hidden="true">schedule</span>{{ card.event.occurredAt | date: 'medium' }}</span>
+                            </p>
+                            <small>{{ card.event.description }}</small>
+                          </div>
+                        </div>
+                      }
                     </div>
-                    <a class="btn secondary" [routerLink]="['/candidate/applications', card.application.jobApplicationId, 'status']">
-                      View timeline
-                    </a>
                   </article>
                 }
               }
@@ -1447,6 +1481,108 @@ interface CandidateInterviewCard {
         min-width: 154px;
       }
 
+      .candidate-interview-group-card {
+        display: grid;
+        gap: 16px;
+      }
+
+      .candidate-interview-group-header {
+        align-items: start;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+      }
+
+      .candidate-interview-group-header h2 {
+        margin: 8px 0 4px;
+      }
+
+      .candidate-interview-group-header > a {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+
+      .candidate-interview-event-list {
+        border-top: 1px solid #e2e8f0;
+        display: grid;
+        gap: 0;
+        position: relative;
+      }
+
+      .candidate-interview-event {
+        align-items: start;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 34px minmax(0, 1fr);
+        padding: 14px 0;
+        position: relative;
+      }
+
+      .candidate-interview-event + .candidate-interview-event {
+        border-top: 1px solid #eef2f7;
+      }
+
+      .candidate-interview-event::before,
+      .candidate-interview-event::after {
+        background: #c7d8ec;
+        content: '';
+        left: 16px;
+        position: absolute;
+        width: 2px;
+        z-index: 0;
+      }
+
+      .candidate-interview-event::before {
+        top: 0;
+        bottom: calc(100% - 31px);
+      }
+
+      .candidate-interview-event::after {
+        top: 48px;
+        bottom: 0;
+      }
+
+      .candidate-interview-event:first-child::before,
+      .candidate-interview-event:last-child::after {
+        display: none;
+      }
+
+      .candidate-interview-event > .material-symbols-outlined {
+        align-items: center;
+        background: #e8f1ff;
+        border-radius: 8px;
+        color: #075dad;
+        display: inline-flex;
+        font-size: 19px;
+        height: 34px;
+        justify-content: center;
+        position: relative;
+        width: 34px;
+        z-index: 1;
+      }
+
+      .candidate-interview-event.upcoming > .material-symbols-outlined {
+        background: #e8f7ef;
+        color: #147a4b;
+      }
+
+      .candidate-interview-event-title {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .candidate-interview-event-title strong {
+        font-size: 16px;
+      }
+
+      .candidate-interview-event small {
+        color: #334155;
+        display: block;
+        margin-top: 6px;
+      }
+
       .portal-job-actions .btn {
         border-radius: 8px;
         height: 42px;
@@ -1483,6 +1619,20 @@ interface CandidateInterviewCard {
       .candidate-profile-cta {
         display: grid;
         gap: 12px;
+      }
+
+      .recruiter-support-card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .recruiter-support-card .btn.full {
+        min-height: 42px;
+        width: 100%;
+      }
+
+      .recruiter-support-card .btn.full + .btn.full {
+        margin-top: 2px;
       }
 
       .candidate-profile-cta {
@@ -1826,9 +1976,15 @@ interface CandidateInterviewCard {
 
         .candidate-hero-v2,
         .portal-job-card,
-        .portal-application-card {
+        .portal-application-card,
+        .candidate-interview-group-header {
           align-items: stretch;
           display: grid;
+        }
+
+        .candidate-interview-group-header > a {
+          justify-content: center;
+          width: 100%;
         }
 
         .candidate-content-grid,
@@ -2247,12 +2403,24 @@ export class CandidatePageComponent {
   }
 
   myApplicationIsFinal(application: PortalMyApplicationItem): boolean {
-    return this.isDecisionStatus(application.status.toLowerCase());
+    const status = application.status.toLowerCase();
+    return this.isDecisionStatus(status) && !this.isHiredAwaitingJoining(status);
+  }
+
+  myApplicationIsSuccessfulFinal(application: PortalMyApplicationItem): boolean {
+    const status = application.status.toLowerCase();
+    return status.includes('joined');
   }
 
   myApplicationIcon(application: PortalMyApplicationItem): string {
     if (this.myApplicationIsInvited(application)) {
       return 'dynamic_feed';
+    }
+    if (this.isHiredAwaitingJoining(application.status.toLowerCase())) {
+      return 'event_available';
+    }
+    if (this.myApplicationIsSuccessfulFinal(application)) {
+      return 'task_alt';
     }
     if (this.myApplicationIsFinal(application)) {
       return 'inventory_2';
@@ -2312,10 +2480,24 @@ export class CandidatePageComponent {
   }
 
   myApplicationDateHeading(application: PortalMyApplicationItem): string {
+    if (this.isHiredAwaitingJoining(application.status.toLowerCase())) {
+      return 'Joining Date';
+    }
+    if (this.myApplicationIsSuccessfulFinal(application)) {
+      return 'Joined Date';
+    }
+
     return this.myApplicationIsFinal(application) ? 'Date Applied' : 'Last Updated';
   }
 
   myApplicationDateValue(application: PortalMyApplicationItem): string {
+    if (this.isHiredAwaitingJoining(application.status.toLowerCase())) {
+      return this.formatDateOnly(application.offerStartDate);
+    }
+    if (this.myApplicationIsSuccessfulFinal(application)) {
+      return this.formatDateOnly(application.finalDecisionAt ?? application.offerStartDate ?? application.appliedAt);
+    }
+
     if (this.myApplicationIsFinal(application)) {
       return this.formatDateOnly(application.appliedAt);
     }
@@ -2331,6 +2513,12 @@ export class CandidatePageComponent {
     if (this.myApplicationIsInvited(application)) {
       return 'info';
     }
+    if (this.isHiredAwaitingJoining(application.status.toLowerCase())) {
+      return 'event_available';
+    }
+    if (this.myApplicationIsSuccessfulFinal(application)) {
+      return 'task_alt';
+    }
     if (this.myApplicationIsFinal(application)) {
       return 'archive';
     }
@@ -2340,6 +2528,12 @@ export class CandidatePageComponent {
   myApplicationFooterText(application: PortalMyApplicationItem): string {
     if (this.myApplicationIsInvited(application)) {
       return 'Our recruitment team identified your profile as a great match for this role.';
+    }
+    if (this.isHiredAwaitingJoining(application.status.toLowerCase())) {
+      const joiningDate = this.formatDateOnly(application.offerStartDate);
+      return joiningDate === 'Date pending'
+        ? 'Your offer acceptance is recorded. The recruitment team will confirm joining details.'
+        : `Your offer acceptance is recorded. Joining is scheduled for ${joiningDate}.`;
     }
     if (this.myApplicationIsFinal(application)) {
       return application.finalDecisionReason || `This application is currently ${this.humanizeStatus(application.status)}.`;
@@ -2659,6 +2853,62 @@ export class CandidatePageComponent {
       .sort((left, right) => Date.parse(left.event.occurredAt) - Date.parse(right.event.occurredAt));
   }
 
+  candidateInterviewGroups(): CandidateInterviewGroup[] {
+    const groups = new Map<string, CandidateInterviewGroup>();
+    for (const card of this.candidateInterviewCards()) {
+      const key = card.application.jobApplicationId;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.interviews.push(card);
+        existing.upcomingCount += card.isUpcoming ? 1 : 0;
+        existing.pastCount += card.isUpcoming ? 0 : 1;
+      } else {
+        groups.set(key, {
+          application: card.application,
+          interviews: [card],
+          upcomingCount: card.isUpcoming ? 1 : 0,
+          pastCount: card.isUpcoming ? 0 : 1,
+        });
+      }
+    }
+
+    return Array.from(groups.values())
+      .map((group) => ({
+        ...group,
+        interviews: [...group.interviews].sort((left, right) => Date.parse(left.event.occurredAt) - Date.parse(right.event.occurredAt)),
+      }))
+      .sort((left, right) => this.compareCandidateInterviewGroups(left, right));
+  }
+
+  private compareCandidateInterviewGroups(left: CandidateInterviewGroup, right: CandidateInterviewGroup): number {
+    if (left.upcomingCount !== right.upcomingCount) {
+      return right.upcomingCount - left.upcomingCount;
+    }
+
+    const leftTime = this.candidateInterviewGroupSortTime(left);
+    const rightTime = this.candidateInterviewGroupSortTime(right);
+    if (left.upcomingCount > 0 || right.upcomingCount > 0) {
+      return leftTime - rightTime;
+    }
+
+    return rightTime - leftTime;
+  }
+
+  private candidateInterviewGroupSortTime(group: CandidateInterviewGroup): number {
+    const relevant = group.upcomingCount > 0
+      ? group.interviews.filter((card) => card.isUpcoming)
+      : group.interviews;
+    const times = relevant
+      .map((card) => Date.parse(card.event.occurredAt))
+      .filter((time) => Number.isFinite(time));
+
+    if (times.length === 0) {
+      return 0;
+    }
+
+    return group.upcomingCount > 0 ? Math.min(...times) : Math.max(...times);
+  }
+
   experienceLabel(job: Pick<PortalJobPostListItem, 'experienceMinYears' | 'experienceMaxYears'>): string {
     const min = job.experienceMinYears;
     const max = job.experienceMaxYears;
@@ -2926,7 +3176,7 @@ export class CandidatePageComponent {
   statusGreeting(application: PortalMyApplicationItem): string {
     const firstName = this.currentUser()?.displayName?.split(' ')[0] || 'there';
     const status = application.status.toLowerCase();
-    if (status.includes('joined')) {
+    if (status.includes('joined') || this.isHiredAwaitingJoining(status)) {
       return `Congratulations, ${firstName}!`;
     }
     if (status.includes('offered')) {
@@ -2949,6 +3199,11 @@ export class CandidatePageComponent {
     if (status.includes('offered')) {
       return 'The hiring manager has moved this application into the offer stage.';
     }
+    if (this.isHiredAwaitingJoining(status)) {
+      return application.offerStartDate
+        ? `Your offer acceptance is recorded. Joining is scheduled for ${this.formatDateOnly(application.offerStartDate)}.`
+        : 'Your offer acceptance is recorded. The recruitment team will confirm joining details.';
+    }
     if (status.includes('joined')) {
       return 'This application has reached the joined outcome.';
     }
@@ -2961,6 +3216,7 @@ export class CandidatePageComponent {
   journeySteps(application: PortalMyApplicationItem): ApplicationJourneyStep[] {
     const status = application.status.toLowerCase();
     const decision = this.isDecisionStatus(status);
+    const successfulDecision = status.includes('joined') || this.isHiredAwaitingJoining(status);
     const finalReview = decision || status.includes('hiringmanager') || status.includes('offer');
     const interviewing = finalReview || status.includes('interview') || application.interviewsTotal > 0;
     const recruiterReview = status.includes('interview') && this.interviewsComplete(application) && !finalReview;
@@ -2972,7 +3228,7 @@ export class CandidatePageComponent {
       this.latestTimelineDate(application, (event) => event.kind === 'FinalOutcome') ??
       reviewDate;
 
-    return [
+    const steps: ApplicationJourneyStep[] = [
       {
         label: 'Applied',
         date: application.appliedAt,
@@ -3001,9 +3257,21 @@ export class CandidatePageComponent {
         label: 'Decision',
         date: finalDate,
         icon: decision ? 'task_alt' : 'flag',
-        state: decision ? 'current' : 'upcoming',
+        state: successfulDecision ? 'done' : decision ? 'current' : 'upcoming',
       },
     ];
+
+    if (successfulDecision) {
+      const joined = status.includes('joined');
+      steps.push({
+        label: 'Joining',
+        date: application.offerStartDate ?? (joined ? finalDate : null),
+        icon: joined ? 'task_alt' : 'event_available',
+        state: joined ? 'done' : 'current',
+      });
+    }
+
+    return steps;
   }
 
   nextStepTitle(application: PortalMyApplicationItem): string {
@@ -3028,6 +3296,9 @@ export class CandidatePageComponent {
     if (status.includes('offered')) {
       return 'Next Step: Offer Presentation';
     }
+    if (this.isHiredAwaitingJoining(status)) {
+      return 'Next Step: Joining';
+    }
     if (this.isDecisionStatus(status)) {
       return `Final Status: ${this.humanizeStatus(application.status)}`;
     }
@@ -3035,6 +3306,11 @@ export class CandidatePageComponent {
   }
 
   nextStepDate(application: PortalMyApplicationItem): string {
+    const status = application.status.toLowerCase();
+    if ((this.isHiredAwaitingJoining(status) || status.includes('joined')) && application.offerStartDate) {
+      return this.formatDateOnly(application.offerStartDate);
+    }
+
     const event =
       this.latestTimelineEvent(application, (item) => item.kind === 'Interview' && !this.eventLooksComplete(item)) ??
       this.latestTimelineEvent(application, (item) => item.kind === 'OfferMeeting') ??
@@ -3056,6 +3332,15 @@ export class CandidatePageComponent {
     }
     if (status.includes('offered')) {
       return 'Watch for the in-person offer presentation invite and bring any documents requested by the hiring manager.';
+    }
+    if (this.isHiredAwaitingJoining(status)) {
+      const joiningDate = this.formatDateOnly(application.offerStartDate);
+      return joiningDate === 'Date pending'
+        ? 'Your offer acceptance is recorded. The recruitment team will confirm your joining details.'
+        : `Your offer acceptance is recorded. Please prepare for joining on ${joiningDate}.`;
+    }
+    if (status.includes('joined')) {
+      return application.finalDecisionReason || 'Your joining has been recorded by the hiring team.';
     }
     if (this.isDecisionStatus(status)) {
       return application.finalDecisionReason || 'This application has a final recorded outcome.';
@@ -3087,6 +3372,12 @@ export class CandidatePageComponent {
 
     if (status.includes('offered')) {
       return 'The hiring manager has moved this application into offer handling.';
+    }
+
+    if (this.isHiredAwaitingJoining(status)) {
+      return application.offerStartDate
+        ? `Your offer acceptance is recorded and joining is scheduled for ${this.formatDateOnly(application.offerStartDate)}.`
+        : 'Your offer acceptance is recorded. The recruitment team will confirm joining details.';
     }
 
     if (this.isDecisionStatus(status)) {
@@ -3150,6 +3441,10 @@ export class CandidatePageComponent {
       status.includes('withdrawn') ||
       status.includes('declined')
     );
+  }
+
+  private isHiredAwaitingJoining(status: string): boolean {
+    return status.includes('hired');
   }
 
   private humanizeStatus(status: string): string {
