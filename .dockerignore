@@ -1,0 +1,16 @@
+.git
+.gitignore
+.angular
+node_modules
+dist
+coverage
+playwright-report
+test-results
+*.log
+*.err
+*.out
+.env
+.env.*
+stitch-reference/chrome-profile*
+stitch-reference/current-*.png
+stitch-reference/stitch-screens-response.json
