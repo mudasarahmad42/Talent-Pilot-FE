@@ -18,6 +18,19 @@ export function formatJobDescription(description: string | null | undefined): st
   for (const heading of JOB_DESCRIPTION_SECTION_HEADINGS) {
     const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     formatted = formatted.replace(new RegExp(`\\s*\\b${escapedHeading}\\s*:\\s*`, 'gi'), `\n\n${heading}\n`);
+    formatted = formatted.replace(new RegExp(`\\s*\\b${escapedHeading}\\s*[-=]{3,}\\s*`, 'gi'), `\n\n${heading}\n`);
+  }
+
+  formatted = formatted
+    .replace(/[ \t]*[-=]{3,}[ \t]*/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => !/^[-=_]{3,}$/.test(line))
+    .join('\n');
+
+  for (const heading of JOB_DESCRIPTION_SECTION_HEADINGS) {
+    const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    formatted = formatted.replace(new RegExp(`(^|\\n)\\s*${escapedHeading}\\s*(\\n|$)`, 'gi'), `$1\n${heading}\n`);
   }
 
   formatted = formatted

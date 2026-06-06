@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { formatJobDescription } from '../../core/job-description-formatting';
 import { BenchEmployee, BenchMatch, EmployeeProjectEvidence, PmoReview } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.component';
@@ -62,7 +63,7 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
                     </button>
                   }
                 </div>
-                <p>{{ review.jobRequest.description }}</p>
+                <div class="job-description-body">{{ formattedDescription(review.jobRequest.description) }}</div>
                 @if (review.jobRequest.clientContext) {
                   <div class="client-context-summary">
                     <span>Client context</span>
@@ -772,6 +773,13 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
         white-space: pre-line;
       }
 
+      .job-description-body {
+        color: #0f172a;
+        line-height: 1.65;
+        margin: 0;
+        white-space: pre-line;
+      }
+
       @media (max-width: 860px) {
         .bench-table-header {
           display: none;
@@ -1191,6 +1199,10 @@ export class PmoReviewComponent {
     }
 
     return [preface, sanitized].filter(Boolean).join(' ');
+  }
+
+  formattedDescription(description: string): string {
+    return formatJobDescription(description);
   }
 
   private skillMismatchPreface(employee: BenchEmployee): string {
