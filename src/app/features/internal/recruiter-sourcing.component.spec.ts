@@ -381,6 +381,43 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     expect(status).not.toContain('actively refused');
   });
 
+  it('orders applications by applicant ranking relevance when rankings exist', async () => {
+    const sourcing = buildSourcing('Published');
+    sourcing.applications = [
+      buildApplication({
+        jobApplicationId: 'application-low',
+        candidateId: 'candidate-low',
+        candidateName: 'Lower Ranked Candidate',
+        appliedAt: '2026-06-03T10:00:00Z',
+      }),
+      buildApplication({
+        jobApplicationId: 'application-high',
+        candidateId: 'candidate-high',
+        candidateName: 'Higher Ranked Candidate',
+        appliedAt: '2026-06-01T10:00:00Z',
+      }),
+    ];
+    sourcing.applicantRankings = [
+      buildApplicantRanking({ jobApplicationId: 'application-low', candidateId: 'candidate-low', rank: 2, score: 72 }),
+      buildApplicantRanking({ jobApplicationId: 'application-high', candidateId: 'candidate-high', rank: 1, score: 91 }),
+    ];
+
+    expect(component.rankedApplications(sourcing).map((application) => application.jobApplicationId)).toEqual([
+      'application-high',
+      'application-low',
+    ]);
+
+    await renderPostRounds(sourcing, []);
+    component.setTab('applications');
+    fixture.detectChanges();
+
+    const candidates = Array.from(
+      fixture.nativeElement.querySelectorAll('.manual-candidate-row [data-label="Candidate"] strong') as NodeListOf<HTMLElement>,
+    ).map((node) => node.textContent?.trim());
+
+    expect(candidates).toEqual(['Higher Ranked Candidate', 'Lower Ranked Candidate']);
+  });
+
   it('extracts applicant ranking score breakdown percentages from rationale text', () => {
     const breakdown = component.applicantRankingScoreBreakdown(buildApplicantRanking({
       explanation: 'Amara Haq is ranked for this current application because their profile has a skill coverage score of 0%, vector similarity score of 0%, experience/location/notice fit score of 83%, historical signal score of 81%, evidence completeness score of 100%, and application recency score of 100%.',
@@ -422,6 +459,28 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     expect(menu.textContent).toContain('Hold');
     expect(menu.textContent).toContain('Reject');
     expect(menu.textContent).toContain('View profile');
+  });
+
+  it('renders applied and screening application statuses with distinct badge classes', async () => {
+    const sourcing = buildSourcing('Published');
+    sourcing.applications = [
+      buildApplication({ jobApplicationId: 'application-applied', applicationStatus: 'Applied' }),
+      buildApplication({ jobApplicationId: 'application-screening', applicationStatus: 'Screening' }),
+    ];
+    await renderPostRounds(sourcing, []);
+
+    component.setTab('applications');
+    fixture.detectChanges();
+
+    const badges = Array.from(
+      fixture.nativeElement.querySelectorAll('.manual-candidate-row [data-label="Status / AI Match"] .status-badge') as NodeListOf<HTMLElement>,
+    );
+    const applied = badges.find((badge) => badge.textContent?.trim() === 'Applied');
+    const screening = badges.find((badge) => badge.textContent?.trim() === 'Screening');
+
+    expect(applied?.classList.contains('status-badge--applied')).toBe(true);
+    expect(screening?.classList.contains('status-badge--screening')).toBe(true);
+    expect(applied?.className).not.toBe(screening?.className);
   });
 
   it('hides shortlist when the candidate is already in screening', async () => {

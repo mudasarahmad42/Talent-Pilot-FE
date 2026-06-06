@@ -342,7 +342,7 @@ type InterviewTimelineEntry = {
                       <span>Interviews</span>
                       <span>Actions</span>
                     </div>
-                    @for (application of data.applications; track application.jobApplicationId) {
+                    @for (application of rankedApplications(data); track application.jobApplicationId) {
                       <article class="manual-candidate-row" role="row">
                         <div data-label="Candidate">
                           <strong>{{ application.candidateName }}</strong>
@@ -361,7 +361,7 @@ type InterviewTimelineEntry = {
                           <small>Applied {{ application.appliedAt | date: 'mediumDate' }}</small>
                         </div>
                         <div data-label="Status / AI Match">
-                          <span class="status-badge info">{{ application.applicationStatus }}</span>
+                          <span [class]="applicationStatusBadgeClass(application.applicationStatus)">{{ application.applicationStatus }}</span>
                           @if (applicantRankingFor(application); as ranking) {
                             <section [class]="'applicant-ai-match-card ' + applicantAiTone(ranking)" aria-label="Applicant AI ranking">
                               <div class="applicant-ai-match-topline">
@@ -3572,6 +3572,27 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     return 'status-badge info';
   }
 
+  applicationStatusBadgeClass(status: string | null | undefined): string {
+    const normalized = this.normalizeStatus(status);
+    const classes: Record<string, string> = {
+      invited: 'status-badge status-badge--invited',
+      applied: 'status-badge status-badge--applied',
+      screening: 'status-badge status-badge--screening',
+      shortlisted: 'status-badge status-badge--screening',
+      interviewing: 'status-badge status-badge--interviewing',
+      hiringmanagerreview: 'status-badge status-badge--review',
+      offered: 'status-badge status-badge--offer',
+      onhold: 'status-badge status-badge--hold',
+      offerdeclined: 'status-badge status-badge--offer-declined',
+      rejected: 'status-badge status-badge--danger',
+      withdrawn: 'status-badge status-badge--closed',
+      joined: 'status-badge status-badge--success',
+      hired: 'status-badge status-badge--success',
+    };
+
+    return classes[normalized] ?? 'status-badge status-badge--neutral';
+  }
+
   manualCandidateDisabledReason(): string {
     if (this.isCurrentJobPostClosed()) {
       return 'This job post is closed and archived. New manual candidates cannot be added or invited.';
@@ -4668,6 +4689,34 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       .find((ranking) => ranking.jobApplicationId === application.jobApplicationId);
   }
 
+  rankedApplications(sourcing: RecruiterSourcing | null | undefined = this.sourcing()): RecruiterApplication[] {
+    const applications = [...(sourcing?.applications ?? [])];
+    const rankings = new Map(
+      (sourcing?.applicantRankings ?? []).map((ranking) => [ranking.jobApplicationId, ranking]),
+    );
+
+    return applications.sort((left, right) => {
+      const leftRanking = rankings.get(left.jobApplicationId);
+      const rightRanking = rankings.get(right.jobApplicationId);
+
+      if (leftRanking && rightRanking) {
+        return (leftRanking.rank - rightRanking.rank) ||
+          (rightRanking.score - leftRanking.score) ||
+          this.compareAppliedAtDescending(left, right);
+      }
+
+      if (leftRanking) {
+        return -1;
+      }
+
+      if (rightRanking) {
+        return 1;
+      }
+
+      return this.compareAppliedAtDescending(left, right);
+    });
+  }
+
   filteredManualCandidates(): ManualCandidateSearchItem[] {
     const candidates = this.sourcing()?.candidateSearchItems ?? [];
     const text = this.manualSearchText.trim().toLowerCase();
@@ -5178,6 +5227,10 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     };
 
     return labels[normalized] ?? status.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+
+  private compareAppliedAtDescending(left: RecruiterApplication, right: RecruiterApplication): number {
+    return new Date(right.appliedAt).getTime() - new Date(left.appliedAt).getTime();
   }
 
   private formatRelativeTime(value: string): string {

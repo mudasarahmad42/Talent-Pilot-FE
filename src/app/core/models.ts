@@ -1259,6 +1259,8 @@ export interface HiringManagerReviewListItem {
   status: string;
   hiringManagerName: string;
   updatedAt: string;
+  offerLetterStatus?: string | null;
+  latestMeetingAt?: string | null;
 }
 
 export interface HiringReviewCandidateSummary {
@@ -1287,6 +1289,8 @@ export interface HiringReviewJobSummary {
   requiredPositions: number;
   fulfilledPositions: number;
   requestStatus: string;
+  requestClosedAt?: string | null;
+  requestCloseReason?: string | null;
   applicationStatus: string;
   finalOutcomeRecordedAt?: string | null;
   finalOutcomeReason?: string | null;
