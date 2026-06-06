@@ -2565,7 +2565,7 @@ td small {
   color: #fff;
   gap: 32px;
   height: 64px;
-  padding: 0 24px 0 260px;
+  padding: 0 24px;
 }
 
 .admin-shell .brand {
@@ -2582,20 +2582,8 @@ td small {
   width: 28px;
 }
 
-.admin-shell .top-links {
-  gap: 24px;
-}
-
-.admin-shell .top-links a {
-  border-bottom: 2px solid transparent;
-  color: #8f9aa8;
-  font-size: 13px;
-  padding: 22px 0 19px;
-}
-
-.admin-shell .top-links a.active {
-  border-bottom-color: #0a66c2;
-  color: #fff;
+.admin-shell .user-menu {
+  margin-left: auto;
 }
 
 .topbar-icon-button,
@@ -2745,6 +2733,65 @@ td small {
   border-radius: 4px;
   min-height: 44px;
   padding: 0 24px;
+}
+
+.tenant-profile-actions {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  box-shadow: 0 14px 28px rgb(15 23 42 / 0.07);
+  display: inline-flex;
+  gap: 8px;
+  justify-self: end;
+  padding: 6px;
+}
+
+.tenant-profile-actions .stitch-secondary-button.mat-mdc-outlined-button,
+.tenant-profile-actions .stitch-primary-button.mat-mdc-unelevated-button {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  gap: 7px;
+  justify-content: center;
+  min-height: 40px;
+  min-width: 132px;
+  padding: 0 18px;
+}
+
+.tenant-profile-actions .stitch-secondary-button.mat-mdc-outlined-button {
+  --mdc-outlined-button-label-text-color: #0a66c2;
+  --mdc-outlined-button-outline-color: #b9d8ff;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f7ff 100%);
+  box-shadow: inset 0 0 0 1px rgb(10 102 194 / 0.08);
+}
+
+.tenant-profile-actions .stitch-secondary-button.mat-mdc-outlined-button:hover:not(:disabled) {
+  --mdc-outlined-button-outline-color: #7db6f5;
+  background: #eaf4ff;
+}
+
+.tenant-profile-actions .stitch-primary-button.mat-mdc-unelevated-button {
+  --mdc-filled-button-container-color: #0a66c2;
+  --mdc-filled-button-label-text-color: #fff;
+  background: linear-gradient(135deg, #0a66c2 0%, #0f7de8 100%);
+  box-shadow: 0 10px 20px rgb(10 102 194 / 0.24);
+}
+
+.tenant-profile-actions .stitch-primary-button.mat-mdc-unelevated-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0758aa 0%, #0a72da 100%);
+}
+
+.tenant-profile-actions .stitch-primary-button.mat-mdc-unelevated-button:disabled {
+  --mdc-filled-button-disabled-container-color: #e8edf3;
+  --mdc-filled-button-disabled-label-text-color: #8a95a5;
+  background: #e8edf3;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.tenant-profile-actions .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .stitch-tabs {
@@ -3006,6 +3053,43 @@ td small {
 
 .job-request-section .field-grid {
   margin-bottom: 0;
+}
+
+.client-context-field {
+  margin-bottom: 0;
+}
+
+.client-context-field textarea {
+  min-height: 92px;
+}
+
+.label-with-help {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+label .label-with-help > span {
+  margin: 0;
+}
+
+.compact-help-trigger {
+  height: 22px;
+  width: 22px;
+}
+
+.compact-help-trigger .material-symbols-outlined {
+  display: block;
+  font-size: 16px;
+  line-height: 22px;
+  margin: 0;
+}
+
+.client-context-popover {
+  left: 0;
+  right: auto;
+  width: min(420px, calc(100vw - 48px));
 }
 
 .section-heading {
@@ -3613,6 +3697,17 @@ td small {
   border-color: var(--primary);
 }
 
+.logo-upload-box.disabled {
+  border-color: #d5dce8;
+  cursor: not-allowed;
+  opacity: 0.68;
+  pointer-events: none;
+}
+
+.logo-upload-box.disabled:hover {
+  border-color: #d5dce8;
+}
+
 .logo-upload-box input {
   display: none;
 }
@@ -3809,6 +3904,24 @@ td small {
   width: 100%;
 }
 
+.tenant-slug-label {
+  align-self: start;
+  gap: 5px;
+  line-height: 16px;
+  width: fit-content;
+}
+
+.tenant-slug-label .inline-info-button {
+  height: 16px;
+  transform: translateY(-1px);
+  width: 16px;
+}
+
+.tenant-slug-label .inline-info-button .material-symbols-outlined {
+  font-size: 15px;
+  line-height: 16px;
+}
+
 .inline-info-button {
   align-items: center;
   background: transparent;
@@ -3866,40 +3979,6 @@ td small {
 
 .mvp-footnote strong {
   color: #414752;
-}
-
-.tenant-info-footer {
-  background: transparent;
-  border-top: 1px solid var(--border);
-  color: #5f6b7a;
-  display: grid;
-  gap: 10px;
-  margin-top: 24px;
-  padding-top: 18px;
-}
-
-.tenant-info-footer > div {
-  align-items: center;
-  color: var(--text);
-  display: flex;
-  gap: 8px;
-}
-
-.tenant-info-footer .material-symbols-outlined {
-  color: var(--primary);
-  font-size: 18px;
-}
-
-.tenant-info-footer ul {
-  display: grid;
-  gap: 5px;
-  margin: 0;
-  padding-left: 26px;
-}
-
-.tenant-info-footer li {
-  font-size: 12px;
-  line-height: 18px;
 }
 
 .tenant-summary-card {
@@ -4106,6 +4185,30 @@ tr:last-child td {
   background: var(--amber-bg);
   border-color: #f4d59b;
   color: var(--amber);
+}
+
+.status-badge.priority-low {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #047857;
+}
+
+.status-badge.priority-medium {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #b45309;
+}
+
+.status-badge.priority-high {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
+.status-badge.priority-critical {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
 }
 
 .status-badge.info {
@@ -8124,6 +8227,10 @@ textarea:focus {
   display: none;
 }
 
+.sidebar-scrim {
+  display: none;
+}
+
 .notification-dot {
   background: #ffb68e;
   border: 2px solid var(--navy);
@@ -9380,6 +9487,71 @@ textarea:focus {
 
 .admin-panel {
   min-width: 0;
+}
+
+.hiring-manager-dashboard-page {
+  max-width: 1240px;
+}
+
+.hiring-manager-dashboard-grid {
+  align-items: stretch;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hiring-manager-dashboard-grid > .full-span {
+  grid-column: 1 / -1;
+}
+
+.hiring-dashboard-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hiring-dashboard-card .panel-header {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.hiring-dashboard-panel-title {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hiring-dashboard-panel-title > .material-symbols-outlined {
+  align-items: center;
+  background: #eef6ff;
+  border-radius: 6px;
+  color: var(--primary);
+  display: inline-flex;
+  flex: 0 0 36px;
+  font-size: 20px;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.hiring-dashboard-panel-title h2,
+.hiring-dashboard-panel-title p {
+  min-width: 0;
+}
+
+.hiring-outcome-card .admin-metric-mini-grid {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.hiring-outcome-tile {
+  min-height: 84px;
+}
+
+.hiring-outcome-tile small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.25;
 }
 
 .admin-analytics-help .agent-help-trigger {
@@ -11362,6 +11534,7 @@ app-recruiter-sourcing .application-trend-chart {
 }
 
 app-recruiter-sourcing .candidate-pool-panel {
+  container: candidate-pool / inline-size;
   display: grid;
   gap: 16px;
 }
@@ -11370,7 +11543,7 @@ app-recruiter-sourcing .candidate-pool-filters {
   align-items: end;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(260px, 1.4fr) repeat(3, minmax(140px, 0.8fr)) auto auto;
+  grid-template-columns: minmax(260px, 1.4fr) repeat(3, minmax(140px, 0.8fr)) auto;
 }
 
 app-recruiter-sourcing .candidate-search-input {
@@ -11390,22 +11563,29 @@ app-recruiter-sourcing .candidate-search-input input {
   padding-left: 38px;
 }
 
-app-recruiter-sourcing .clear-filter-action {
-  min-height: 38px;
+app-recruiter-sourcing .candidate-filter-actions {
+  align-items: end;
+  display: flex;
+  justify-content: flex-end;
 }
 
-app-recruiter-sourcing .filter-settings-button {
+app-recruiter-sourcing .clear-filter-action {
   align-items: center;
   background: #fff;
   border: 1px solid #d8e1ec;
   border-radius: 8px;
-  color: var(--primary);
-  cursor: pointer;
   display: inline-flex;
-  height: 38px;
   justify-content: center;
-  padding: 0;
-  width: 38px;
+  min-height: 38px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+app-recruiter-sourcing .clear-filter-action:hover,
+app-recruiter-sourcing .clear-filter-action:focus-visible {
+  background: #eef6ff;
+  border-color: #9dc7f5;
+  outline: none;
 }
 
 app-recruiter-sourcing .candidate-pool-table {
@@ -11488,6 +11668,157 @@ app-recruiter-sourcing .candidate-pool-row small {
   line-height: 1.35;
 }
 
+@container candidate-pool (max-width: 1120px) {
+  app-recruiter-sourcing .candidate-pool-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  app-recruiter-sourcing .candidate-search-field {
+    grid-column: 1 / -1;
+  }
+
+  app-recruiter-sourcing .clear-filter-action {
+    justify-self: auto;
+  }
+
+  app-recruiter-sourcing .candidate-filter-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  app-recruiter-sourcing .candidate-pool-table {
+    border: 0;
+    display: grid;
+    gap: 12px;
+    overflow: visible;
+  }
+
+  app-recruiter-sourcing .candidate-pool-header {
+    display: none;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgb(15 23 42 / 0.06);
+    display: grid;
+    gap: 12px;
+    grid-template-areas:
+      "identity actions"
+      "score score"
+      "reason reason"
+      "skills skills"
+      "activity status";
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: visible;
+    padding: 14px;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > div {
+    border: 0;
+    padding: 0;
+  }
+
+  app-recruiter-sourcing .candidate-pool-identity {
+    grid-area: identity;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row .candidate-action-menu {
+    align-self: start;
+    grid-area: actions;
+    justify-content: flex-end;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row .action-menu-trigger {
+    height: 34px;
+    width: 34px;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-score-cell {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    gap: 8px 10px;
+    grid-area: score;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 10px 12px;
+  }
+
+  app-recruiter-sourcing .candidate-score-cell strong {
+    font-size: 22px;
+  }
+
+  app-recruiter-sourcing .candidate-score-cell small {
+    font-size: 12px;
+    font-weight: 800;
+    text-align: right;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-reason-cell {
+    background: #f8fafc;
+    border-radius: 8px;
+    grid-area: reason;
+    padding: 10px 12px;
+  }
+
+  app-recruiter-sourcing .candidate-skills-cell {
+    grid-area: skills;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-activity-cell {
+    border-top: 1px solid #e8eef6;
+    grid-area: activity;
+    padding-top: 10px;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-status-cell {
+    border-top: 1px solid #e8eef6;
+    grid-area: status;
+    justify-self: end;
+    padding-top: 10px;
+  }
+}
+
+@container candidate-pool (max-width: 640px) {
+  app-recruiter-sourcing .candidate-pool-filters {
+    grid-template-columns: 1fr;
+  }
+
+  app-recruiter-sourcing .candidate-search-field {
+    grid-column: auto;
+  }
+
+  app-recruiter-sourcing .candidate-filter-actions {
+    justify-content: flex-start;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row {
+    grid-template-areas:
+      "identity actions"
+      "score score"
+      "reason reason"
+      "skills skills"
+      "activity activity"
+      "status status";
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-score-cell {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  app-recruiter-sourcing .candidate-score-cell small {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-status-cell {
+    border-top: 0;
+    justify-self: start;
+    padding-top: 0;
+  }
+}
+
 app-recruiter-sourcing .candidate-score-cell strong {
   color: #0f2745;
   font-size: 20px;
@@ -11548,13 +11879,13 @@ app-recruiter-sourcing .candidate-score-cell.review-fit .candidate-score-meter s
 
 app-recruiter-sourcing .candidate-reason-cell p {
   color: #334155;
-  display: -webkit-box;
+  display: block;
   font-size: 13px;
   line-height: 1.45;
   margin: 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 app-recruiter-sourcing .compact-tags {
@@ -13229,12 +13560,28 @@ app-candidate-page .profile-resume-row .material-symbols-outlined {
   color: #075dad;
 }
 
+app-candidate-page .profile-resume-row.empty {
+  background: #fff;
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+
+app-candidate-page .profile-resume-row strong,
+app-candidate-page .profile-resume-row small {
+  display: block;
+}
+
+app-candidate-page .profile-resume-row small {
+  color: #64748b;
+  margin-top: 2px;
+}
+
 app-candidate-page .profile-resume-dropzone {
   align-items: center;
   background: #fbf8ff;
   border: 1px dashed #b6cef0;
   border-radius: 8px;
   color: #0f2544;
+  cursor: pointer;
   display: grid;
   gap: 6px;
   justify-items: center;
@@ -13245,6 +13592,14 @@ app-candidate-page .profile-resume-dropzone {
 app-candidate-page .profile-resume-dropzone .material-symbols-outlined {
   color: #075dad;
   font-size: 28px;
+}
+
+app-candidate-page .profile-resume-dropzone input {
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 1px;
 }
 
 app-candidate-page .profile-tip-card,
@@ -14317,6 +14672,7 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
   .pmo-dashboard-grid,
   .pmo-dashboard-filters,
   .admin-dashboard-grid,
+  .hiring-manager-dashboard-grid,
   .admin-dashboard-filters,
   .reports-layout,
   .reports-filter-panel,
@@ -14350,6 +14706,7 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
 
   .stitch-app-shell .content-shell {
     padding: 18px;
+    width: 100%;
   }
 
   .notification-email-address-control {
@@ -14425,6 +14782,24 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
   }
 
   .stitch-app-shell .sidebar-toggle-button {
+    display: none;
+  }
+
+  .stitch-app-shell .sidebar-scrim {
+    background: rgb(15 23 42 / 0.18);
+    border: 0;
+    bottom: 0;
+    cursor: pointer;
+    display: block;
+    left: 0;
+    padding: 0;
+    position: fixed;
+    right: 0;
+    top: 64px;
+    z-index: 25;
+  }
+
+  .stitch-app-shell.sidebar-collapsed .sidebar-scrim {
     display: none;
   }
 
@@ -14623,13 +14998,44 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
     width: 100%;
   }
 
+  .recruiter-overview-page,
+  .recruiter-overview-layout,
+  .recruiter-overview-card-row,
+  .recruiter-rail-card,
+  .recruiter-listing-panel,
+  .recruiter-listing-header,
+  .recruiter-table-scroll {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .recruiter-overview-heading h1 {
+    font-size: 30px;
+    line-height: 1.12;
+  }
+
+  .recruiter-overview-heading p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .recruiter-overview-kpi {
+    min-height: 104px;
+    padding: 14px;
+  }
+
+  .recruiter-overview-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .recruiter-listing-tabs {
     display: grid;
     grid-template-columns: 1fr;
   }
 
   .recruiter-overview-table {
-    min-width: 760px;
+    min-width: 640px;
   }
 
   .interviewer-task-row {
@@ -14703,19 +15109,84 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
 
   app-recruiter-sourcing .candidate-pool-row {
     border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgb(15 23 42 / 0.06);
     display: grid;
-    grid-template-columns: 1fr;
+    gap: 12px;
+    grid-template-areas:
+      "identity actions"
+      "score score"
+      "reason reason"
+      "skills skills"
+      "activity status";
+    grid-template-columns: minmax(0, 1fr) auto;
     overflow: visible;
+    padding: 14px;
   }
 
   app-recruiter-sourcing .candidate-pool-row > div {
-    border-right: 0;
-    border-top: 1px solid #e2e8f0;
+    border: 0;
+    padding: 0;
   }
 
-  app-recruiter-sourcing .candidate-pool-row > div:first-child {
-    border-top: 0;
+  app-recruiter-sourcing .candidate-pool-identity {
+    grid-area: identity;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row .candidate-action-menu {
+    align-self: start;
+    grid-area: actions;
+    justify-content: flex-end;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row .action-menu-trigger {
+    height: 34px;
+    width: 34px;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-score-cell {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    gap: 8px 10px;
+    grid-area: score;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 10px 12px;
+  }
+
+  app-recruiter-sourcing .candidate-score-cell strong {
+    font-size: 22px;
+  }
+
+  app-recruiter-sourcing .candidate-score-cell small {
+    font-size: 12px;
+    font-weight: 800;
+    text-align: right;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-reason-cell {
+    background: #f8fafc;
+    border-radius: 8px;
+    grid-area: reason;
+    padding: 10px 12px;
+  }
+
+  app-recruiter-sourcing .candidate-skills-cell {
+    grid-area: skills;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-activity-cell {
+    border-top: 1px solid #e8eef6;
+    grid-area: activity;
+    padding-top: 10px;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-status-cell {
+    border-top: 1px solid #e8eef6;
+    grid-area: status;
+    justify-self: end;
+    padding-top: 10px;
   }
 
   app-recruiter-sourcing .applicant-ranking-details {
@@ -14763,6 +15234,17 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
     gap: 12px;
   }
 
+  .tenant-profile-actions {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .tenant-profile-actions .stitch-secondary-button.mat-mdc-outlined-button,
+  .tenant-profile-actions .stitch-primary-button.mat-mdc-unelevated-button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .modal-form-grid .stitch-field:last-child {
     grid-column: auto;
   }
@@ -14770,6 +15252,63 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
   .admin-modal-panel {
     padding: 18px;
     width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 520px) {
+  .stitch-app-shell .topbar {
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .stitch-app-shell .brand {
+    min-width: 0;
+  }
+
+  .stitch-app-shell .app-brand-copy {
+    display: none;
+  }
+
+  .stitch-app-shell .user-menu {
+    gap: 6px;
+  }
+
+  .stitch-app-shell .profile-card-button {
+    gap: 0;
+    padding-right: 4px;
+  }
+
+  .stitch-app-shell .profile-card-button > .material-symbols-outlined {
+    display: none;
+  }
+
+  .recruiter-overview-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row {
+    grid-template-areas:
+      "identity actions"
+      "score score"
+      "reason reason"
+      "skills skills"
+      "activity activity"
+      "status status";
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-score-cell {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  app-recruiter-sourcing .candidate-score-cell small {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-status-cell {
+    border-top: 0;
+    justify-self: start;
+    padding-top: 0;
   }
 }
 
@@ -14794,6 +15333,31 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
 @media (max-width: 720px) {
   app-recruiter-sourcing .round-editor-list.has-rounds::before {
     display: none;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row {
+    grid-template-areas:
+      "identity actions"
+      "score score"
+      "reason reason"
+      "skills skills"
+      "activity activity"
+      "status status";
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-score-cell {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  app-recruiter-sourcing .candidate-score-cell small {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  app-recruiter-sourcing .candidate-pool-row > .candidate-status-cell {
+    border-top: 0;
+    justify-self: start;
+    padding-top: 0;
   }
 }
 

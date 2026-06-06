@@ -17,6 +17,7 @@ import {
   UpdateOfferLetterInput,
 } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.component';
 
@@ -76,9 +77,6 @@ type ReviewStatusFilterOption = {
       @if (loading()) {
         <section class="ops-panel">Loading hiring manager work...</section>
       } @else {
-        @if (message()) {
-          <p class="field-status success">{{ message() }}</p>
-        }
         @if (error()) {
           <p class="field-status error">{{ error() }}</p>
         }
@@ -93,7 +91,7 @@ type ReviewStatusFilterOption = {
                   <h2>{{ data.candidate.displayName }}</h2>
                   <p class="muted">{{ data.candidate.email }}</p>
                 </div>
-                <span class="status-badge info">{{ formatStatusLabel(data.job.applicationStatus) }}</span>
+                <span [class]="reviewStatusBadgeClass(data.job.applicationStatus)">{{ formatStatusLabel(data.job.applicationStatus) }}</span>
               </div>
               <dl class="review-meta-grid">
                 <div>
@@ -341,83 +339,134 @@ type ReviewStatusFilterOption = {
             </article>
 
             @if (data.offerLetter) {
-              <article class="ops-panel">
-                <div class="panel-header">
-                  <div>
-                    <h2>In-person Offer Meeting</h2>
-                    <p class="muted">Schedules a physical presentation invite email for the candidate.</p>
+              <div class="offer-action-section full-span">
+                <article class="ops-panel offer-action-card">
+                  <div class="offer-action-header">
+                    <span class="material-symbols-outlined offer-action-header-icon" aria-hidden="true">event_upcoming</span>
+                    <div>
+                      <h2>In-person Offer Meeting</h2>
+                      <p class="muted">Schedules a physical presentation invite email for the candidate.</p>
+                    </div>
                   </div>
-                </div>
-                <label class="stitch-field">
-                  <span>Date and time</span>
-                  <input name="meetingAtLocal" type="datetime-local" [(ngModel)]="meetingForm.meetingAtLocal" />
-                </label>
-                <label class="stitch-field">
-                  <span>Physical location</span>
-                  <input name="meetingLocation" placeholder="Office, floor, room" [(ngModel)]="meetingForm.locationText" />
-                </label>
-                <label class="stitch-field">
-                  <span>Notes</span>
-                  <textarea name="meetingNotes" rows="3" [(ngModel)]="meetingForm.notes"></textarea>
-                </label>
-                <button class="btn primary" type="button" [disabled]="saving()" (click)="scheduleMeeting(data.offerLetter)">
-                  Schedule presentation meeting
-                </button>
 
-                @if (data.presentationMeetings.length > 0) {
-                  <div class="meeting-list">
-                    @for (meeting of data.presentationMeetings; track meeting.offerPresentationMeetingId) {
-                      <div>
-                        <strong>{{ meeting.meetingAt | date: 'medium' }}</strong>
-                        <span>{{ meeting.locationText }}</span>
-                        <small>{{ meeting.status }}{{ meeting.notes ? ' - ' + meeting.notes : '' }}</small>
-                      </div>
+                  <div class="offer-action-form-grid">
+                    <label class="stitch-field">
+                      <span>Date and time</span>
+                      <input name="meetingAtLocal" type="datetime-local" [(ngModel)]="meetingForm.meetingAtLocal" />
+                    </label>
+                    <label class="stitch-field">
+                      <span>Physical location</span>
+                      <input name="meetingLocation" placeholder="Office, floor, room" [(ngModel)]="meetingForm.locationText" />
+                    </label>
+                    <label class="stitch-field offer-action-full-row">
+                      <span>Notes</span>
+                      <textarea name="meetingNotes" rows="3" [(ngModel)]="meetingForm.notes"></textarea>
+                    </label>
+                  </div>
+
+                  <button class="btn primary offer-action-button" type="button" [disabled]="saving()" (click)="scheduleMeeting(data.offerLetter)">
+                    <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+                    <span>Schedule meeting</span>
+                  </button>
+
+                  @if (data.presentationMeetings.length > 0) {
+                    <div class="meeting-list">
+                      @for (meeting of data.presentationMeetings; track meeting.offerPresentationMeetingId) {
+                        <div class="meeting-list-item">
+                          <span class="material-symbols-outlined meeting-list-icon" aria-hidden="true">event_available</span>
+                          <div class="meeting-list-copy">
+                            <div class="meeting-list-main">
+                              <strong>{{ meeting.meetingAt | date: 'medium' }}</strong>
+                              <span>{{ meeting.locationText }}</span>
+                            </div>
+                            <small>{{ meeting.status }}{{ meeting.notes ? ' - ' + meeting.notes : '' }}</small>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </article>
+
+                <article class="ops-panel offer-action-card">
+                  <div class="offer-action-header">
+                    <span class="material-symbols-outlined offer-action-header-icon" aria-hidden="true">verified_user</span>
+                    <div>
+                      <h2>Final Outcome</h2>
+                      <p class="muted">Record the candidate outcome after the offer conversation.</p>
+                    </div>
+                  </div>
+
+                  <div class="offer-action-form-grid">
+                    <label class="stitch-field">
+                      <span>Outcome</span>
+                      <select name="hiringOutcome" [(ngModel)]="outcomeForm.outcome">
+                        <option value="Offered">Offered</option>
+                        <option value="Hired">Candidate accepted / Hired</option>
+                        <option value="Joined">Joined</option>
+                        <option value="OfferDeclined">Offer declined</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="OnHold">On Hold</option>
+                      </select>
+                    </label>
+                    @if (outcomeRequiresJoiningDate(outcomeForm.outcome)) {
+                      <label class="stitch-field">
+                        <span>Joining date</span>
+                        <input name="hiringOutcomeJoiningDate" type="date" [(ngModel)]="outcomeForm.joiningDate" />
+                      </label>
                     }
+                    <label class="stitch-field offer-action-full-row">
+                      <span>Reason / notes</span>
+                      <textarea name="hiringOutcomeReason" rows="4" [(ngModel)]="outcomeForm.reason"></textarea>
+                    </label>
                   </div>
-                }
-              </article>
 
-              <article class="ops-panel">
-                <div class="panel-header">
-                  <div>
-                    <h2>Final Outcome</h2>
-                    <p class="muted">Record the candidate outcome after the offer conversation.</p>
-                  </div>
-                </div>
-                <label class="stitch-field">
-                  <span>Outcome</span>
-                  <select name="hiringOutcome" [(ngModel)]="outcomeForm.outcome">
-                    <option value="Offered">Offered</option>
-                    <option value="Hired">Candidate accepted / Hired</option>
-                    <option value="Joined">Joined</option>
-                    <option value="OfferDeclined">Offer declined</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="OnHold">On Hold</option>
-                  </select>
-                </label>
-                @if (outcomeRequiresJoiningDate(outcomeForm.outcome)) {
-                  <label class="stitch-field">
-                    <span>Joining date</span>
-                    <input name="hiringOutcomeJoiningDate" type="date" [(ngModel)]="outcomeForm.joiningDate" />
-                  </label>
-                }
-                <label class="stitch-field">
-                  <span>Reason / notes</span>
-                  <textarea name="hiringOutcomeReason" rows="4" [(ngModel)]="outcomeForm.reason"></textarea>
-                </label>
-                <button class="btn primary" type="button" [disabled]="saving()" (click)="recordOutcome(data)">
-                  Record outcome
-                </button>
-              </article>
+                  <button class="btn primary offer-action-button" type="button" [disabled]="saving()" (click)="recordOutcome(data)">
+                    <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+                    <span>Record outcome</span>
+                  </button>
+                </article>
+              </div>
             }
 
-            <article class="ops-panel close-request-card full-span">
-              <div>
-                <h2>Close Job Request</h2>
-                <p class="muted">Use only when the business decides not to continue hiring for this request.</p>
+            <article class="ops-panel close-request-card full-span" [class.closed]="isRequestClosed(data)">
+              <div class="close-request-header">
+                <span class="material-symbols-outlined close-request-icon" aria-hidden="true">
+                  {{ isRequestClosed(data) ? 'lock' : 'lock_open' }}
+                </span>
+                <div>
+                  <div class="close-request-title-row">
+                    <h2>Close Job Request</h2>
+                    @if (isRequestClosed(data)) {
+                      <span class="close-request-badge">
+                        <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                        Closed
+                      </span>
+                    }
+                  </div>
+                  <p class="muted">
+                    {{
+                      isRequestClosed(data)
+                        ? 'This request is no longer hiring. Candidate and offer records remain available for audit.'
+                        : 'Use only when the business decides not to continue hiring for this request.'
+                    }}
+                  </p>
+                </div>
               </div>
               @if (isRequestClosed(data)) {
-                <p class="field-status success">This Job Request is closed.</p>
+                <div class="closed-request-summary">
+                  <div>
+                    <span class="closed-request-label">Closed reason</span>
+                    <strong>{{ closedRequestReason(data) }}</strong>
+                    <small>{{ closedRequestReasonSource(data) }}</small>
+                  </div>
+                  @if (data.job.requestClosedAt) {
+                    <div>
+                      <span class="closed-request-label">Closed on</span>
+                      <strong>{{ data.job.requestClosedAt | date: 'medium' }}</strong>
+                      <small>Job request and public job posts are closed.</small>
+                    </div>
+                  }
+                </div>
               } @else {
                 <label class="stitch-field">
                   <span>Close reason</span>
@@ -657,7 +706,21 @@ type ReviewStatusFilterOption = {
         align-content: center;
         border-bottom: 1px solid #e2e8f0;
         min-width: 0;
+        overflow: hidden;
         padding: 14px 16px;
+      }
+
+      .hm-review-row strong,
+      .hm-review-row small {
+        max-width: 100%;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .hm-review-row strong {
+        display: block;
+        line-height: 1.25;
       }
 
       .hm-review-status-cell,
@@ -666,14 +729,20 @@ type ReviewStatusFilterOption = {
         display: flex;
       }
 
+      .hm-review-status-cell {
+        justify-content: center;
+      }
+
       .hm-review-status-cell .status-badge {
         flex: 0 1 auto;
         justify-content: center;
         line-height: 1.15;
         max-width: 100%;
         min-height: auto;
+        overflow-wrap: anywhere;
         padding: 5px 10px;
-        white-space: nowrap;
+        text-align: center;
+        white-space: normal;
         width: auto;
       }
 
@@ -696,6 +765,7 @@ type ReviewStatusFilterOption = {
       .meeting-list small {
         color: #64748b;
         display: block;
+        line-height: 1.25;
         margin-top: 4px;
       }
 
@@ -817,16 +887,258 @@ type ReviewStatusFilterOption = {
         justify-content: flex-end;
       }
 
+      .offer-action-section {
+        align-items: stretch;
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
+      }
+
+      .offer-action-card {
+        align-content: start;
+        display: grid;
+        gap: 14px;
+        min-width: 0;
+        width: 100%;
+      }
+
+      .offer-action-header {
+        align-items: flex-start;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 42px minmax(0, 1fr);
+        min-width: 0;
+      }
+
+      .offer-action-header h2 {
+        line-height: 1.15;
+        margin: 0;
+      }
+
+      .offer-action-header .muted {
+        line-height: 1.28;
+        margin-top: 4px;
+      }
+
+      .offer-action-header-icon {
+        align-items: center;
+        background: #e8f3ff;
+        border: 1px solid #cfe7ff;
+        border-radius: 8px;
+        color: #0a66c2;
+        display: inline-flex;
+        font-size: 1.35rem;
+        height: 42px;
+        justify-content: center;
+        line-height: 1;
+        width: 42px;
+      }
+
+      .offer-action-form-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(170px, 1fr));
+        min-width: 0;
+      }
+
+      .offer-action-full-row {
+        grid-column: 1 / -1;
+      }
+
+      .offer-action-button {
+        align-items: center;
+        display: inline-flex;
+        gap: 8px;
+        justify-self: start;
+        max-width: 100%;
+        width: fit-content;
+      }
+
+      .offer-action-button .material-symbols-outlined {
+        font-size: 1.08rem;
+        line-height: 1;
+      }
+
       .meeting-list {
         border-top: 1px solid #e2e8f0;
         display: grid;
-        gap: 10px;
+        gap: 0;
         margin-top: 12px;
         padding-top: 12px;
       }
 
+      .meeting-list-item {
+        align-items: flex-start;
+        border-bottom: 1px solid #e2e8f0;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 30px minmax(0, 1fr);
+        min-width: 0;
+        padding: 10px 0;
+      }
+
+      .meeting-list-item:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .meeting-list-icon {
+        align-items: center;
+        background: #e8f3ff;
+        border-radius: 8px;
+        color: #0a66c2;
+        display: inline-flex;
+        font-size: 1.08rem;
+        height: 30px;
+        justify-content: center;
+        line-height: 1;
+        width: 30px;
+      }
+
+      .meeting-list-copy {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .meeting-list-main {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 10px;
+        line-height: 1.25;
+        min-width: 0;
+      }
+
+      .meeting-list-main strong,
+      .meeting-list-main span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .meeting-list-main strong {
+        color: #0f172a;
+        font-size: 0.94rem;
+      }
+
+      .meeting-list-main span {
+        color: #475569;
+      }
+
+      .meeting-list-copy small {
+        margin-top: 0;
+      }
+
       .close-request-card {
         border-color: #fecaca;
+        display: grid;
+        gap: 16px;
+      }
+
+      .close-request-card.closed {
+        background: #f0fdf4;
+        border-color: #86efac;
+        box-shadow: 0 12px 26px rgba(22, 101, 52, 0.08);
+      }
+
+      .close-request-header {
+        align-items: flex-start;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 42px minmax(0, 1fr);
+        min-width: 0;
+      }
+
+      .close-request-icon {
+        align-items: center;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        color: #991b1b;
+        display: inline-flex;
+        font-size: 1.35rem;
+        height: 42px;
+        justify-content: center;
+        line-height: 1;
+        width: 42px;
+      }
+
+      .close-request-card.closed .close-request-icon {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #15803d;
+      }
+
+      .close-request-title-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .close-request-title-row h2 {
+        line-height: 1.15;
+        margin: 0;
+      }
+
+      .close-request-header .muted {
+        line-height: 1.35;
+        margin: 7px 0 0;
+      }
+
+      .close-request-badge {
+        align-items: center;
+        background: #dcfce7;
+        border: 1px solid #86efac;
+        border-radius: 999px;
+        color: #166534;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 900;
+        gap: 5px;
+        line-height: 1;
+        padding: 7px 10px;
+      }
+
+      .close-request-badge .material-symbols-outlined {
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      .closed-request-summary {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      .closed-request-summary > div {
+        background: #ffffff;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        display: grid;
+        gap: 7px;
+        min-width: 0;
+        padding: 14px 16px;
+      }
+
+      .closed-request-label {
+        color: #15803d;
+        font-size: 0.74rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .closed-request-summary strong {
+        color: #0f172a;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+      }
+
+      .closed-request-summary small {
+        color: #64748b;
+        line-height: 1.35;
       }
 
       .btn.danger {
@@ -838,7 +1150,10 @@ type ReviewStatusFilterOption = {
         .hiring-review-shell,
         .hiring-review-layout,
         .review-meta-grid,
-        .offer-form-grid {
+        .offer-form-grid,
+        .offer-action-section,
+        .offer-action-form-grid,
+        .closed-request-summary {
           grid-template-columns: 1fr;
         }
 
@@ -847,14 +1162,33 @@ type ReviewStatusFilterOption = {
           display: none;
         }
 
+        .hm-review-table {
+          background: transparent;
+          border: 0;
+          display: grid;
+          gap: 14px;
+          overflow: visible;
+        }
+
         .hiring-interview-row,
         .hm-review-row {
           grid-template-columns: 1fr;
         }
 
+        .hm-review-row {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
         .hiring-interview-row > *,
         .hm-review-row > * {
           border-bottom: 1px solid #e2e8f0;
+        }
+
+        .hm-review-row > *:last-child {
+          border-bottom: 0;
         }
 
         .decision-brief-card {
@@ -883,6 +1217,7 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly notifications = inject(NotificationService);
   readonly decisionBriefAgentTooltip =
     'Generated by AI Agent: Hiring Manager Decision Brief (hiring-manager-decision-brief). It summarizes candidate profile, source details, recruiter notes, job summary, interview statuses, scores, recommendations, and skipped-round reasons.';
   readonly hiringAssistantQuestions = [
@@ -895,7 +1230,6 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
-  readonly message = signal('');
   readonly reviews = signal<HiringManagerReviewListItem[]>([]);
   readonly reviewStatusFilter = signal('all');
   readonly detail = signal<HiringReviewDetail | null>(null);
@@ -1180,15 +1514,15 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const printWindow = window.open('', '_blank', 'width=960,height=1200');
-    if (!printWindow) {
-      this.error.set('The browser blocked the print window. Allow pop-ups for this site and try again.');
-      return;
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(this.buildOfferPrintHtml(printableBody, data));
-    printWindow.document.close();
+    const objectUrl = URL.createObjectURL(new Blob([this.buildOfferPrintHtml(printableBody, data)], { type: 'text/html' }));
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   }
 
   private normalizePrintableOfferBody(body: string): string {
@@ -1840,7 +2174,7 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
 
   reviewStatusBadgeClass(status?: string | null): string {
     const normalizedStatus = (status ?? '').toLowerCase().replace(/[\s_-]+/g, '');
-    if (['joined', 'accepted', 'offeraccepted'].includes(normalizedStatus)) {
+    if (['joined', 'hired', 'accepted', 'offeraccepted'].includes(normalizedStatus)) {
       return 'status-badge status-badge--success';
     }
 
@@ -1861,6 +2195,36 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
 
   isRequestClosed(data: HiringReviewDetail): boolean {
     return this.isSameStatus(data.job.requestStatus, 'Closed');
+  }
+
+  closedRequestReason(data: HiringReviewDetail): string {
+    const auditReason = data.job.requestCloseReason?.trim();
+    if (auditReason) {
+      return auditReason;
+    }
+
+    const finalOutcomeReason = data.job.finalOutcomeReason?.trim();
+    if (finalOutcomeReason) {
+      return finalOutcomeReason;
+    }
+
+    if (this.isSameStatus(data.job.applicationStatus, 'Hired') || this.isSameStatus(data.job.applicationStatus, 'Joined')) {
+      return `${data.candidate.displayName} marked ${this.formatStatusLabel(data.job.applicationStatus)}.`;
+    }
+
+    return 'Closed by hiring workflow.';
+  }
+
+  closedRequestReasonSource(data: HiringReviewDetail): string {
+    if (data.job.requestCloseReason?.trim()) {
+      return 'Recorded when the hiring manager closed the request.';
+    }
+
+    if (data.job.finalOutcomeReason?.trim()) {
+      return 'Using the final candidate outcome notes because this request was closed after offer decision.';
+    }
+
+    return 'No detailed close reason was recorded.';
   }
 
   private async loadReportingManagerOptions(
@@ -1910,7 +2274,7 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
     const detail = await this.store.loadHiringReview(jobApplicationId);
     this.detail.set(detail);
     this.hydrateForms(detail);
-    this.message.set(message);
+    this.notifications.success(message);
   }
 
   currentApplicationId(): string {
@@ -2030,7 +2394,6 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
 
   private clearStatus(): void {
     this.error.set('');
-    this.message.set('');
   }
 
   private isPositiveRecommendation(value?: string | null): boolean {

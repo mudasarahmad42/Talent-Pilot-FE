@@ -19,13 +19,6 @@ import { formatJobDescription } from '../../core/job-description-formatting';
             <h1>{{ request.title }}</h1>
             <p>{{ request.client }} - {{ request.department }} - {{ request.location }}</p>
           </div>
-          <div class="ops-header-actions">
-            <a class="btn secondary compact" routerLink="/app/job-requests">{{ backLinkLabel() }}</a>
-            <span class="status-badge">{{ request.stage }}</span>
-            @if (canUsePmoActions()) {
-              <a class="btn secondary compact" routerLink="/app/pmo/queue">PMO Queue</a>
-            }
-          </div>
         </header>
 
         <section class="ops-workspace-grid">
@@ -36,6 +29,12 @@ import { formatJobDescription } from '../../core/job-description-formatting';
                 <span class="status-badge">{{ request.stage }}</span>
               </div>
               <div class="job-description-body">{{ formattedDescription(request.description) }}</div>
+              @if (request.clientContext) {
+                <div class="client-context-summary">
+                  <span>Client context</span>
+                  <p>{{ request.clientContext }}</p>
+                </div>
+              }
               <div class="info-grid">
                 <div><span>Priority</span><strong>{{ request.priority }}</strong></div>
                 <div><span>Experience</span><strong>{{ request.experience }}</strong></div>
@@ -134,7 +133,7 @@ import { formatJobDescription } from '../../core/job-description-formatting';
           </div>
 
           <aside class="ops-side-rail">
-            <article class="ops-panel">
+            <article class="ops-panel fulfillment-panel">
               <h2>Fulfillment</h2>
               <div class="progress-line">
                 <span [style.width.%]="(request.fulfilledPositions / request.requiredPositions) * 100"></span>
@@ -201,6 +200,62 @@ import { formatJobDescription } from '../../core/job-description-formatting';
         line-height: 1.65;
         margin: 0;
         white-space: pre-line;
+      }
+
+      .client-context-summary {
+        background: #f8fbff;
+        border: 1px solid #d9e8f7;
+        border-radius: 8px;
+        display: grid;
+        gap: 6px;
+        margin-top: 16px;
+        padding: 12px 14px;
+      }
+
+      .client-context-summary span {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .client-context-summary p {
+        color: #334155;
+        line-height: 1.5;
+        margin: 0;
+        white-space: pre-line;
+      }
+
+      .fulfillment-panel {
+        background:
+          linear-gradient(135deg, rgba(229, 242, 255, 0.98) 0%, rgba(207, 228, 255, 0.96) 48%, rgba(184, 217, 255, 0.94) 100%),
+          #dbeafe;
+        border-color: #9bc9ff;
+        box-shadow: 0 16px 32px rgba(10, 102, 194, 0.14);
+      }
+
+      .fulfillment-panel h2,
+      .fulfillment-panel p {
+        color: #12304f;
+      }
+
+      .fulfillment-panel .progress-line {
+        background: rgba(255, 255, 255, 0.46);
+        box-shadow: inset 0 0 0 1px rgba(78, 132, 196, 0.12);
+      }
+
+      .fulfillment-panel .progress-line span {
+        background: linear-gradient(90deg, #0a66c2 0%, #3a9cff 100%);
+      }
+
+      .fulfillment-panel .btn.primary.full {
+        background: linear-gradient(90deg, #075dad 0%, #0b73d9 100%);
+        border: 0;
+        box-shadow: 0 10px 22px rgba(10, 102, 194, 0.2);
+      }
+
+      .fulfillment-panel .muted {
+        color: #52708d;
       }
     `,
   ],

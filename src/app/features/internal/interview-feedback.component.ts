@@ -334,7 +334,7 @@ type FeedbackTaskTab = 'active' | 'past';
                   <h2>{{ task.candidateName }} - {{ task.roundName }}</h2>
                   <p>{{ set.summary }}</p>
                 </div>
-                <button class="icon-button" type="button" aria-label="Close questions" (click)="closeQuestionModal()">
+                <button class="icon-button question-modal-close-button" type="button" aria-label="Close questions" (click)="closeQuestionModal()">
                   <span class="material-symbols-outlined" aria-hidden="true">close</span>
                 </button>
               </header>
@@ -943,6 +943,43 @@ type FeedbackTaskTab = 'active' | 'past';
       .question-modal-header h2,
       .question-modal-header p {
         margin: 0;
+      }
+
+      .question-modal-close-button {
+        align-items: center;
+        appearance: none;
+        background: #fff;
+        border: 1px solid #dbe3ef;
+        border-radius: 8px;
+        color: #475569;
+        cursor: pointer;
+        display: inline-flex;
+        flex: 0 0 36px;
+        height: 36px;
+        justify-content: center;
+        line-height: 1;
+        margin: 0;
+        padding: 0;
+        width: 36px;
+      }
+
+      .question-modal-close-button:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+      }
+
+      .question-modal-close-button:focus-visible {
+        outline: 2px solid rgba(10, 102, 194, 0.35);
+        outline-offset: 2px;
+      }
+
+      .question-modal-close-button .material-symbols-outlined {
+        display: block;
+        font-size: 20px;
+        height: 20px;
+        line-height: 20px;
+        width: 20px;
       }
 
       .question-modal-toolbar {

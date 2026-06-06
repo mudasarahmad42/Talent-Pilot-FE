@@ -7,6 +7,7 @@ import { map } from 'rxjs';
 import {
   PortalApplyToJobPostInput,
   PortalCandidateProfile,
+  PortalCandidateProfileDocument,
   PortalCandidateProfileSkillOption,
   PortalJobApplicationResult,
   PortalInvitationContext,
@@ -15,10 +16,12 @@ import {
   PortalApplicationDocument,
   PortalApplicationTimelineItem,
   PortalMyApplicationItem,
+  PublicPortalContext,
   UpdatePortalCandidateProfileInput,
 } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
+import { FileDownloadService } from '../../core/services/file-download.service';
 
 type CandidatePageId =
   | 'jobs'
@@ -204,23 +207,23 @@ interface CandidateInterviewGroup {
                           @if (applicationForJob(job.jobPostId); as application) {
                             @if (myApplicationIsInvited(application)) {
                               <span class="candidate-status-pill invited">Invited</span>
-                              <a class="btn primary" [routerLink]="['/candidate/apply', job.jobPostId]">
+                              <a class="btn primary" [routerLink]="candidateRoute('apply', job.jobPostId)">
                                 <span class="material-symbols-outlined" aria-hidden="true">send</span>
                                 Complete Application
                               </a>
                             } @else {
                               <span class="candidate-status-pill applied">Applied</span>
-                              <a class="btn secondary" [routerLink]="['/candidate/applications', application.jobApplicationId, 'status']">
+                              <a class="btn secondary" [routerLink]="candidateRoute('applications', application.jobApplicationId, 'status')">
                                 <span class="material-symbols-outlined" aria-hidden="true">query_stats</span>
                                 View Status
                               </a>
                             }
                           } @else {
-                            <a class="btn secondary" [routerLink]="['/candidate/jobs', job.jobPostId]">
+                            <a class="btn secondary" [routerLink]="candidateRoute('jobs', job.jobPostId)">
                               <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                               View Details
                             </a>
-                            <a class="btn primary" [routerLink]="['/candidate/apply', job.jobPostId]">
+                            <a class="btn primary" [routerLink]="jobListStartApplicationRoute(job)" [queryParams]="jobListStartApplicationQueryParams(job)">
                               <span class="material-symbols-outlined" aria-hidden="true">send</span>
                               Apply Now
                             </a>
@@ -255,7 +258,7 @@ interface CandidateInterviewGroup {
                     <article class="candidate-panel candidate-next-step-card">
                       <h2>Next Step</h2>
                       <p>{{ candidateNextStep() }}</p>
-                      <a class="btn secondary full" routerLink="/candidate/my-applications">Track applications</a>
+                      <a class="btn secondary full" [routerLink]="candidateRoute('my-applications')">Track applications</a>
                     </article>
                     <article class="candidate-panel candidate-profile-cta">
                       <strong>Complete your profile</strong>
@@ -263,20 +266,21 @@ interface CandidateInterviewGroup {
                       <div class="profile-progress" aria-hidden="true">
                         <span [style.width.%]="profileCompletionPercent()"></span>
                       </div>
-                      <a class="btn primary full" routerLink="/candidate/profile">Update Profile</a>
+                      <a class="btn primary full" [routerLink]="candidateRoute('profile')">Update Profile</a>
                     </article>
                   } @else {
                     <article class="candidate-panel candidate-profile-cta">
                       <strong>Candidate account required</strong>
                       <p>You are signed in as {{ user.roleDisplayName ?? 'an internal user' }}. Use a candidate account to apply, track applications, and manage a candidate profile.</p>
-                      <a class="btn secondary full" routerLink="/auth/login">Switch account</a>
+                      <a class="btn secondary full" routerLink="/auth/login" [queryParams]="{ returnUrl: candidateRoute('profile').join('/'), switchAccount: 'candidate' }">Switch account</a>
                     </article>
                   }
                 } @else {
                   <article class="candidate-panel candidate-profile-cta">
                     <strong>Create your candidate profile</strong>
-                    <p>Sign in when you are ready to apply, save your profile, and track application progress.</p>
-                    <a class="btn primary full" routerLink="/auth/login">Sign in</a>
+                    <p>Create an account when you are ready to apply, save your profile, and track application progress.</p>
+                    <a class="btn primary full" [routerLink]="candidateSignupRoute()" [queryParams]="{ returnUrl: candidateRoute('profile').join('/') }">Create account</a>
+                    <a class="btn secondary full" routerLink="/auth/login" [queryParams]="{ returnUrl: candidateRoute('profile').join('/'), switchAccount: 'candidate' }">Sign in</a>
                   </article>
                 }
               </aside>
@@ -287,7 +291,7 @@ interface CandidateInterviewGroup {
             @if (jobPost(); as job) {
               <section class="candidate-job-detail-page">
                 <nav class="job-detail-breadcrumb" aria-label="Breadcrumb">
-                  <a routerLink="/candidate/jobs">Jobs</a>
+                  <a [routerLink]="candidateRoute('jobs')">Jobs</a>
                   <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
                   <span>{{ job.department }}</span>
                   <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
@@ -366,7 +370,7 @@ interface CandidateInterviewGroup {
                             TKXEL is a premium software development firm committed to delivering excellence in engineering.
                             We partner with teams to solve complex technical challenges.
                           </p>
-                          <a routerLink="/candidate/jobs">View Company Profile</a>
+                          <a [routerLink]="candidateRoute('jobs')">View Company Profile</a>
                         </div>
                         <img src="/candidate-portal-hero.png" alt="TKXEL engineering workspace" />
                       </section>
@@ -390,7 +394,7 @@ interface CandidateInterviewGroup {
                               <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                             </a>
                           } @else {
-                            <a class="btn light full" [routerLink]="['/candidate/applications', application.jobApplicationId, 'status']">
+                            <a class="btn light full" [routerLink]="candidateRoute('applications', application.jobApplicationId, 'status')">
                               View Application
                               <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                             </a>
@@ -456,7 +460,7 @@ interface CandidateInterviewGroup {
             @if (jobPost(); as job) {
               <form class="portal-apply-page" (ngSubmit)="submitApplication()">
                 <section class="portal-apply-summary" aria-labelledby="portal-apply-title">
-                  <a class="portal-apply-department" [routerLink]="['/candidate/jobs', job.jobPostId]">
+                  <a class="portal-apply-department" [routerLink]="candidateRoute('jobs', job.jobPostId)">
                     <span class="material-symbols-outlined" aria-hidden="true">business</span>
                     {{ job.department }}
                   </a>
@@ -475,11 +479,11 @@ interface CandidateInterviewGroup {
                     <strong>Already applied</strong>
                     <p>This role is already linked to your candidate account. Continue from the existing application instead of submitting again.</p>
                     <div class="portal-reapply-actions">
-                      <a class="btn primary" [routerLink]="['/candidate/applications', application.jobApplicationId, 'status']">
+                      <a class="btn primary" [routerLink]="candidateRoute('applications', application.jobApplicationId, 'status')">
                         <span class="material-symbols-outlined" aria-hidden="true">query_stats</span>
                         View Status
                       </a>
-                      <a class="btn secondary" routerLink="/candidate/jobs">
+                      <a class="btn secondary" [routerLink]="candidateRoute('jobs')">
                         <span class="material-symbols-outlined" aria-hidden="true">work</span>
                         Browse Jobs
                       </a>
@@ -651,9 +655,9 @@ interface CandidateInterviewGroup {
                     </h2>
                     <label class="candidate-document-upload portal-apply-upload">
                       <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span>
-                      <strong>{{ selectedDocumentFile()?.name || 'Upload CV' }}</strong>
-                      <small>Drag and drop or click to browse files.</small>
-                      <em>DOCX only</em>
+                      <strong>{{ applicationCvLabel() }}</strong>
+                      <small>{{ applicationCvHint() }}</small>
+                      <em>{{ selectedDocumentFile() ? 'Application CV' : profileResumeDocument() ? 'Profile CV fallback' : 'DOCX only' }}</em>
                       <input
                         type="file"
                         accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -676,7 +680,7 @@ interface CandidateInterviewGroup {
                     <label class="portal-consent-check">
                       <input name="applicationConsentAccepted" type="checkbox" [(ngModel)]="applicationConsentAccepted" />
                       <span>
-                        I agree to the <a routerLink="/candidate/profile">profile policy</a> and <a routerLink="/candidate/jobs">candidate terms</a>.
+                        I agree to the <a [routerLink]="candidateRoute('profile')">profile policy</a> and <a [routerLink]="candidateRoute('jobs')">candidate terms</a>.
                       </span>
                     </label>
                   </section>
@@ -685,7 +689,7 @@ interface CandidateInterviewGroup {
                     <div class="candidate-application-result">
                       <strong>{{ result.alreadyApplied ? 'Existing application found' : 'Application submitted' }}</strong>
                       <p>Status: {{ result.status }}</p>
-                      <a [routerLink]="['/candidate/applications', result.jobApplicationId, 'status']">View application status</a>
+                      <a [routerLink]="candidateRoute('applications', result.jobApplicationId, 'status')">View application status</a>
                     </div>
                   }
 
@@ -750,7 +754,7 @@ interface CandidateInterviewGroup {
                 <article class="candidate-panel empty-state">
                   <strong>No applications yet.</strong>
                   <p>Apply to a published job post to see status history here.</p>
-                  <a routerLink="/candidate/jobs">Browse jobs</a>
+                  <a [routerLink]="candidateRoute('jobs')">Browse jobs</a>
                 </article>
               } @else if (visibleMyApplications().length === 0) {
                 <article class="candidate-panel empty-state">
@@ -800,12 +804,12 @@ interface CandidateInterviewGroup {
 
                     <div class="application-card-actions">
                       @if (myApplicationIsInvited(application)) {
-                        <a class="btn primary" [routerLink]="['/candidate/apply', application.jobPostId]">
+                        <a class="btn primary" [routerLink]="candidateRoute('apply', application.jobPostId)">
                           Complete Application
                         </a>
                         <button class="application-text-action" type="button" disabled>Not Interested</button>
                       } @else if (myApplicationIsSuccessfulFinal(application)) {
-                        <a class="application-details-link" [routerLink]="['/candidate/applications', application.jobApplicationId, 'status']">
+                        <a class="application-details-link" [routerLink]="candidateRoute('applications', application.jobApplicationId, 'status')">
                           View Details
                           <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                         </a>
@@ -815,7 +819,7 @@ interface CandidateInterviewGroup {
                           <span class="material-symbols-outlined" aria-hidden="true">archive</span>
                         </button>
                       } @else {
-                        <a class="application-details-link" [routerLink]="['/candidate/applications', application.jobApplicationId, 'status']">
+                        <a class="application-details-link" [routerLink]="candidateRoute('applications', application.jobApplicationId, 'status')">
                           View Details
                           <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                         </a>
@@ -826,7 +830,7 @@ interface CandidateInterviewGroup {
                       <span class="material-symbols-outlined" aria-hidden="true">{{ myApplicationFooterIcon(application) }}</span>
                       <span>{{ myApplicationFooterText(application) }}</span>
                       @if (!myApplicationIsInvited(application) && !myApplicationIsFinal(application)) {
-                        <a class="btn secondary compact" [routerLink]="['/candidate/applications', application.jobApplicationId, 'status']">
+                        <a class="btn secondary compact" [routerLink]="candidateRoute('applications', application.jobApplicationId, 'status')">
                           Prepare Now
                         </a>
                       }
@@ -842,7 +846,7 @@ interface CandidateInterviewGroup {
                   <strong>{{ myApplicationsGuideTitle() }}</strong>
                   <p>{{ myApplicationsGuideText() }}</p>
                 </div>
-                <a class="btn secondary compact" routerLink="/candidate/interviews">
+                <a class="btn secondary compact" [routerLink]="candidateRoute('interviews')">
                   Read Guide
                 </a>
               </article>
@@ -854,7 +858,7 @@ interface CandidateInterviewGroup {
               <section class="application-status-page">
                 <header class="application-status-header">
                   <nav class="status-breadcrumb" aria-label="Application breadcrumb">
-                    <a routerLink="/candidate/my-applications">My Applications</a>
+                    <a [routerLink]="candidateRoute('my-applications')">My Applications</a>
                     <span>/</span>
                     <span>{{ application.companyName }}</span>
                   </nav>
@@ -866,7 +870,7 @@ interface CandidateInterviewGroup {
                         <span class="candidate-status-pill">{{ applicationStatusLabel(application.status) }}</span>
                       </p>
                     </div>
-                    <a class="btn secondary" [routerLink]="['/candidate/jobs', application.jobPostId]">
+                    <a class="btn secondary" [routerLink]="candidateRoute('jobs', application.jobPostId)">
                       <span class="material-symbols-outlined" aria-hidden="true">description</span>
                       View Job Description
                     </a>
@@ -1016,7 +1020,7 @@ interface CandidateInterviewGroup {
                         <span class="material-symbols-outlined" aria-hidden="true">mail</span>
                         Message Support
                       </button>
-                      <a class="btn secondary full" routerLink="/candidate/my-applications">
+                      <a class="btn secondary full" [routerLink]="candidateRoute('my-applications')">
                         <span class="material-symbols-outlined" aria-hidden="true">help</span>
                         Help Center
                       </a>
@@ -1254,16 +1258,47 @@ interface CandidateInterviewGroup {
                     <span class="material-symbols-outlined" aria-hidden="true">description</span>
                     <h2>Resume / CV</h2>
                   </header>
-                  <div class="profile-resume-row">
-                    <span class="material-symbols-outlined" aria-hidden="true">article</span>
-                    <strong>{{ profileResumeName() }}</strong>
-                    <button class="btn secondary compact" type="button" disabled>Download</button>
-                  </div>
-                  <button class="profile-resume-dropzone" type="button" disabled>
+                  @if (profileResumeName(); as resumeName) {
+                    <div class="profile-resume-row">
+                      <span class="material-symbols-outlined" aria-hidden="true">article</span>
+                      <div>
+                        <strong>{{ resumeName }}</strong>
+                        <small>Saved to your profile. Job application uploads override this file.</small>
+                      </div>
+                      @if (profileResumeDocument(); as resumeDocument) {
+                        <button
+                          class="btn secondary"
+                          type="button"
+                          [disabled]="profileDocumentUploading()"
+                          (click)="downloadProfileResume(resumeDocument)"
+                        >
+                          Download
+                        </button>
+                      }
+                    </div>
+                  } @else {
+                    <div class="profile-resume-row empty">
+                      <span class="material-symbols-outlined" aria-hidden="true">article</span>
+                      <div>
+                        <strong>No resume uploaded yet</strong>
+                        <small>Choose a DOCX file before applying to a role.</small>
+                      </div>
+                    </div>
+                  }
+                  <label class="profile-resume-dropzone">
                     <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
-                    <strong>Update Resume</strong>
-                    <small>DOCX support is available from application uploads.</small>
-                  </button>
+                    <strong>{{ profileDocumentUploading() ? 'Uploading Resume...' : profileResumeName() ? 'Replace Resume' : 'Choose Resume' }}</strong>
+                    <small>DOCX only, up to 5 MB.</small>
+                    <input
+                      type="file"
+                      [disabled]="profileDocumentUploading()"
+                      accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      (change)="onProfileResumeSelected($event)"
+                    />
+                  </label>
+                  @if (documentUploadError()) {
+                    <p class="field-status error">{{ documentUploadError() }}</p>
+                  }
                 </article>
 
               </section>
@@ -1277,7 +1312,7 @@ interface CandidateInterviewGroup {
                 <article class="candidate-panel profile-ready-card">
                   <strong>Ready for a change?</strong>
                   <p>We found roles matching your current profile.</p>
-                  <a class="btn light full" routerLink="/candidate/jobs">Explore New Roles</a>
+                  <a class="btn light full" [routerLink]="candidateRoute('jobs')">Explore New Roles</a>
                 </article>
               </aside>
             </form>
@@ -1289,7 +1324,7 @@ interface CandidateInterviewGroup {
                 <article class="candidate-panel empty-state">
                   <strong>No interviews scheduled yet.</strong>
                   <p>Interview invitations and completed rounds appear here once recruiters update your application timeline.</p>
-                  <a routerLink="/candidate/my-applications">View applications</a>
+                  <a [routerLink]="candidateRoute('my-applications')">View applications</a>
                 </article>
               } @else {
                 @for (group of candidateInterviewGroups(); track group.application.jobApplicationId) {
@@ -1308,7 +1343,7 @@ interface CandidateInterviewGroup {
                           </p>
                         </div>
                       </div>
-                      <a class="btn secondary" [routerLink]="['/candidate/applications', group.application.jobApplicationId, 'status']">
+                      <a class="btn secondary" [routerLink]="candidateRoute('applications', group.application.jobApplicationId, 'status')">
                         View timeline
                       </a>
                     </header>
@@ -1340,7 +1375,7 @@ interface CandidateInterviewGroup {
             <section class="candidate-panel empty-state">
               <strong>{{ pageTitle() }} is not active in this slice.</strong>
               <p>Published jobs, applications, and application status are live. The remaining candidate views will be wired with the interview slice.</p>
-              <a routerLink="/candidate/jobs">Browse jobs</a>
+              <a [routerLink]="candidateRoute('jobs')">Browse jobs</a>
             </section>
           }
         }
@@ -1422,6 +1457,24 @@ interface CandidateInterviewGroup {
       .portal-job-main > .portal-skill-row {
         grid-column: 2;
         margin-top: 0;
+      }
+
+      .portal-job-title-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        min-width: 0;
+      }
+
+      .portal-job-title-row .candidate-status-pill {
+        flex: 0 0 auto;
+      }
+
+      .portal-job-title-row small {
+        color: #334155;
+        font-size: 13px;
+        line-height: 1.25;
       }
 
       .portal-job-meta {
@@ -2057,6 +2110,7 @@ export class CandidatePageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly store = inject(TalentPilotStoreService);
   private readonly auth = inject(AuthService);
+  private readonly fileDownloads = inject(FileDownloadService);
   private readonly routeParams = toSignal(this.route.paramMap, { initialValue: null });
   private readonly routeQueryParams = toSignal(this.route.queryParamMap, { initialValue: null });
   private readonly routePageId = toSignal(this.route.data.pipe(map((data) => data['pageId'] as CandidatePageId)), {
@@ -2074,13 +2128,16 @@ export class CandidatePageComponent {
   readonly portalInvitationError = signal('');
   readonly myApplications = signal<PortalMyApplicationItem[]>([]);
   readonly portalProfile = signal<PortalCandidateProfile | null>(null);
+  readonly portalContext = signal<PublicPortalContext | null>(null);
   readonly selectedProfileSkillIds = signal<Set<string>>(new Set());
   readonly profileEditing = signal(false);
   readonly applicationResult = signal<PortalJobApplicationResult | null>(null);
   readonly selectedDocumentFile = signal<File | null>(null);
+  readonly profileDocumentUploading = signal(false);
   readonly documentUploadError = signal('');
   readonly currentUser = computed(() => this.auth.currentUser());
   readonly pageId = computed(() => this.routePageId());
+  readonly tenantSlug = computed(() => this.routeParams()?.get('tenantSlug') ?? null);
   readonly routeId = computed(() => this.routeParams()?.get('id') ?? null);
   readonly applyJobPostId = computed(() => this.routeParams()?.get('jobId') ?? null);
   readonly routeInviteId = computed(() => this.routeQueryParams()?.get('inviteId') ?? null);
@@ -2164,6 +2221,7 @@ export class CandidatePageComponent {
     effect(() => {
       const key = [
         this.pageId(),
+        this.tenantSlug() ?? '',
         this.routeId() ?? '',
         this.applyJobPostId() ?? '',
         this.routeInviteId() ?? '',
@@ -2195,7 +2253,7 @@ export class CandidatePageComponent {
       case 'application-status':
         return 'Application Status';
       default:
-        return 'Join the Future of Engineering at TKXEL';
+        return `Join the Future of Engineering at ${this.portalContext()?.careerDisplayName ?? 'TKXEL'}`;
     }
   }
 
@@ -2214,7 +2272,9 @@ export class CandidatePageComponent {
       case 'application-status':
         return 'View the current status of this application.';
       default:
-        return "Work with the world's leading brands on cutting-edge software solutions. Your career path starts here.";
+        return this.portalContext()?.companyCity
+          ? `Explore open roles from ${this.portalContext()?.careerDisplayName}. Your career path starts here.`
+          : "Work with the world's leading brands on cutting-edge software solutions. Your career path starts here.";
     }
   }
 
@@ -2650,7 +2710,7 @@ export class CandidatePageComponent {
   }
 
   applicationCvSectionComplete(): boolean {
-    return this.selectedDocumentFile() !== null && !this.documentUploadError();
+    return (this.selectedDocumentFile() !== null || this.profileResumeDocument() !== null) && !this.documentUploadError();
   }
 
   applicationReviewSectionComplete(): boolean {
@@ -2691,6 +2751,7 @@ export class CandidatePageComponent {
       this.profileForm.degreeName,
       this.profileForm.currentWorkCompany,
       this.selectedProfileSkillIds().size > 0 ? 'skills' : '',
+      this.profileResumeName(),
     ];
     const completed = checks.filter((value) => value !== null && value !== undefined && String(value).trim() !== '').length;
     return Math.round((completed / checks.length) * 100);
@@ -2761,12 +2822,33 @@ export class CandidatePageComponent {
     return `${currency} ${new Intl.NumberFormat('en').format(amount)}`;
   }
 
-  profileResumeName(): string {
-    const name = (this.profileForm.displayName || 'candidate')
-      .trim()
-      .replace(/[^a-z0-9]+/gi, '_')
-      .replace(/^_+|_+$/g, '');
-    return `${name || 'candidate'}_CV.docx`;
+  profileResumeName(): string | null {
+    return this.profileResumeDocument()?.fileName ?? null;
+  }
+
+  profileResumeDocument(): PortalCandidateProfileDocument | null {
+    return this.portalProfile()?.resumeDocument ?? null;
+  }
+
+  applicationCvLabel(): string {
+    const applicationFile = this.selectedDocumentFile();
+    if (applicationFile) {
+      return applicationFile.name;
+    }
+
+    return this.profileResumeName() ?? 'Upload CV';
+  }
+
+  applicationCvHint(): string {
+    if (this.selectedDocumentFile()) {
+      return 'This application-specific CV will be submitted for the role.';
+    }
+
+    if (this.profileResumeDocument()) {
+      return 'Using your profile CV. Upload a different DOCX here to override it for this application.';
+    }
+
+    return 'Drag and drop or click to browse files.';
   }
 
   selectedProfileSkills() {
@@ -3036,7 +3118,11 @@ export class CandidatePageComponent {
   }
 
   jobDetailStartApplicationRoute(job: PortalJobPostDetail): unknown[] | string {
-    return this.isCandidateUser() ? ['/candidate/apply', job.jobPostId] : '/auth/login';
+    if (this.isCandidateUser()) {
+      return this.candidateRoute('apply', job.jobPostId);
+    }
+
+    return this.currentUser() ? '/auth/login' : this.candidateSignupRoute();
   }
 
   jobDetailStartApplicationQueryParams(job: PortalJobPostDetail): Record<string, string> | null {
@@ -3044,10 +3130,29 @@ export class CandidatePageComponent {
       return this.jobDetailInviteQueryParams();
     }
 
-    return {
-      returnUrl: this.candidateApplyReturnUrl(job),
-      switchAccount: 'candidate',
-    };
+    const returnUrl = this.candidateApplyReturnUrl(job);
+    return this.currentUser()
+      ? this.candidateSignInQueryParams(job.jobPostId, returnUrl)
+      : this.candidateSignupQueryParams(job.jobPostId, returnUrl);
+  }
+
+  jobListStartApplicationRoute(job: PortalJobPostListItem): unknown[] | string {
+    if (this.isCandidateUser()) {
+      return this.candidateRoute('apply', job.jobPostId);
+    }
+
+    return this.currentUser() ? '/auth/login' : this.candidateSignupRoute();
+  }
+
+  jobListStartApplicationQueryParams(job: PortalJobPostListItem): Record<string, string> | null {
+    if (this.isCandidateUser()) {
+      return null;
+    }
+
+    const returnUrl = this.candidateApplyReturnUrl(job);
+    return this.currentUser()
+      ? this.candidateSignInQueryParams(job.jobPostId, returnUrl)
+      : this.candidateSignupQueryParams(job.jobPostId, returnUrl);
   }
 
   jobDetailStartApplicationLabel(candidateLabel: string): string {
@@ -3055,7 +3160,39 @@ export class CandidatePageComponent {
       return candidateLabel;
     }
 
-    return this.currentUser() ? 'Switch account to apply' : 'Sign in to apply';
+    return this.currentUser() ? 'Switch account to apply' : 'Create account to apply';
+  }
+
+  candidateRoute(...segments: Array<string | null | undefined>): unknown[] {
+    const normalizedSegments = segments.filter((segment): segment is string => Boolean(segment));
+    const slug = this.tenantSlug() ?? this.portalContext()?.slug ?? null;
+    return slug ? ['/candidate', slug, ...normalizedSegments] : ['/candidate', ...normalizedSegments];
+  }
+
+  candidateSignupRoute(): unknown[] {
+    const slug = this.tenantSlug() ?? this.portalContext()?.slug ?? null;
+    return slug ? ['/candidate', slug, 'signup'] : ['/candidate', 'signup'];
+  }
+
+  candidateSignupQueryParams(jobPostId: string, returnUrl: string): Record<string, string> {
+    const params: Record<string, string> = {
+      jobPostId,
+      returnUrl,
+    };
+    const slug = this.tenantSlug() ?? this.portalContext()?.slug;
+    if (slug) {
+      params['tenantSlug'] = slug;
+    }
+
+    return params;
+  }
+
+  candidateSignInQueryParams(jobPostId: string, returnUrl: string): Record<string, string> {
+    return {
+      jobPostId,
+      returnUrl,
+      switchAccount: 'candidate',
+    };
   }
 
   shortInvitationId(candidateInvitationId: string): string {
@@ -3065,29 +3202,87 @@ export class CandidatePageComponent {
 
   onApplicationDocumentSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
+    const file = this.validateResumeFileInput(input);
+    this.selectedDocumentFile.set(file);
+  }
+
+  async onProfileResumeSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = this.validateResumeFileInput(input);
+    if (!file) {
+      return;
+    }
+
+    this.profileDocumentUploading.set(true);
+    try {
+      const result = await this.store.uploadPortalCandidateProfileDocument(file, 'Resume');
+      this.portalProfile.update((profile) => profile ? { ...profile, resumeDocument: result.document } : profile);
+      this.success.set('Resume saved to your candidate profile.');
+      this.error.set('');
+    } catch {
+      this.documentUploadError.set('Resume could not be saved. Keep the file as DOCX and try again.');
+    } finally {
+      this.profileDocumentUploading.set(false);
+      input.value = '';
+    }
+  }
+
+  async downloadProfileResume(document: PortalCandidateProfileDocument): Promise<void> {
+    try {
+      const response = await this.store.downloadPortalCandidateProfileDocument(document.candidateProfileDocumentId);
+      const blob = response.body;
+      if (!blob) {
+        throw new Error('The document response was empty.');
+      }
+
+      this.fileDownloads.saveBlob(blob, this.fileNameFromContentDisposition(response.headers.get('content-disposition')) ?? document.fileName);
+      this.success.set('Resume download started.');
+      this.error.set('');
+    } catch {
+      this.error.set('Resume could not be downloaded.');
+    }
+  }
+
+  private fileNameFromContentDisposition(header: string | null): string | null {
+    if (!header) {
+      return null;
+    }
+
+    const encodedMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encodedMatch?.[1]) {
+      return decodeURIComponent(encodedMatch[1].trim());
+    }
+
+    const quotedMatch = header.match(/filename="([^"]+)"/i);
+    if (quotedMatch?.[1]) {
+      return quotedMatch[1].trim();
+    }
+
+    const plainMatch = header.match(/filename=([^;]+)/i);
+    return plainMatch?.[1]?.trim() || null;
+  }
+
+  private validateResumeFileInput(input: HTMLInputElement): File | null {
     const file = input.files?.[0] ?? null;
     this.documentUploadError.set('');
 
     if (!file) {
-      this.selectedDocumentFile.set(null);
-      return;
+      return null;
     }
 
     if (!file.name.toLowerCase().endsWith('.docx')) {
-      this.selectedDocumentFile.set(null);
       this.documentUploadError.set('Upload a DOCX resume for this MVP.');
       input.value = '';
-      return;
+      return null;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      this.selectedDocumentFile.set(null);
       this.documentUploadError.set('Resume must be 5 MB or smaller.');
       input.value = '';
-      return;
+      return null;
     }
 
-    this.selectedDocumentFile.set(file);
+    return file;
   }
 
   formatFileSize(sizeBytes: number): string {
@@ -3580,6 +3775,7 @@ export class CandidatePageComponent {
     this.applicationResult.set(null);
 
     try {
+      await this.loadPublicPortalContextForPage();
       switch (this.pageId()) {
         case 'jobs':
           await this.loadJobs();
@@ -3608,8 +3804,27 @@ export class CandidatePageComponent {
     }
   }
 
+  private async loadPublicPortalContextForPage(): Promise<void> {
+    const jobPostId = this.applyJobPostId() ?? (this.pageId() === 'job-detail' ? this.routeId() : null);
+    try {
+      this.portalContext.set(await this.store.loadPublicPortalContext({
+        tenantSlug: this.tenantSlug(),
+        jobPostId,
+      }));
+    } catch {
+      this.portalContext.set(null);
+    }
+  }
+
   private async loadJobs(): Promise<void> {
-    const result = await this.store.loadPortalJobPosts();
+    const resolvedTenantSlug = this.tenantSlug() ?? this.portalContext()?.slug ?? null;
+    if (!this.portalContext() || !resolvedTenantSlug) {
+      this.jobPosts.set([]);
+      this.error.set('Candidate portal tenant could not be resolved.');
+      return;
+    }
+
+    const result = await this.store.loadPortalJobPosts(resolvedTenantSlug);
     this.jobPosts.set(result.items ?? []);
 
     if (this.isCandidateUser()) {
@@ -3762,7 +3977,10 @@ export class CandidatePageComponent {
   }
 
   private jobDetailUrl(job: PortalJobPostDetail): string {
-    const path = `/candidate/jobs/${encodeURIComponent(job.jobPostId)}`;
+    const slug = this.tenantSlug() ?? this.portalContext()?.slug ?? null;
+    const path = slug
+      ? `/candidate/${encodeURIComponent(slug)}/jobs/${encodeURIComponent(job.jobPostId)}`
+      : `/candidate/jobs/${encodeURIComponent(job.jobPostId)}`;
     if (typeof window === 'undefined') {
       return path;
     }
@@ -3770,8 +3988,11 @@ export class CandidatePageComponent {
     return `${window.location.origin}${path}`;
   }
 
-  private candidateApplyReturnUrl(job: PortalJobPostDetail): string {
-    const path = `/candidate/apply/${encodeURIComponent(job.jobPostId)}`;
+  candidateApplyReturnUrl(job: { jobPostId: string }): string {
+    const slug = this.tenantSlug() ?? this.portalContext()?.slug ?? null;
+    const path = slug
+      ? `/candidate/${encodeURIComponent(slug)}/apply/${encodeURIComponent(job.jobPostId)}`
+      : `/candidate/apply/${encodeURIComponent(job.jobPostId)}`;
     const queryParams = this.jobDetailInviteQueryParams();
     if (!queryParams) {
       return path;

@@ -33,6 +33,15 @@ describe('CandidateShellComponent', () => {
     expect(component.navItems().map((item) => item.label)).toEqual(['Jobs']);
   });
 
+  it('shows sign-in and create-account actions for anonymous users', () => {
+    const fixture = TestBed.createComponent(CandidateShellComponent);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Sign in');
+    expect(text).toContain('Create account');
+  });
+
   it('shows all candidate tabs for signed-in users and labels internal accounts clearly', () => {
     userSignal.set({
       id: 'user-1',

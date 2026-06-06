@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { AiHealthWarningComponent } from '../../core/components/ai-health-warning.component';
 import { CANDIDATE_NAV } from './candidate-experience.data';
@@ -10,7 +10,7 @@ import { CANDIDATE_NAV } from './candidate-experience.data';
   template: `
     <div class="candidate-shell">
       <header class="topbar candidate-topbar">
-        <a class="brand app-brand" routerLink="/candidate/jobs" aria-label="Talent Pilot job portal">
+        <a class="brand app-brand" [routerLink]="toTenantRoute('/candidate/jobs')" aria-label="Talent Pilot job portal">
           <span class="talent-pilot-logo app-brand-icon" aria-hidden="true">
             <span></span>
             <span></span>
@@ -32,6 +32,10 @@ import { CANDIDATE_NAV } from './candidate-experience.data';
         </nav>
 
         <div class="user-menu">
+          <a class="btn ghost compact docs-topbar-link" routerLink="/docs" aria-label="Open product documentation">
+            <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+            Docs
+          </a>
           @if (currentUser(); as user) {
             <app-ai-health-warning />
             <details class="candidate-account-menu">
@@ -51,9 +55,13 @@ import { CANDIDATE_NAV } from './candidate-experience.data';
               </div>
             </details>
           } @else {
-            <a class="btn secondary compact candidate-login-link" routerLink="/auth/login">
+            <a class="btn secondary compact candidate-login-link" routerLink="/auth/login" [queryParams]="authQueryParams()">
               <span class="material-symbols-outlined" aria-hidden="true">login</span>
-              Sign in to apply
+              Sign in
+            </a>
+            <a class="btn primary compact candidate-login-link" [routerLink]="signupRoute()" [queryParams]="signupQueryParams()">
+              <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
+              Create account
             </a>
           }
         </div>
@@ -67,9 +75,9 @@ import { CANDIDATE_NAV } from './candidate-experience.data';
         <div class="candidate-footer-inner">
           <span><strong>Talent Pilot</strong> &copy; 2026 Talent Pilot. Powered by TKXEL.</span>
           <nav aria-label="Candidate portal footer links">
-            <a routerLink="/candidate/jobs">Careers</a>
-            <a routerLink="/candidate/profile">Privacy Policy</a>
-            <a routerLink="/candidate/jobs">Terms of Service</a>
+            <a [routerLink]="toTenantRoute('/candidate/jobs')">Careers</a>
+            <a [routerLink]="toTenantRoute('/candidate/profile')">Privacy Policy</a>
+            <a [routerLink]="toTenantRoute('/candidate/jobs')">Terms of Service</a>
           </nav>
         </div>
       </footer>
@@ -78,14 +86,21 @@ import { CANDIDATE_NAV } from './candidate-experience.data';
 })
 export class CandidateShellComponent {
   readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   readonly currentUser = computed(() => this.auth.currentUser());
   readonly navItems = computed(() => {
     const user = this.currentUser();
     if (!user) {
-      return CANDIDATE_NAV.filter((item) => item.route === '/candidate/jobs');
+      return CANDIDATE_NAV.filter((item) => item.route === '/candidate/jobs').map((item) => ({
+        ...item,
+        route: this.toTenantRoute(item.route),
+      }));
     }
 
-    return CANDIDATE_NAV;
+    return CANDIDATE_NAV.map((item) => ({
+      ...item,
+      route: this.toTenantRoute(item.route),
+    }));
   });
   readonly accountLabel = computed(() => {
     const user = this.currentUser();
@@ -103,5 +118,52 @@ export class CandidateShellComponent {
       .join('')
       .slice(0, 2)
       .toUpperCase();
+  }
+
+  signupRoute(): unknown[] {
+    const slug = this.currentTenantSlug();
+    return slug ? ['/candidate', slug, 'signup'] : ['/candidate', 'signup'];
+  }
+
+  signupQueryParams(): Record<string, string> {
+    return { returnUrl: this.currentCandidateReturnUrl() };
+  }
+
+  authQueryParams(): Record<string, string> {
+    return {
+      returnUrl: this.currentCandidateReturnUrl(),
+      switchAccount: 'candidate',
+    };
+  }
+
+  toTenantRoute(route: string): string {
+    const slug = this.currentTenantSlug();
+    return slug ? route.replace('/candidate', `/candidate/${slug}`) : route;
+  }
+
+  private currentCandidateReturnUrl(): string {
+    return this.router.url && this.router.url !== '/' ? this.router.url : this.toTenantRoute('/candidate/jobs');
+  }
+
+  private currentTenantSlug(): string | null {
+    const path = this.router.url.split('?')[0];
+    const segments = path.split('/').filter(Boolean);
+    if (segments[0] !== 'candidate' || segments.length < 2) {
+      return null;
+    }
+
+    const knownCandidateSegments = new Set([
+      'jobs',
+      'signup',
+      'apply',
+      'invite-registration',
+      'confirm-application',
+      'profile',
+      'my-applications',
+      'applications',
+      'interviews',
+      'reapply-blocked',
+    ]);
+    return knownCandidateSegments.has(segments[1]) ? null : segments[1];
   }
 }

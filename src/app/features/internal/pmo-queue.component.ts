@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { priorityBadgeClass } from '../../core/priority-formatting';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
@@ -50,7 +51,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                       <small>{{ item.jobRequest.title }}</small>
                     </td>
                     <td>{{ item.jobRequest.client }}</td>
-                    <td><span class="status-badge priority">{{ item.jobRequest.priority }}</span></td>
+                    <td><span [class]="priorityBadgeClass(item.jobRequest.priority)">{{ item.jobRequest.priority }}</span></td>
                     <td>{{ item.assignment.claimedByUserId ? store.getUserName(item.assignment.claimedByUserId) : 'PMO Group' }}</td>
                     <td><span class="status-badge">{{ item.assignment.status }}</span></td>
                     <td>
@@ -98,6 +99,10 @@ export class PmoQueueComponent {
     private readonly auth: AuthService,
     private readonly router: Router,
   ) {}
+
+  priorityBadgeClass(priority: string): string {
+    return priorityBadgeClass(priority);
+  }
 
   async claim(assignmentId: string): Promise<void> {
     const user = this.auth.currentUser();

@@ -1,4 +1,5 @@
 export type TalentPilotRole =
+  | 'SystemAdmin'
   | 'TenantAdmin'
   | 'Presales'
   | 'PMO'
@@ -71,6 +72,14 @@ export interface LoginOption {
   roleDisplayName: string;
   roles: BackendCurrentUserRole[];
   groups: CurrentUserGroup[];
+}
+
+export interface CandidateSignupRequest {
+  tenantSlug?: string | null;
+  jobPostId?: string | null;
+  displayName: string;
+  email: string;
+  password: string;
 }
 
 export interface CurrentUserGroup {
@@ -517,6 +526,7 @@ export interface JobRequest {
   code: string;
   title: string;
   client: string;
+  clientContext?: string | null;
   description: string;
   department: string;
   skills: string[];
@@ -537,6 +547,7 @@ export interface JobRequest {
 export interface CreateJobRequestInput {
   title: string;
   client: string;
+  clientContext?: string | null;
   description: string;
   departmentId: string;
   locationId: string;
@@ -551,6 +562,7 @@ export interface CreateJobRequestInput {
 export interface DraftJobDescriptionInput {
   title: string;
   client: string;
+  clientContext?: string | null;
   departmentId: string;
   locationId: string;
   skillIds: string[];
@@ -799,6 +811,27 @@ export interface PortalJobPostList {
   items: PortalJobPostListItem[];
 }
 
+export interface PublicPortalContext {
+  tenantId: string;
+  slug: string;
+  displayName: string;
+  careerDisplayName: string;
+  companyAddress?: string | null;
+  companyCity?: string | null;
+  companyCountry?: string | null;
+  officialEmail?: string | null;
+  officialPhone?: string | null;
+  primaryColor: string;
+  candidateLoginRequired: boolean;
+  candidateCvFormat: string;
+  publicJobsEnabled: boolean;
+  inviteExpiryDays: number;
+  reapplyCooldownDays: number;
+  logoFileName?: string | null;
+  logoContentType?: string | null;
+  logoContentBase64?: string | null;
+}
+
 export interface PortalJobPostListItem {
   jobPostId: string;
   jobRequestId: string;
@@ -894,6 +927,23 @@ export interface PortalCandidateProfile {
   currentWorkHistory?: PortalCandidateProfileWorkHistory | null;
   skills: PortalCandidateProfileSkill[];
   skillOptions: PortalCandidateProfileSkillOption[];
+  resumeDocument?: PortalCandidateProfileDocument | null;
+}
+
+export interface PortalCandidateProfileDocument {
+  candidateProfileDocumentId: string;
+  candidateId: string;
+  documentType: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  storageProvider: string;
+  uploadedAt: string;
+  extractionStatus: string;
+  hasTextEvidence: boolean;
+  parserVersion?: string | null;
+  extractedAt?: string | null;
+  extractionError?: string | null;
 }
 
 export interface PortalCandidateProfileEducation {
@@ -984,6 +1034,10 @@ export interface PortalApplicationDocument {
 
 export interface PortalUploadApplicationDocumentResult {
   document: PortalApplicationDocument;
+}
+
+export interface PortalUploadCandidateProfileDocumentResult {
+  document: PortalCandidateProfileDocument;
 }
 
 export interface PortalApplicationTimelineItem {
@@ -1206,6 +1260,8 @@ export interface HiringManagerReviewListItem {
   status: string;
   hiringManagerName: string;
   updatedAt: string;
+  offerLetterStatus?: string | null;
+  latestMeetingAt?: string | null;
 }
 
 export interface HiringReviewCandidateSummary {
@@ -1234,6 +1290,8 @@ export interface HiringReviewJobSummary {
   requiredPositions: number;
   fulfilledPositions: number;
   requestStatus: string;
+  requestClosedAt?: string | null;
+  requestCloseReason?: string | null;
   applicationStatus: string;
   finalOutcomeRecordedAt?: string | null;
   finalOutcomeReason?: string | null;
@@ -1803,6 +1861,7 @@ export type TenantStatus = 'Active' | 'Inactive';
 export type CandidateCvFormat = 'DOCX';
 export type TenantCurrency = 'PKR' | 'USD' | 'EUR';
 export type NotificationEmailProvider = 'Resend' | 'MicrosoftGraph';
+export type AdminCenterAccessMode = 'FullAccess' | 'ReadOnly';
 
 export interface TenantProfileSettings {
   tenantId: string;
@@ -1826,6 +1885,7 @@ export interface TenantProfileSettings {
   inviteExpiryDays: number;
   reapplyCooldownDays: number;
   notificationEmailProvider: NotificationEmailProvider;
+  adminCenterAccessMode: AdminCenterAccessMode;
   userCount: number;
   roleCount: number;
   setupComplete: boolean;
@@ -1859,6 +1919,7 @@ export type UpdateTenantProfileSettingsInput = Pick<
   | 'inviteExpiryDays'
   | 'reapplyCooldownDays'
   | 'notificationEmailProvider'
+  | 'adminCenterAccessMode'
   | 'logoFileName'
   | 'logoContentType'
   | 'logoContentBase64'

@@ -28,9 +28,9 @@ test('Presales can create a job request with AI description support and PMO rout
   await loginAs(page, users.presales.email);
   await page.goto('/app/job-requests/new');
 
-  await page.getByLabel('Title').fill('Senior React Developer');
-  await page.getByLabel('Client').fill('Relia');
-  await page.locator('label.checkbox-card', { hasText: 'React' }).locator('input').check();
+  await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Senior React Developer');
+  await page.getByRole('textbox', { name: 'Client', exact: true }).fill('Relia');
+  await page.getByRole('checkbox', { name: 'React Frontend' }).check();
 
   await expect(page.getByText('Engineering routes to PMO - Engineering')).toBeVisible();
   await page.locator('button.ai-draft-button').click();
@@ -48,8 +48,8 @@ test('PMO can rank bench employees with AI, then manually recommend or forward t
   await page.getByRole('button', { name: /^Bench Matching/ }).click();
   await page.getByRole('button', { name: /Rank with AI/ }).click();
 
-  await expect(page.getByText('Bench Matching ranked 1 employee')).toBeVisible();
-  await expect(page.getByText('Hamza Ali')).toBeVisible();
+  await expect(page.getByRole('row', { name: /#1 - High confidence Hamza Ali/ })).toBeVisible();
+  await expect(page.getByText(/Last ranked .*Web research: Skipped/)).toBeVisible();
   await page.getByRole('checkbox').first().check();
   await page.getByRole('button', { name: 'Recommend to Presales' }).click();
   await expect(page.getByText('recommendation was sent to Presales')).toBeVisible();
@@ -73,6 +73,8 @@ test('Recruiter, candidate, interviewer, and hiring manager screens expose the f
 
   await loginAs(page, users.candidate.email);
   await page.goto('/candidate/apply/post-1');
+  await expect(page.getByText('Profile CV fallback')).toBeVisible();
+  await page.getByRole('checkbox', { name: /I agree to the profile policy/ }).check();
   await page.getByRole('button', { name: /Submit application/i }).click();
   await expect(page.getByText('Application submitted', { exact: true })).toBeVisible();
 
@@ -202,6 +204,10 @@ async function mockApi(page: Page): Promise<void> {
       return json(route, { items: [portalJobPost()] });
     }
 
+    if (path === 'portal/context') {
+      return json(route, publicPortalContext());
+    }
+
     if (path === 'talent-pilot/portal/job-posts/post-1') {
       return json(route, portalJobPost());
     }
@@ -214,6 +220,14 @@ async function mockApi(page: Page): Promise<void> {
         status: 'Applied',
         alreadyApplied: false,
       });
+    }
+
+    if (path === 'talent-pilot/portal/my-applications') {
+      return json(route, { items: [] });
+    }
+
+    if (path === 'talent-pilot/portal/profile') {
+      return json(route, portalCandidateProfile());
     }
 
     if (path === 'talent-pilot/interviews/my-tasks') {
@@ -478,5 +492,92 @@ function portalJobPost() {
     status: 'Published',
     companyName: 'TKXEL Careers',
     publishedAt: '2026-05-31T00:00:00Z',
+  };
+}
+
+function publicPortalContext() {
+  return {
+    tenantId: 'tenant-1',
+    slug: 'tkxel',
+    displayName: 'TKXEL',
+    careerDisplayName: 'TKXEL Careers',
+    companyAddress: 'Tkxel Garden Town',
+    companyCity: 'Lahore',
+    companyCountry: 'Pakistan',
+    officialEmail: 'careers@example.com',
+    officialPhone: '+92 300 0000000',
+    primaryColor: '#0f6fc9',
+    candidateLoginRequired: true,
+    candidateCvFormat: 'DOCX',
+    publicJobsEnabled: true,
+    inviteExpiryDays: 7,
+    reapplyCooldownDays: 30,
+    logoFileName: null,
+    logoContentType: null,
+    logoContentBase64: null,
+  };
+}
+
+function portalCandidateProfile() {
+  return {
+    candidateId: 'candidate-1',
+    displayName: 'Ayesha Khan',
+    email: 'ai-candidate@8pkk57.onmicrosoft.com',
+    emailVerifiedAt: null,
+    emailVerifiedAtUtc: null,
+    isEmailVerified: false,
+    phone: '+92 300 0000000',
+    linkedInUrl: 'https://linkedin.com/in/ayesha-khan',
+    currentDesignation: 'Senior React Engineer',
+    currentCompany: 'Product Studio',
+    experienceYears: 6,
+    expectedSalaryAmount: 380000,
+    expectedSalaryCurrency: 'PKR',
+    noticePeriodDays: 30,
+    primaryEducation: {
+      universityName: 'FAST-NUCES',
+      degreeName: 'BSCS',
+      graduationYear: 2019,
+    },
+    currentWorkHistory: {
+      companyName: 'Product Studio',
+      title: 'Senior React Engineer',
+    },
+    skills: [
+      {
+        skillId: 'skill-react',
+        skillName: 'React',
+        skillLevel: 'Advanced',
+        yearsExperience: 5,
+        isPrimary: true,
+      },
+    ],
+    skillOptions: [
+      {
+        skillId: 'skill-react',
+        skillName: 'React',
+        category: 'Frontend',
+      },
+      {
+        skillId: 'skill-azure',
+        skillName: 'Azure',
+        category: 'Cloud',
+      },
+    ],
+    resumeDocument: {
+      candidateProfileDocumentId: 'profile-doc-1',
+      candidateId: 'candidate-1',
+      documentType: 'Resume',
+      fileName: 'Ayesha_Khan_CV.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      sizeBytes: 120000,
+      storageProvider: 'Local',
+      uploadedAt: '2026-05-31T00:00:00Z',
+      extractionStatus: 'Completed',
+      hasTextEvidence: true,
+      parserVersion: 'test',
+      extractedAt: '2026-05-31T00:00:00Z',
+      extractionError: null,
+    },
   };
 }

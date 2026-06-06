@@ -608,6 +608,46 @@ export interface AdminAiGuardrailItem {
   reason: string;
 }
 
+export interface AdminAiAgentRunListResponse {
+  totalCount: number;
+  items: AdminAiAgentRunListItem[];
+}
+
+export interface AdminAiAgentRunListItem {
+  aiAgentRunId: string;
+  agentId: string;
+  agentName: string;
+  sourceEntityType: string;
+  sourceEntityId: string;
+  modelName: string;
+  embeddingModelName?: string | null;
+  status: string;
+  startedAtUtc: string;
+  completedAtUtc?: string | null;
+  durationMs?: number | null;
+  outputSummary?: string | null;
+  inputHash: string;
+  promptVersion?: string | null;
+  semanticSimilarityStatus?: string | null;
+  humanDecisionRequired: boolean;
+  failureType?: string | null;
+}
+
+export interface AdminAiEvaluationResponse {
+  overallStatus: string;
+  scorePercent: number;
+  generatedAtUtc: string;
+  items: AdminAiEvaluationItem[];
+}
+
+export interface AdminAiEvaluationItem {
+  name: string;
+  status: string;
+  rubricArea: string;
+  evidence: string;
+  nextStep: string;
+}
+
 export interface AdminAuditLogListResponse {
   summary: {
     eventsToday: number;
@@ -834,6 +874,15 @@ export class AdminCenterApiService {
 
   getAiGuardrails(): Promise<AdminAiGuardrailsResponse> {
     return firstValueFrom(this.api.get<AdminAiGuardrailsResponse>('admin/ai-settings/guardrails'));
+  }
+
+  getAiAgentRuns(count = 12): Promise<AdminAiAgentRunListResponse> {
+    const params = new URLSearchParams({ count: String(count) });
+    return firstValueFrom(this.api.get<AdminAiAgentRunListResponse>(`admin/ai-settings/agent-runs?${params}`));
+  }
+
+  getAiEvaluation(): Promise<AdminAiEvaluationResponse> {
+    return firstValueFrom(this.api.get<AdminAiEvaluationResponse>('admin/ai-settings/evaluation'));
   }
 
   listCandidateSources(query: AdminListQuery = {}): Promise<AdminCandidateSourcesResponse> {

@@ -886,6 +886,7 @@ Admin UI copy rules for backend-facing configuration:
 | `POST` | `/api/auth/login` | Login/select a demo user. |
 | `GET` | `/api/auth/me` | Return current authenticated user. |
 | `POST` | `/api/job-requests` | Create a job request and route it to PMO. |
+| `POST` | `/api/talent-pilot/job-requests` | Create a backend-backed Job Request. Body includes optional `clientContext` plain text for tenant-provided client industry, domain, product, region, or delivery constraints used as AI evidence. |
 | `GET` | `/api/job-requests/{id}` | Load job request detail. |
 | `GET` | `/api/pmo/queue` | Load PMO group work queue. |
 | `POST` | `/api/workflow-assignments/{assignmentId}/claim` | Claim a workflow assignment. |

@@ -149,6 +149,34 @@ describe('AuthService', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/candidate');
   });
 
+  it('signs up candidates through the public signup endpoint and returns to the application URL', () => {
+    api.post.mockReturnValueOnce(of(candidateAuthResponse));
+    const service = TestBed.inject(AuthService);
+
+    service.signupCandidate(
+      {
+        tenantSlug: ' tkxel ',
+        jobPostId: ' post-1 ',
+        displayName: ' Amara Haq ',
+        email: ' amara.haq@example.com ',
+        password: 'StrongPass123',
+      },
+      true,
+      '/candidate/tkxel/apply/post-1',
+    );
+
+    expect(api.post).toHaveBeenCalledWith('auth/candidate-signup', {
+      tenantSlug: 'tkxel',
+      jobPostId: 'post-1',
+      displayName: 'Amara Haq',
+      email: 'amara.haq@example.com',
+      password: 'StrongPass123',
+    });
+    expect(localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)).toBe('candidate-access-token');
+    expect(service.currentUser()?.roles).toEqual(['Candidate']);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/candidate/tkxel/apply/post-1');
+  });
+
   it('keeps the current user unset when password authentication fails', () => {
     api.post.mockReturnValueOnce(throwError(() => new Error('Invalid credentials.')));
     const service = TestBed.inject(AuthService);

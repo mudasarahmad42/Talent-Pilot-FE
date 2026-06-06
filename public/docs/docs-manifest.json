@@ -1,0 +1,219 @@
+{
+  "defaultModule": "talent-pilot-app",
+  "modules": [
+    {
+      "id": "admin-center",
+      "label": "Admin Center",
+      "description": "Tenant setup, access control, workflow, integration, and AI configuration.",
+      "basePath": "admin-center",
+      "pages": [
+        {
+          "id": "overview",
+          "label": "Admin Center Documentation",
+          "file": "overview.md",
+          "summary": "Start here for the Admin Center purpose, tenant model, and core sections."
+        },
+        {
+          "id": "users-roles",
+          "label": "Users and Roles",
+          "file": "users-roles.md",
+          "summary": "Manage internal users, role assignment, permissions, and group membership."
+        },
+        {
+          "id": "workflows",
+          "label": "Workflows",
+          "file": "workflows.md",
+          "summary": "Configure routing, handoffs, notifications, and operational ownership."
+        },
+        {
+          "id": "ai-settings",
+          "label": "AI Settings",
+          "file": "ai-settings.md",
+          "summary": "Review AI agents, prompts, embeddings, model settings, and guardrails."
+        }
+      ]
+    },
+    {
+      "id": "candidate-portal",
+      "label": "Candidate Portal",
+      "description": "Candidate-facing jobs, applications, profiles, documents, and interview status.",
+      "basePath": "candidate-portal",
+      "pages": [
+        {
+          "id": "overview",
+          "label": "Candidate Portal Documentation",
+          "file": "overview.md",
+          "summary": "Start here for the candidate experience boundaries and account model."
+        },
+        {
+          "id": "jobs-applications",
+          "label": "Jobs and Applications",
+          "file": "jobs-applications.md",
+          "summary": "How candidates browse jobs, apply, confirm submissions, and reapply."
+        },
+        {
+          "id": "profile-documents",
+          "label": "Profile and Documents",
+          "file": "profile-documents.md",
+          "summary": "Candidate profile, CV uploads, document evidence, and privacy boundaries."
+        },
+        {
+          "id": "interviews-status",
+          "label": "Interviews and Status",
+          "file": "interviews-status.md",
+          "summary": "Interview schedule visibility, application status, and candidate notifications."
+        }
+      ]
+    },
+    {
+      "id": "talent-pilot-app",
+      "label": "Talent Pilot App",
+      "description": "Internal recruiting workspace for job requests, sourcing, pipeline, interviews, and hiring decisions.",
+      "basePath": "talent-pilot-app",
+      "pages": [
+        {
+          "id": "overview",
+          "label": "Talent Pilot App Documentation",
+          "file": "overview.md",
+          "summary": "Start here for the internal application model and operating boundaries."
+        },
+        {
+          "id": "workflow-handoffs",
+          "label": "Workflow Handoffs",
+          "file": "workflow-handoffs.md",
+          "summary": "Plain-English flow from request creation through role handoffs, interviews, decisions, and closure."
+        },
+        {
+          "id": "job-requests",
+          "label": "Job Requests",
+          "file": "job-requests.md",
+          "summary": "Create, review, claim, route, and close job requests."
+        },
+        {
+          "id": "recruitment-queue",
+          "label": "Recruitment Queue",
+          "file": "recruitment-queue.md",
+          "summary": "Recruiter queue, sourcing workspace, job publishing, AI matching, and invitations."
+        },
+        {
+          "id": "candidate-pipeline",
+          "label": "Candidate Pipeline",
+          "file": "candidate-pipeline.md",
+          "summary": "Track applications, stages, interviews, screening decisions, and candidate history."
+        },
+        {
+          "id": "hiring-manager-review",
+          "label": "Hiring Manager Review",
+          "file": "hiring-manager-review.md",
+          "summary": "Final review, offer outcome, decision evidence, and job request closure."
+        }
+      ]
+    },
+    {
+      "id": "ai-agents",
+      "label": "AI Agents",
+      "description": "Plain-English guide to the AI agents, where they appear, what tools they use, and how they produce results.",
+      "basePath": "ai-agents",
+      "pages": [
+        {
+          "id": "overview",
+          "label": "AI Agents Overview",
+          "file": "overview.md",
+          "summary": "How many AI agents Talent Pilot has, where they appear, and the main safety rule."
+        },
+        {
+          "id": "guardrails-feedback",
+          "label": "Guardrails and Feedback",
+          "file": "guardrails-feedback.md",
+          "summary": "How Talent Pilot keeps AI advisory, auditable, and improves agents from reviewed usage and feedback."
+        },
+        {
+          "id": "rag-assistant",
+          "label": "RAG Assistant",
+          "file": "rag-assistant.md",
+          "summary": "How the conversational assistant answers workflow questions from tenant-visible evidence and citations."
+        },
+        {
+          "id": "job-description-drafter",
+          "label": "Job Description Drafter",
+          "file": "job-description-drafter.md",
+          "summary": "How Talent Pilot drafts editable job request descriptions from structured intake fields."
+        },
+        {
+          "id": "requirement-parser",
+          "label": "Requirement Parser",
+          "file": "requirement-parser.md",
+          "summary": "How saved job request requirements become searchable matching context."
+        },
+        {
+          "id": "bench-matching",
+          "label": "Bench Matching",
+          "file": "bench-matching.md",
+          "summary": "How PMO gets ranked internal employee matches from bench, skills, projects, vectors, and optional safe web context."
+        },
+        {
+          "id": "cv-parser",
+          "label": "CV Parser",
+          "file": "cv-parser.md",
+          "summary": "How recruiter-uploaded DOCX resumes prefill candidate details for review."
+        },
+        {
+          "id": "candidate-profile-indexing",
+          "label": "Candidate Profile Indexing",
+          "file": "candidate-profile-indexing.md",
+          "summary": "How candidate profile saves create best-effort embeddings for future rediscovery."
+        },
+        {
+          "id": "talent-rediscovery",
+          "label": "Talent Rediscovery",
+          "file": "talent-rediscovery.md",
+          "summary": "How recruiters rank warm candidates from existing tenant application history."
+        },
+        {
+          "id": "online-headhunting",
+          "label": "Online Headhunting",
+          "file": "online-headhunting.md",
+          "summary": "How recruiters run lead-only online searches using approved public sources."
+        },
+        {
+          "id": "candidate-fit-explanation",
+          "label": "Candidate Fit Explanation",
+          "file": "candidate-fit-explanation.md",
+          "summary": "How ranking results get strengths, gaps, confidence notes, and caveats."
+        },
+        {
+          "id": "interview-question-recommender",
+          "label": "Interview Question Recommender",
+          "file": "interview-question-recommender.md",
+          "summary": "How interviewers generate structured question sets from interview context and question-bank retrieval."
+        },
+        {
+          "id": "hiring-manager-decision-brief",
+          "label": "Hiring Manager Decision Brief",
+          "file": "hiring-manager-decision-brief.md",
+          "summary": "How final review pages summarize candidate evidence for hiring managers."
+        },
+        {
+          "id": "planned-agents",
+          "label": "Planned Agents",
+          "file": "planned-agents.md",
+          "summary": "AI agents planned for future versions."
+        }
+      ]
+    },
+    {
+      "id": "tech-stack",
+      "label": "Tech Stack",
+      "description": "Concise overview of the frontend, backend, database, and runtime processes.",
+      "basePath": "tech-stack",
+      "pages": [
+        {
+          "id": "overview",
+          "label": "Tech Stack Overview",
+          "file": "overview.md",
+          "summary": "What Talent Pilot is built with and which runtime processes support the app."
+        }
+      ]
+    }
+  ]
+}
