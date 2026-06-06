@@ -223,7 +223,7 @@ interface CandidateInterviewGroup {
                               <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                               View Details
                             </a>
-                            <a class="btn primary" [routerLink]="candidateSignupRoute()" [queryParams]="candidateSignupQueryParams(job.jobPostId, candidateApplyReturnUrl(job))">
+                            <a class="btn primary" [routerLink]="jobListStartApplicationRoute(job)" [queryParams]="jobListStartApplicationQueryParams(job)">
                               <span class="material-symbols-outlined" aria-hidden="true">send</span>
                               Apply Now
                             </a>
@@ -3128,6 +3128,25 @@ export class CandidatePageComponent {
   jobDetailStartApplicationQueryParams(job: PortalJobPostDetail): Record<string, string> | null {
     if (this.isCandidateUser()) {
       return this.jobDetailInviteQueryParams();
+    }
+
+    const returnUrl = this.candidateApplyReturnUrl(job);
+    return this.currentUser()
+      ? this.candidateSignInQueryParams(job.jobPostId, returnUrl)
+      : this.candidateSignupQueryParams(job.jobPostId, returnUrl);
+  }
+
+  jobListStartApplicationRoute(job: PortalJobPostListItem): unknown[] | string {
+    if (this.isCandidateUser()) {
+      return this.candidateRoute('apply', job.jobPostId);
+    }
+
+    return this.currentUser() ? '/auth/login' : this.candidateSignupRoute();
+  }
+
+  jobListStartApplicationQueryParams(job: PortalJobPostListItem): Record<string, string> | null {
+    if (this.isCandidateUser()) {
+      return null;
     }
 
     const returnUrl = this.candidateApplyReturnUrl(job);

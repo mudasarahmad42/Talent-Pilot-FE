@@ -255,6 +255,25 @@ describe('CandidatePageComponent', () => {
     expect(decodeURIComponent(href)).toContain('returnUrl=/candidate/tkxel/apply/post-1');
   });
 
+  it('routes signed-in candidate apply CTAs directly to the application page', () => {
+    userSignal.set(candidateUser);
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.jobPosts.set([jobs[0]]);
+    component.loading.set(false);
+
+    fixture.detectChanges();
+
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const link = links.find((anchor) => anchor.textContent?.includes('Apply Now'));
+    const href = link?.getAttribute('href') ?? '';
+    expect(href).toContain('/candidate/apply/post-1');
+    expect(href).not.toContain('/signup');
+    expect(href).not.toContain('/auth/login');
+  });
+
   it('filters jobs by keyword, department, location, and experience', () => {
     const fixture = TestBed.createComponent(CandidatePageComponent);
     const component = fixture.componentInstance;
