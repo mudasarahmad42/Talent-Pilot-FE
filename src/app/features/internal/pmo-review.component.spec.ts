@@ -91,6 +91,8 @@ describe('PmoReviewComponent', () => {
 
   beforeEach(async () => {
     Object.values(store).forEach((method) => method.mockClear());
+    store.getPmoReviewByRequestId.mockReturnValue(review);
+    store.loadPmoReview.mockResolvedValue(review);
     currentUser.set({ id: 'pmo-1', roles: ['PMO'] });
 
     await TestBed.configureTestingModule({
@@ -149,6 +151,70 @@ describe('PmoReviewComponent', () => {
     expect(store.rankBenchMatches).toHaveBeenCalledWith('jr-1');
     expect(store.createEmployeeReferrals).not.toHaveBeenCalled();
     expect(component.statusMessage()).toContain('Bench Matching ranked 1 employee');
+  });
+
+  it('puts skill mismatch first and removes invalid experience shortfall from bench rationale', async () => {
+    const javaEmployee = {
+      employeeId: 'employee-java',
+      displayName: 'Zain Javaid',
+      email: 'zain@example.com',
+      designation: 'Senior Java Engineer',
+      department: 'Engineering',
+      location: 'Lahore',
+      experienceYears: 6.8,
+      availabilityStatus: 'Available',
+      benchStatus: 'Benched',
+      isCurrentlyBenched: true,
+      joiningDate: '2021-02-15T00:00:00Z',
+      skills: ['Java', 'Spring Boot', 'SQL'],
+      matchedSkills: ['SQL'],
+      missingSkills: ['AWS', 'Design Patterns', 'Python'],
+      projectEvidence: [],
+    };
+    const pythonReview = {
+      ...review,
+      jobRequest: {
+        ...review.jobRequest,
+        title: 'Senior Python Developer',
+        experience: '3+ years',
+        skills: ['Design Patterns', 'AWS', 'SQL', 'Python'],
+      },
+      eligibleEmployees: [javaEmployee],
+      benchMatches: [
+        {
+          employeeId: 'employee-java',
+          rank: 1,
+          score: 42,
+          confidence: 'Low',
+          explanation:
+            'Zain Javaid has 6.8 years of experience as a Senior Java Engineer, which is less than the required 3+ years. He has SQL evidence but lacks AWS, Design Patterns, and Python. The ranking is based on limited experience and skill gaps.',
+          strengths: ['Matches SQL.'],
+          gaps: ['Missing Python.'],
+          projectEvidence: [],
+          webResearchStatus: 'Skipped:LiveContextNotRequired',
+          webSummary: '',
+          webSources: [],
+          generatedAt: '2026-06-04T00:00:00Z',
+        },
+      ],
+    };
+    store.getPmoReviewByRequestId.mockReturnValue(pythonReview as unknown as typeof review);
+    store.loadPmoReview.mockResolvedValue(pythonReview as unknown as typeof review);
+    fixture.destroy();
+    fixture = TestBed.createComponent(PmoReviewComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const rationale = component.rationaleFor(javaEmployee, pythonReview.benchMatches[0] as never);
+
+    expect(rationale).toContain("Zain Javaid's profile is primarily Java");
+    expect(rationale).toContain('this request is centered on Python, Design Patterns, AWS, and SQL');
+    expect(rationale).toContain('current tenant evidence only supports SQL');
+    expect(rationale).toContain('not preferred until missing Python, AWS, and Design Patterns evidence is validated');
+    expect(rationale).toContain('limited required-skill evidence and skill gaps');
+    expect(rationale).not.toMatch(/less than/i);
+    expect(rationale).not.toMatch(/limited experience/i);
   });
 
   it('sends selected employee recommendations to Presales only after manual PMO selection', async () => {

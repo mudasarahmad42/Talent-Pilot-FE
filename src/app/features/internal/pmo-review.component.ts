@@ -63,6 +63,12 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
                   }
                 </div>
                 <p>{{ review.jobRequest.description }}</p>
+                @if (review.jobRequest.clientContext) {
+                  <div class="client-context-summary">
+                    <span>Client context</span>
+                    <p>{{ review.jobRequest.clientContext }}</p>
+                  </div>
+                }
                 <div class="info-grid">
                   <div><span>Positions</span><strong>{{ review.jobRequest.fulfilledPositions }} / {{ review.jobRequest.requiredPositions }}</strong></div>
                   <div><span>Experience</span><strong>{{ review.jobRequest.experience }}</strong></div>
@@ -82,9 +88,6 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
                     <h2>PMO Next Step</h2>
                     <p class="muted">Claim the request, review internal bench options, then recommend internally or forward to recruiters.</p>
                   </div>
-                  <button type="button" class="btn secondary compact" (click)="setActiveTab('bench')">
-                    Open Bench Matching
-                  </button>
                 </div>
                 <div class="info-grid">
                   <div><span>Eligible employees</span><strong>{{ review.eligibleEmployees.length }}</strong></div>
@@ -275,7 +278,7 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
 
                       <div class="rationale-cell" data-label="AI Rationale">
                         @if (matchFor(employee.employeeId); as match) {
-                          <p>{{ match.explanation }}</p>
+                          <p>{{ rationaleFor(employee, match) }}</p>
                           <button type="button" class="link-button" (click)="toggleRationale(employee.employeeId)">
                             {{ isRationaleExpanded(employee.employeeId) ? 'Hide details' : 'View details' }}
                           </button>
@@ -289,7 +292,7 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
                       <article class="rationale-details">
                         <div>
                           <h3>Why this employee fits</h3>
-                          <p>{{ match.explanation }}</p>
+                          <p>{{ rationaleFor(employee, match) }}</p>
                         </div>
                         <div>
                           <h3>Strengths</h3>
@@ -496,6 +499,18 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
       }
 
       @media (max-width: 980px) {
+        .ops-page-header {
+          align-items: start;
+          gap: 10px;
+          justify-items: start;
+        }
+
+        .ops-header-actions {
+          justify-content: flex-start;
+          justify-self: start;
+          width: 100%;
+        }
+
         .pmo-review-grid {
           grid-template-columns: 1fr;
         }
@@ -622,21 +637,23 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
       .skill-fit-cell {
         align-content: start;
         display: grid;
-        gap: 8px;
+        gap: 7px;
       }
 
       .skill-fit-cell div {
-        align-items: center;
+        align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 5px;
+        gap: 5px 6px;
       }
 
       .skill-fit-cell span {
         color: #64748b;
-        font-size: 11px;
+        flex: 0 0 52px;
+        font-size: 10px;
         font-weight: 800;
-        margin-right: 2px;
+        letter-spacing: 0.02em;
+        line-height: 1.2;
         text-transform: uppercase;
       }
 
@@ -644,8 +661,10 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
         background: #e8f4ff;
         border-radius: 6px;
         color: #0b66c3;
+        font-size: 12px;
         font-style: normal;
         font-weight: 700;
+        line-height: 1.2;
         padding: 3px 7px;
       }
 
@@ -721,6 +740,30 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
         color: #475569;
       }
 
+      .client-context-summary {
+        background: #f8fbff;
+        border: 1px solid #d9e8f7;
+        border-radius: 8px;
+        display: grid;
+        gap: 6px;
+        margin-top: 16px;
+        padding: 12px 14px;
+      }
+
+      .client-context-summary span {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .client-context-summary p {
+        color: #334155;
+        line-height: 1.5;
+        margin: 0;
+        white-space: pre-line;
+      }
+
       @media (max-width: 860px) {
         .bench-table-header {
           display: none;
@@ -747,7 +790,12 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
           content: attr(data-label);
           font-size: 11px;
           font-weight: 800;
+          line-height: 1.2;
           text-transform: uppercase;
+        }
+
+        .bench-table-row .skill-fit-cell {
+          gap: 8px;
         }
 
         .rationale-details {
@@ -1125,6 +1173,140 @@ export class PmoReviewComponent {
     }
 
     return `Public web context summary: ${snippets.join(' ')}`;
+  }
+
+  rationaleFor(employee: BenchEmployee, match: BenchMatch): string {
+    const sanitized = this.removeInvalidExperienceShortfall(employee, match.explanation);
+    const preface = this.skillMismatchPreface(employee);
+    if (!preface || sanitized.toLowerCase().startsWith(preface.toLowerCase())) {
+      return sanitized || match.explanation;
+    }
+
+    return [preface, sanitized].filter(Boolean).join(' ');
+  }
+
+  private skillMismatchPreface(employee: BenchEmployee): string {
+    if (employee.missingSkills.length === 0) {
+      return '';
+    }
+
+    const primaryFocus = this.primaryProfileFocus(employee);
+    const requiredSkills = this.rationaleRequiredSkills(employee);
+    if (!primaryFocus || requiredSkills.some((skill) => this.isSameSkill(skill, primaryFocus))) {
+      return '';
+    }
+
+    const matchedSkills = employee.matchedSkills.length > 0
+      ? this.joinReadableList(employee.matchedSkills)
+      : 'no direct requested skills';
+    const missingSkills = this.joinReadableList(this.prioritizeTitleSkills(employee.missingSkills));
+    const rolePhrase = employee.designation ? ` (${employee.designation})` : '';
+    const experiencePhrase = employee.experienceYears === null || employee.experienceYears === undefined
+      ? ''
+      : ` and ${this.formatExperience(employee.experienceYears)} overall`;
+
+    return `${employee.displayName}'s profile is primarily ${primaryFocus}${rolePhrase}; while they have backend/project experience${experiencePhrase}, this request is centered on ${this.joinReadableList(requiredSkills)}, and current tenant evidence only supports ${matchedSkills}. They are not preferred until missing ${missingSkills} evidence is validated.`;
+  }
+
+  private removeInvalidExperienceShortfall(employee: BenchEmployee, explanation: string): string {
+    const trimmed = explanation.trim();
+    const minimumYears = this.minimumExperienceYears();
+    if (
+      employee.experienceYears === null ||
+      employee.experienceYears === undefined ||
+      minimumYears === null ||
+      employee.experienceYears < minimumYears
+    ) {
+      return trimmed;
+    }
+
+    if (!/(less than|below|under|short of)/i.test(trimmed)) {
+      return this.replaceInvalidLimitedExperienceWording(trimmed);
+    }
+
+    const decimalPlaceholder = '__decimal__';
+    const protectedText = trimmed.replace(/(\d)\.(\d)/g, `$1${decimalPlaceholder}$2`);
+    const sentences = protectedText.match(/[^.!?]+[.!?]*/g) ?? [protectedText];
+    const filtered = sentences
+      .map((sentence) => sentence.replaceAll(decimalPlaceholder, '.').trim())
+      .filter((sentence) => !/(less than|below|under|short of)/i.test(sentence) || !/(experience|years?|required|requirement)/i.test(sentence))
+      .map((sentence) => this.replaceInvalidLimitedExperienceWording(sentence));
+
+    return filtered.join(' ').trim();
+  }
+
+  private replaceInvalidLimitedExperienceWording(value: string): string {
+    return value
+      .replace(/\blimited experience and skill gaps\b/gi, 'limited required-skill evidence and skill gaps')
+      .replace(/\blimited experience\b/gi, 'limited required-skill evidence');
+  }
+
+  private minimumExperienceYears(): number | null {
+    const experience = this.review()?.jobRequest.experience ?? '';
+    const match = experience.match(/(\d+(?:\.\d+)?)/);
+    return match ? Number(match[1]) : null;
+  }
+
+  private rationaleRequiredSkills(employee: BenchEmployee): string[] {
+    const requestSkills = this.review()?.jobRequest.skills ?? [];
+    const skills = requestSkills.length > 0
+      ? requestSkills
+      : [...employee.matchedSkills, ...employee.missingSkills];
+
+    return this.prioritizeTitleSkills(skills);
+  }
+
+  private prioritizeTitleSkills(skills: string[]): string[] {
+    const title = this.review()?.jobRequest.title ?? '';
+    return [...new Set(skills)]
+      .sort((first, second) => Number(this.containsSkillToken(title, second)) - Number(this.containsSkillToken(title, first)));
+  }
+
+  private primaryProfileFocus(employee: BenchEmployee): string {
+    const knownFocusAreas = ['Java', '.NET', 'Python', 'React', 'Angular', 'Node.js', 'PHP', 'Ruby', 'Go', 'DevOps', 'QA', 'Data'];
+    const designationFocus = knownFocusAreas.find((focus) => this.containsSkillToken(employee.designation ?? '', focus));
+    if (designationFocus) {
+      return designationFocus;
+    }
+
+    return knownFocusAreas.find((focus) => employee.skills.some((skill) => this.isSameSkill(skill, focus))) ?? '';
+  }
+
+  private joinReadableList(values: string[]): string {
+    const cleaned = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+    if (cleaned.length === 0) {
+      return 'the requested skills';
+    }
+
+    if (cleaned.length === 1) {
+      return cleaned[0];
+    }
+
+    if (cleaned.length === 2) {
+      return `${cleaned[0]} and ${cleaned[1]}`;
+    }
+
+    return `${cleaned.slice(0, -1).join(', ')}, and ${cleaned[cleaned.length - 1]}`;
+  }
+
+  private isSameSkill(value: string, skill: string): boolean {
+    return this.containsSkillToken(value, skill);
+  }
+
+  private containsSkillToken(value: string, skill: string): boolean {
+    const normalizedValue = this.normalizeSkillToken(value);
+    const normalizedSkill = this.normalizeSkillToken(skill);
+    return normalizedValue === normalizedSkill ||
+      normalizedValue.startsWith(`${normalizedSkill} `) ||
+      normalizedValue.endsWith(` ${normalizedSkill}`) ||
+      normalizedValue.includes(` ${normalizedSkill} `);
+  }
+
+  private normalizeSkillToken(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
   }
 
   selectedPresalesName(review: PmoReview): string {

@@ -59,6 +59,13 @@ describe('LoginComponent', () => {
     expect(text).toContain('Admin');
   });
 
+  it('renders a public product documentation link before sign-in', () => {
+    const docsLink = fixture.nativeElement.querySelector('a[aria-label="Open Talent Pilot product documentation"]') as HTMLAnchorElement | null;
+
+    expect(fixture.nativeElement.textContent).toContain('Product documentation');
+    expect(docsLink?.getAttribute('href')).toBe('/docs');
+  });
+
   it('submits manual credentials through AuthService', () => {
     const component = fixture.componentInstance;
     component.email.set('ai-presales@8pkk57.onmicrosoft.com');
@@ -84,7 +91,7 @@ describe('LoginComponent', () => {
 
     expect(component.email()).toBe('ai-candidate@8pkk57.onmicrosoft.com');
     expect(component.password()).toBe('demo');
-    expect(auth.loginDemoUser).toHaveBeenCalledWith(candidateCard!.user, true);
+    expect(auth.loginDemoUser).toHaveBeenCalledWith(candidateCard!.user, false);
   });
 
   it('disables credential submit while login is in progress', () => {

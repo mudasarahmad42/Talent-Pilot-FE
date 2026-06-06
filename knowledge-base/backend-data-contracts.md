@@ -8,7 +8,7 @@
 - Frontend permission checks use the backend `permissions` array only; do not infer authorization from display labels, cards, or local mock state.
 - Admin Center uses `/api/admin/*` endpoints. Tenant profile uses `/api/admin/tenant-profile`.
 - Workflows uses `/api/admin/workflows/configuration` and `/api/admin/workflows/intake-routing`. The frontend edits department recipients only; backend owns action/stage keys and workflow action authorization.
-- Talent Pilot internal operations use `/api/talent-pilot/*` endpoints. Presales Job Request creation loads department, location, skill, hiring-manager, and routing-preview data from `GET /api/talent-pilot/job-requests/intake-options`, then posts ID-based payloads to `POST /api/talent-pilot/job-requests`.
+- Talent Pilot internal operations use `/api/talent-pilot/*` endpoints. Presales Job Request creation loads department, location, skill, hiring-manager, and routing-preview data from `GET /api/talent-pilot/job-requests/intake-options`, then posts ID-based payloads to `POST /api/talent-pilot/job-requests`. Job Request payloads/responses include optional `clientContext` plain text for tenant-provided client industry, product, domain, region, or delivery constraints; backend AI agents treat it as evidence only.
 - Candidate Experience screens must not show fake jobs, applications, interviews, or profile data. If the backend contract is missing, show a backend-required empty state.
 - API endpoint names and schema notes must stay in `API_CONTRACT.md` or the knowledge base, never in visible product UI.
 - Timestamps from the backend are UTC ISO strings. UI converts them with `Intl.DateTimeFormat` and keeps the raw UTC value in `datetime`/tooltip where useful.

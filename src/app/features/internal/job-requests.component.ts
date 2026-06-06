@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { priorityBadgeClass } from '../../core/priority-formatting';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
@@ -92,7 +93,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                     <small>{{ request.department }}</small>
                   </td>
                   <td>{{ request.client }}</td>
-                  <td><span class="status-badge priority">{{ request.priority }}</span></td>
+                  <td><span [class]="priorityBadgeClass(request.priority)">{{ request.priority }}</span></td>
                   <td><span class="status-badge">{{ request.stage }}</span></td>
                   <td>{{ request.fulfilledPositions }} / {{ request.requiredPositions }}</td>
                   <td>{{ request.ownerId ? store.getUserName(request.ownerId) : request.ownerGroupId }}</td>
@@ -126,5 +127,9 @@ export class JobRequestsComponent {
 
   isPresalesOnly(): boolean {
     return this.auth.hasAnyRole(['Presales']) && !this.auth.isAdmin();
+  }
+
+  priorityBadgeClass(priority: string): string {
+    return priorityBadgeClass(priority);
   }
 }

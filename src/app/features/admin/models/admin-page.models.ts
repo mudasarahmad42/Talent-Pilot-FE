@@ -1,5 +1,5 @@
 export type TenantProfileTab = 'profile' | 'branding' | 'career-page' | 'security';
-export type AiSettingsTab = 'runtime' | 'agents';
+export type AiSettingsTab = 'runtime' | 'agents' | 'run-log' | 'evaluation';
 export type NotificationChannelTab = 'email' | 'realtime';
 export type PermissionResolutionMode = 'merge' | 'highest-priority';
 export type UserRowAction = 'edit-access' | 'resend-invite' | 'deactivate-user' | 'audit-history';

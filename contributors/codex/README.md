@@ -1,5 +1,209 @@
 # Codex Contributor Log
 
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending tenant slug label alignment.
+- Purpose: fix the Tenant Slug help-label alignment by making that label row content-width and sizing the info icon to the same 16px label line-height.
+- Files touched: `src/app/features/admin/admin-page.component.html`, `src/styles.scss`, contributor log.
+- Screens/routes changed: `/admin-center/tenant-profile`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 128 tests; browser smoke confirmed the Tenant Slug label is content-width, the icon is 16px, label height matches neighboring fields, and there is no Vite overlay.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending tenant profile action bar styling.
+- Purpose: make the Tenant Profile Reset and Save Changes controls read as a polished action group with clearer placement, icons, secondary/primary color hierarchy, and responsive behavior.
+- Files touched: `src/app/features/admin/admin-page.component.html`, `src/styles.scss`, `src/app/features/candidate/candidate-page.component.spec.ts`, contributor log.
+- Screens/routes changed: `/admin-center/tenant-profile`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 128 tests; browser smoke confirmed no Vite overlay, Reset uses a blue outline treatment, disabled Save is muted, enabled Save uses a blue gradient, and the form was reset after the check.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending tenant slug tooltip.
+- Purpose: explain the Tenant Slug field in Admin Center with an inline info tooltip, and keep the candidate apply route helper compatible with list/detail job records plus the existing account-switch flow so frontend verification stays green.
+- Files touched: `src/app/features/admin/admin-page.component.html`, `src/app/features/candidate/candidate-page.component.ts`, contributor log.
+- Screens/routes changed: `/admin-center/tenant-profile`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 123 tests; browser smoke confirmed the Tenant Slug info button is present, focusable, and bound to the expected tooltip text.
+- Known risks: browser automation did not visually surface the Material tooltip overlay on hover, but the rendered button and bound tooltip message were verified in the DOM.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending admin sidebar admin-center link.
+- Purpose: add an Admin Center button to the internal app sidebar's Admin Tasks group so tenant admins can move from the dashboard sidebar into the Admin Center shell.
+- Files touched: `src/app/features/shell/app-shell.component.ts`, contributor log.
+- Screens/routes changed: `/app/dashboard` sidebar for tenant admins.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 123 tests; browser smoke confirmed the Admin Tasks group includes `Admin Center` linking to `/admin-center/tenant-profile` and the link navigates into the Admin Center shell.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending candidate job card meta spacing.
+- Purpose: add explicit spacing between the department pill and experience label on candidate job cards so `Engineering` and `3+ years` do not visually run together.
+- Files touched: `src/app/features/candidate/candidate-page.component.ts`, contributor log.
+- Screens/routes changed: `/candidate/jobs`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 123 tests; browser smoke confirmed the first job card meta row uses flex wrapping with a 12px measured gap between the pill and experience label.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending Rediscovery full reason text.
+- Purpose: stop truncating Talent Rediscovery candidate reason summaries so missing-skill warnings and AI rationale text wrap fully in the result row/card.
+- Files touched: `src/app/features/internal/recruiter-sourcing.component.ts`, `src/styles.scss`, contributor log.
+- Screens/routes changed: `/app/recruitment/sourcing/:id?tab=rediscovery`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 123 tests; browser smoke confirmed reason text has no ellipsis, no line clamp, and visible overflow.
+- Known risks: longer reasons increase row height, which is intentional for readability.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending Rediscovery missing-requirement reason guard.
+- Purpose: broaden the Talent Rediscovery display fallback so saved candidate reasons warn about missing primary role-domain requirements, tools, and sub-domain evidence, not only missing engineering technologies.
+- Files touched: `src/app/features/internal/recruiter-sourcing.component.ts`, contributor log.
+- Screens/routes changed: `/app/recruitment/sourcing/:id?tab=rediscovery`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 123 tests; browser smoke confirmed 5 Rediscovery rows, no Vite overlay, and the first reason begins with the missing direct-evidence warning.
+- Known risks: this is a display fallback for existing saved explanations; fresh backend Rediscovery runs now receive the richer department-aware assessment from the shared matcher.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending Rediscovery missing-skill reason guard.
+- Purpose: make Talent Rediscovery candidate reasoning visibly state when a primary required technology such as Python has no direct profile evidence, even before a fresh backend ranking run refreshes stored explanations.
+- Files touched: `src/app/features/internal/recruiter-sourcing.component.ts`, contributor log.
+- Screens/routes changed: `/app/recruitment/sourcing/:id?tab=rediscovery`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; `npm test` passed with 123 tests; browser smoke confirmed the first Rediscovery reason begins with the direct missing-Python evidence warning.
+- Known risks: the UI guard is a display fallback; fresh backend Rediscovery runs now also produce the warning from the shared matcher.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending rediscovery clear filter alignment.
+- Purpose: make the Talent Rediscovery Clear action read as a proper filter control instead of a floating text link in an empty grid column.
+- Files touched: `src/app/features/internal/recruiter-sourcing.component.ts`, `src/styles.scss`, contributor log.
+- Screens/routes changed: `/app/recruitment/sourcing/:id?tab=rediscovery`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke at 1186px confirmed `Clear filters` is a bordered control right-aligned within the filter group with no page-level horizontal overflow.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending rediscovery container-responsive cards.
+- Purpose: prevent Talent Rediscovery results from reverting to a clipped desktop table when the viewport is wide but the content panel is too narrow; candidate results now switch to card layout based on the panel width, and filters collapse cleanly.
+- Files touched: `src/styles.scss`, contributor log.
+- Screens/routes changed: `/app/recruitment/sourcing/:id?tab=rediscovery`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke confirmed the 815px panel state uses card layout with hidden table headers and the 514px mobile state stacks activity/status without page-level horizontal overflow.
+- Known risks: uses modern CSS container queries, which are supported by the Chromium browser used for this app workflow.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending rediscovery mobile candidate cards.
+- Purpose: replace the collapsed table-cell look in Talent Rediscovery mobile results with intentional candidate cards that group identity, match score, reasoning, skills, activity, status, and actions coherently.
+- Files touched: `src/app/features/internal/recruiter-sourcing.component.ts`, `src/styles.scss`, contributor log.
+- Screens/routes changed: `/app/recruitment/sourcing/:id`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke at 606px confirmed Talent Rediscovery results render as grid cards with grouped identity, score, reasoning, skills, activity, status, and actions and no page-level horizontal overflow.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending rediscovery filter control cleanup.
+- Purpose: remove the orphan Talent Rediscovery filter settings icon because all candidate filters are already visible and the icon had no behavior.
+- Files touched: `src/app/features/internal/recruiter-sourcing.component.ts`, `src/styles.scss`, contributor log.
+- Screens/routes changed: `/app/recruitment/sourcing/:id`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke at 606px confirmed the Talent Rediscovery filters render without the orphan `Candidate filter settings` icon.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending priority badge colors.
+- Purpose: give Low, Medium, High, and Critical priority badges distinct colors instead of rendering every priority as the same amber tag.
+- Files touched: `src/app/core/priority-formatting.ts`, `src/app/features/internal/recruitment-queue.component.ts`, `src/app/features/internal/job-requests.component.ts`, `src/app/features/internal/pmo-queue.component.ts`, `src/styles.scss`, contributor log.
+- Screens/routes changed: `/app/recruitment/queue`, `/app/job-requests`, and `/app/pmo/queue`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke on `/app/recruitment/queue` confirmed Critical, Medium, and High render with distinct priority classes and computed colors.
+- Known risks: Low priority color was added for consistency, but the current recruiter queue sample did not include a Low priority row to verify visually.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending recruiter dashboard mobile fit.
+- Purpose: make the recruiter dashboard adapt cleanly on narrow screens by removing page-level horizontal overflow, compacting the KPI grid and title, constraining stacked dashboard cards, and tightening the mobile topbar.
+- Files touched: `src/styles.scss`, contributor log.
+- Screens/routes changed: `/app/dashboard` for recruiter users.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke at 594px and 390px confirmed `documentElement.scrollWidth` matches the viewport and recruiter KPI columns switch from two columns to one below 520px.
+- Known risks: the recruiter requisition table still uses an internal horizontal scroll on small screens so columns remain readable without forcing page-level scroll.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending fulfillment panel gradient.
+- Purpose: give the job request detail Fulfillment panel a gradient treatment matching the rest of the application instead of the plain ops-panel surface.
+- Files touched: `src/app/features/internal/job-request-detail.component.ts`, contributor log.
+- Screens/routes changed: `/app/job-requests/:id`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke confirmed `.fulfillment-panel` uses a `linear-gradient` background on the job request detail route.
+- Known risks: no additional risk identified.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending job request detail header cleanup.
+- Purpose: remove the crowded header action buttons from the job request detail page so the header focuses on request identity instead of duplicate navigation.
+- Files touched: `src/app/features/internal/job-request-detail.component.ts`, contributor log.
+- Screens/routes changed: `/app/job-requests/:id`.
+- API contracts changed: no.
+- Schema changed: no.
+- Tests/builds run: `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; targeted `npm test -- --include src/app/features/internal/job-request-detail.component.spec.ts --watch=false` was not applicable because no matching spec file exists; browser smoke confirmed the header no longer contains Back, Recruiter Sourcing, or PMO Queue actions.
+- Known risks: direct back navigation is still available through browser history and app navigation; the PMO Review action remains in the Fulfillment panel for PMO users.
+- AI assistance: Codex implemented and reviewed the change.
+
+## 2026-06-06 - Branch: mudasar-ahmad
+
+- Commit summary: pending job request client context field.
+- Purpose: add an optional Client context field to job requests with an info tooltip explaining how industry, product, domain, location, and similar-project context helps AI drafting, bench matching, rediscovery, and evidence selection.
+- Files touched: `src/app/core/models.ts`, `src/app/features/internal/create-job-request.component.ts`, `src/app/features/internal/create-job-request.component.spec.ts`, `src/app/features/internal/job-request-detail.component.ts`, `src/app/features/internal/pmo-review.component.ts`, `src/styles.scss`, API/schema docs, contributor log.
+- Screens/routes changed: `/app/job-requests/new`, job request detail views, and `/app/pmo/review/:jobRequestId`.
+- API contracts changed: sends and consumes optional `clientContext` on job request create/list/detail payloads and draft job description input.
+- Schema changed: no frontend schema changes; documents backend `JobRequests.ClientContext`.
+- Tests/builds run: `npm test -- --include src/app/features/internal/create-job-request.component.spec.ts --watch=false` passed with 5 tests; `npm run build` passed with the existing `candidate-page.component.ts` style budget warning; browser smoke verified the field and tooltip fit on a 758px viewport.
+- Known risks: Client context is tenant-provided context; live web research remains governed by backend live/recent-context triggers.
+- AI assistance: Codex implemented and reviewed the change.
+
 ## 2026-06-04 - Branch: mudasar-ahmad
 
 - Commit summary: pending AI interview question panel.

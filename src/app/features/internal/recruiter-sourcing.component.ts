@@ -342,7 +342,7 @@ type InterviewTimelineEntry = {
                       <span>Interviews</span>
                       <span>Actions</span>
                     </div>
-                    @for (application of data.applications; track application.jobApplicationId) {
+                    @for (application of rankedApplications(data); track application.jobApplicationId) {
                       <article class="manual-candidate-row" role="row">
                         <div data-label="Candidate">
                           <strong>{{ application.candidateName }}</strong>
@@ -361,7 +361,7 @@ type InterviewTimelineEntry = {
                           <small>Applied {{ application.appliedAt | date: 'mediumDate' }}</small>
                         </div>
                         <div data-label="Status / AI Match">
-                          <span class="status-badge info">{{ application.applicationStatus }}</span>
+                          <span [class]="applicationStatusBadgeClass(application.applicationStatus)">{{ application.applicationStatus }}</span>
                           @if (applicantRankingFor(application); as ranking) {
                             <section [class]="'applicant-ai-match-card ' + applicantAiTone(ranking)" aria-label="Applicant AI ranking">
                               <div class="applicant-ai-match-topline">
@@ -782,10 +782,9 @@ type InterviewTimelineEntry = {
                         <option value="90">90%+</option>
                       </select>
                     </label>
-                    <button class="table-link-button clear-filter-action" type="button" (click)="clearManualFilters()">Clear</button>
-                    <button class="icon-button filter-settings-button" type="button" aria-label="Candidate filter settings">
-                      <span class="material-symbols-outlined" aria-hidden="true">tune</span>
-                    </button>
+                    <div class="candidate-filter-actions">
+                      <button class="table-link-button clear-filter-action" type="button" (click)="clearManualFilters()">Clear filters</button>
+                    </div>
                   </div>
 
                   @if (filteredManualCandidates().length === 0) {
@@ -825,7 +824,7 @@ type InterviewTimelineEntry = {
                             <p>{{ candidateReasonSummary(candidate) }}</p>
                             <small>{{ candidateReasonCaveat(candidate) }}</small>
                           </div>
-                          <div data-label="Key Skills">
+                          <div class="candidate-skills-cell" data-label="Key Skills">
                             <div class="tag-stack compact-tags">
                               @for (skill of candidateKeySkills(candidate); track skill) {
                                 <span class="skill-chip" [class.matched]="candidate.matchedSkills.includes(skill)">{{ skill }}</span>
@@ -844,7 +843,7 @@ type InterviewTimelineEntry = {
                               <small class="activity-source">{{ candidateActivitySource(candidate) }}</small>
                             </div>
                           </div>
-                          <div data-label="Status">
+                          <div class="candidate-status-cell" data-label="Status">
                             <span class="candidate-status-chip" [class.active]="candidate.status === 'Active'" [class.benched]="candidate.status === 'Benched'">
                               {{ candidate.status }}
                             </span>
@@ -3573,6 +3572,27 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     return 'status-badge info';
   }
 
+  applicationStatusBadgeClass(status: string | null | undefined): string {
+    const normalized = this.normalizeStatus(status);
+    const classes: Record<string, string> = {
+      invited: 'status-badge status-badge--invited',
+      applied: 'status-badge status-badge--applied',
+      screening: 'status-badge status-badge--screening',
+      shortlisted: 'status-badge status-badge--screening',
+      interviewing: 'status-badge status-badge--interviewing',
+      hiringmanagerreview: 'status-badge status-badge--review',
+      offered: 'status-badge status-badge--offer',
+      onhold: 'status-badge status-badge--hold',
+      offerdeclined: 'status-badge status-badge--offer-declined',
+      rejected: 'status-badge status-badge--danger',
+      withdrawn: 'status-badge status-badge--closed',
+      joined: 'status-badge status-badge--success',
+      hired: 'status-badge status-badge--success',
+    };
+
+    return classes[normalized] ?? 'status-badge status-badge--neutral';
+  }
+
   manualCandidateDisabledReason(): string {
     if (this.isCurrentJobPostClosed()) {
       return 'This job post is closed and archived. New manual candidates cannot be added or invited.';
@@ -4669,6 +4689,34 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       .find((ranking) => ranking.jobApplicationId === application.jobApplicationId);
   }
 
+  rankedApplications(sourcing: RecruiterSourcing | null | undefined = this.sourcing()): RecruiterApplication[] {
+    const applications = [...(sourcing?.applications ?? [])];
+    const rankings = new Map(
+      (sourcing?.applicantRankings ?? []).map((ranking) => [ranking.jobApplicationId, ranking]),
+    );
+
+    return applications.sort((left, right) => {
+      const leftRanking = rankings.get(left.jobApplicationId);
+      const rightRanking = rankings.get(right.jobApplicationId);
+
+      if (leftRanking && rightRanking) {
+        return (leftRanking.rank - rightRanking.rank) ||
+          (rightRanking.score - leftRanking.score) ||
+          this.compareAppliedAtDescending(left, right);
+      }
+
+      if (leftRanking) {
+        return -1;
+      }
+
+      if (rightRanking) {
+        return 1;
+      }
+
+      return this.compareAppliedAtDescending(left, right);
+    });
+  }
+
   filteredManualCandidates(): ManualCandidateSearchItem[] {
     const candidates = this.sourcing()?.candidateSearchItems ?? [];
     const text = this.manualSearchText.trim().toLowerCase();
@@ -4812,11 +4860,16 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   candidateReasonSummary(candidate: ManualCandidateSearchItem): string {
     const match = this.rediscoveryMatchForCandidate(candidate);
     if (match) {
-      if (candidate.matchedSkills.length === 0 && candidate.missingSkills.length > 0) {
-        return 'Ranked mainly from warm-history signals. Current-request skill evidence is weak, so review before outreach.';
+      const directSkillWarning = this.rediscoveryDirectSkillWarning(candidate, match.explanation);
+      if (directSkillWarning) {
+        return `${directSkillWarning} ${match.explanation}`;
       }
 
-      return this.truncateText(match.explanation, 150);
+      if (candidate.matchedSkills.length === 0 && candidate.missingSkills.length > 0) {
+        return `${this.rediscoveryDirectSkillWarning(candidate) || 'Current-request skill evidence is weak.'} Review before outreach.`;
+      }
+
+      return match.explanation;
     }
 
     if (candidate.matchedSkills.length > 0) {
@@ -4824,6 +4877,82 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     }
 
     return 'Manual pool score is based on profile history and interview evidence; no strong current-skill match is recorded.';
+  }
+
+  private rediscoveryDirectSkillWarning(candidate: ManualCandidateSearchItem, explanation?: string): string {
+    const primaryMissingRequirement = this.primaryMissingRequirement(candidate.missingSkills);
+    if (!primaryMissingRequirement) {
+      return '';
+    }
+
+    const warning = `${primaryMissingRequirement} is required, but no direct ${primaryMissingRequirement} evidence is recorded in this profile.`;
+    const normalizedExplanation = (explanation ?? '').toLowerCase();
+    const normalizedSkill = primaryMissingRequirement.toLowerCase();
+    if (normalizedExplanation.includes(warning.toLowerCase()) ||
+      normalizedExplanation.includes(`no direct ${normalizedSkill}`) ||
+      normalizedExplanation.includes(`no past ${normalizedSkill}`)) {
+      return '';
+    }
+
+    const matched = candidate.matchedSkills.length > 0
+      ? ` ${candidate.matchedSkills.slice(0, 2).join(', ')} evidence should be treated as partial or transferable only.`
+      : ' Any fit should be treated as transferable or incomplete until a recruiter verifies that requirement.';
+    return `${warning}${matched}`;
+  }
+
+  private primaryMissingRequirement(missingSkills: readonly string[]): string | null {
+    if (missingSkills.length === 0) {
+      return null;
+    }
+
+    const priority = [
+      'Technical recruitment',
+      'Software engineering hiring',
+      'B2B SaaS sales',
+      'Enterprise sales',
+      'CRM pipeline management',
+      'Quota ownership',
+      'Technical presales',
+      'FP&A',
+      'Budgeting',
+      'Forecasting',
+      'Performance marketing',
+      'Paid ads',
+      'Google Ads',
+      'Meta Ads',
+      'Customer success',
+      'Product adoption',
+      'Renewal management',
+      'Automation testing',
+      'Selenium',
+      'Playwright',
+      'Software project management',
+      'Agile/Scrum',
+      'Product owner',
+      'Backlog management',
+      'Data warehousing',
+      'ETL',
+      'Python',
+      'FastAPI',
+      'Django',
+      'Flask',
+      'Java',
+      'Spring Boot',
+      '.NET',
+      '.NET Core',
+      'C#',
+      'Node.js',
+      'React',
+      'Angular',
+      'Vue',
+      'AWS',
+      'Azure',
+      'PostgreSQL',
+      'SQL Server',
+      'Design Patterns',
+    ];
+    return priority.find((skill) => missingSkills.some((missing) => missing.toLowerCase() === skill.toLowerCase()))
+      ?? missingSkills[0];
   }
 
   private isRediscoverableCandidate(candidate: ManualCandidateSearchItem): boolean {
@@ -5098,6 +5227,10 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     };
 
     return labels[normalized] ?? status.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+
+  private compareAppliedAtDescending(left: RecruiterApplication, right: RecruiterApplication): number {
+    return new Date(right.appliedAt).getTime() - new Date(left.appliedAt).getTime();
   }
 
   private formatRelativeTime(value: string): string {

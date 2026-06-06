@@ -12,6 +12,7 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
     post: ReturnType<typeof vi.fn>;
     put: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
+    download: ReturnType<typeof vi.fn>;
   };
 
   const snapshot = {
@@ -54,6 +55,8 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
           ['talent-pilot/job-requests/jr-1/recruiter-sourcing', { jobRequest, assignment }],
           ['talent-pilot/job-posts', { posts: [] }],
           ['talent-pilot/portal/job-posts', { jobs: [] }],
+          ['talent-pilot/portal/job-posts?tenantSlug=tkxel', { items: [] }],
+          ['portal/context?tenantSlug=tkxel&jobPostId=post-1', { slug: 'tkxel', careerDisplayName: 'TKXEL Careers' }],
           ['talent-pilot/portal/job-posts/post-1', { jobPost: { id: 'post-1' } }],
           ['talent-pilot/portal/invitations/invite-1?token=tracked-token', { candidateInvitationId: 'invite-1' }],
           ['talent-pilot/portal/my-applications', { applications: [] }],
@@ -77,6 +80,7 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
           ['talent-pilot/job-requests/jr-1/talent-rediscovery/rank', { matches: [], generatedAtUtc: '2026-05-31T00:00:00Z' }],
           ['talent-pilot/job-requests/jr-1/candidate-invitations', { invitedCount: 1 }],
           ['talent-pilot/portal/job-posts/post-1/applications', { applicationId: 'app-1' }],
+          ['talent-pilot/portal/profile/documents', { document: { candidateProfileDocumentId: 'profile-doc-1' } }],
           ['talent-pilot/job-requests/jr-1/job-posts', { id: 'post-1', jobRequestId: 'jr-1' }],
           ['talent-pilot/job-posts/post-1/publish', { id: 'post-1', jobRequestId: 'jr-1', status: 'Published' }],
           ['talent-pilot/job-posts/post-1/manual-candidates', { applicationId: 'app-1' }],
@@ -101,6 +105,7 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
         return of(responses.get(path));
       }),
       patch: vi.fn().mockReturnValue(of(undefined)),
+      download: vi.fn().mockReturnValue(of({ body: new Blob(['docx']), headers: { get: () => null } })),
     };
 
     TestBed.configureTestingModule({
@@ -217,6 +222,29 @@ describe('TalentPilotStoreService source-of-truth API wiring', () => {
 
     expect(api.get).toHaveBeenCalledWith('talent-pilot/portal/profile');
     expect(api.put).toHaveBeenCalledWith('talent-pilot/portal/profile', expect.objectContaining({ displayName: 'Sara Malik' }));
+  });
+
+  it('wires candidate profile document upload and download endpoints', async () => {
+    const store = TestBed.inject(TalentPilotStoreService);
+    const file = new File(['docx'], 'sara-resume.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+
+    await store.uploadPortalCandidateProfileDocument(file);
+    await store.downloadPortalCandidateProfileDocument('profile-doc-1');
+
+    expect(api.post).toHaveBeenCalledWith('talent-pilot/portal/profile/documents', expect.any(FormData));
+    expect(api.download).toHaveBeenCalledWith('talent-pilot/portal/profile/documents/profile-doc-1/download');
+  });
+
+  it('wires tenant-scoped portal context and public job listing endpoints', async () => {
+    const store = TestBed.inject(TalentPilotStoreService);
+
+    await store.loadPortalJobPosts('tkxel');
+    await store.loadPublicPortalContext({ tenantSlug: 'tkxel', jobPostId: 'post-1' });
+
+    expect(api.get).toHaveBeenCalledWith('talent-pilot/portal/job-posts?tenantSlug=tkxel');
+    expect(api.get).toHaveBeenCalledWith('portal/context?tenantSlug=tkxel&jobPostId=post-1');
   });
 
   it('wires interviewer feedback and hiring manager offer outcome endpoints', async () => {

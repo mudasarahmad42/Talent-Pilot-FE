@@ -90,7 +90,7 @@ interface MyWorkRow {
                       <small>{{ item.contextDetail }}</small>
                     </td>
                     <td>
-                      <span class="status-badge" [class.warning]="item.statusClass === 'warning'" [class.danger]="item.statusClass === 'danger'">
+                      <span [class]="item.statusClass">
                         {{ item.status }}
                       </span>
                     </td>
@@ -140,16 +140,71 @@ interface MyWorkRow {
         white-space: nowrap;
       }
 
-      .status-badge.warning {
-        background: #fef3c7;
-        border-color: #fde68a;
-        color: #92400e;
+      .my-work-status--success {
+        background: #e8f8ef;
+        border-color: #bfe9d0;
+        color: #04743d;
       }
 
-      .status-badge.danger {
+      .my-work-status--hold {
+        background: #fff6df;
+        border-color: #f1d38a;
+        color: #8a5a00;
+      }
+
+      .my-work-status--offer-pending {
+        background: #f5edff;
+        border-color: #d8b4fe;
+        color: #6b21a8;
+      }
+
+      .my-work-status--offer-draft {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+        color: #3730a3;
+      }
+
+      .my-work-status--offer {
+        background: #ecfeff;
+        border-color: #a5f3fc;
+        color: #0e7490;
+      }
+
+      .my-work-status--review {
+        background: #e8f1ff;
+        border-color: #bfdbfe;
+        color: #005eb8;
+      }
+
+      .my-work-status--closed {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #334155;
+      }
+
+      .my-work-status--danger {
         background: #fee2e2;
         border-color: #fecaca;
         color: #b91c1c;
+      }
+
+      .my-work-status--scheduled {
+        background: #e0f7fa;
+        border-color: #99e6ee;
+        color: #087481;
+      }
+
+      .my-work-status--claimed {
+        background: #edf7ed;
+        border-color: #bbdfbc;
+        color: #1f6b2a;
+      }
+
+      .my-work-status--idle,
+      .my-work-status--neutral {
+        background: #eef2f7;
+        border-color: #d7e0ec;
+        color: #42556c;
       }
 
       @media (max-width: 760px) {
@@ -190,7 +245,7 @@ export class MyWorkComponent implements OnInit {
         context: item.jobRequest.client,
         contextDetail: item.jobRequest.department,
         status: item.jobRequest.stage,
-        statusClass: 'default',
+        statusClass: this.statusBadgeClass(item.jobRequest.stage),
         ownerLabel: this.ownerName(item.assignment),
         ownerDetail: `Assigned ${this.formatDate(item.assignment.assignedAt)}`,
         actionLabel: 'Open',
@@ -213,17 +268,17 @@ export class MyWorkComponent implements OnInit {
       .filter((review) => this.isActiveHiringReview(review))
       .map((review) => ({
         id: `hiring-review-${review.jobApplicationId}`,
-        typeLabel: 'Hiring Review',
-        typeIcon: 'approval_delegation',
+        typeLabel: this.hiringReviewTypeLabel(review),
+        typeIcon: this.hiringReviewTypeIcon(review),
         title: review.requestCode,
         subtitle: `${review.candidateName} - ${review.jobTitle}`,
         context: review.client,
         contextDetail: review.department,
-        status: this.formatHiringReviewStatus(review.status),
-        statusClass: 'warning',
+        status: this.hiringReviewWorkStatus(review),
+        statusClass: this.hiringReviewStatusBadgeClass(review),
         ownerLabel: review.hiringManagerName,
         ownerDetail: `Updated ${this.formatDate(review.updatedAt)}`,
-        actionLabel: 'Open review',
+        actionLabel: this.hiringReviewActionLabel(review),
         route: ['/app/hiring-manager/reviews', review.jobApplicationId],
         priority: 0,
         sortAt: review.updatedAt,
@@ -235,7 +290,10 @@ export class MyWorkComponent implements OnInit {
           review.client,
           review.department,
           review.status,
+          review.offerLetterStatus ?? '',
           review.hiringManagerName,
+          this.hiringReviewWorkStatus(review),
+          this.hiringReviewActionLabel(review),
         ].join(' '),
       })),
   );
@@ -254,7 +312,7 @@ export class MyWorkComponent implements OnInit {
           context: task.client,
           contextDetail: task.jobTitle,
           status: overdue ? 'Overdue' : task.status,
-          statusClass: overdue ? 'danger' : 'warning',
+          statusClass: this.statusBadgeClass(overdue ? 'Overdue' : task.status),
           ownerLabel: task.interviewerName,
           ownerDetail: `Scheduled ${this.formatDate(task.startsAt)}`,
           actionLabel: 'Open feedback',
@@ -343,6 +401,94 @@ export class MyWorkComponent implements OnInit {
 
   private isActiveHiringReview(review: HiringManagerReviewListItem): boolean {
     return ['hiringmanagerreview', 'offered', 'hired', 'onhold'].includes(this.normalizeStatus(review.status).replaceAll(' ', ''));
+  }
+
+  private hiringReviewTypeLabel(review: HiringManagerReviewListItem): string {
+    return this.isOfferLetterWork(review) ? 'Offer Letter' : 'Hiring Review';
+  }
+
+  private hiringReviewTypeIcon(review: HiringManagerReviewListItem): string {
+    return this.isOfferLetterWork(review) ? 'description' : 'approval_delegation';
+  }
+
+  private hiringReviewWorkStatus(review: HiringManagerReviewListItem): string {
+    if (this.isOfferLetterPending(review)) {
+      return 'Offer letter pending';
+    }
+
+    if (review.latestMeetingAt) {
+      return 'Offer meeting scheduled';
+    }
+
+    if (review.offerLetterStatus) {
+      return `Offer ${this.formatHiringReviewStatus(review.offerLetterStatus).toLowerCase()}`;
+    }
+
+    return this.formatHiringReviewStatus(review.status);
+  }
+
+  private hiringReviewActionLabel(review: HiringManagerReviewListItem): string {
+    if (this.isOfferLetterPending(review)) {
+      return 'Generate offer letter';
+    }
+
+    if (this.isOfferLetterWork(review)) {
+      return 'Open offer';
+    }
+
+    return 'Open review';
+  }
+
+  private isOfferLetterWork(review: HiringManagerReviewListItem): boolean {
+    return this.isOfferLetterPending(review) || !!review.offerLetterStatus || !!review.latestMeetingAt;
+  }
+
+  private isOfferLetterPending(review: HiringManagerReviewListItem): boolean {
+    return this.normalizeStatus(review.status).replaceAll(' ', '') === 'hiringmanagerreview' &&
+      !review.offerLetterStatus;
+  }
+
+  private hiringReviewStatusBadgeClass(review: HiringManagerReviewListItem): string {
+    if (this.isOfferLetterPending(review)) {
+      return 'status-badge my-work-status--offer-pending';
+    }
+
+    if (review.latestMeetingAt) {
+      return this.statusBadgeClass('Scheduled');
+    }
+
+    if (review.offerLetterStatus) {
+      return this.statusBadgeClass(review.offerLetterStatus);
+    }
+
+    return this.statusBadgeClass(review.status);
+  }
+
+  private statusBadgeClass(status: string | null | undefined): string {
+    const normalized = this.normalizeStatus(status).replaceAll(' ', '');
+    const classByStatus = new Map<string, string>([
+      ['hiringmanagerreview', 'my-work-status--review'],
+      ['hired', 'my-work-status--success'],
+      ['joined', 'my-work-status--success'],
+      ['onhold', 'my-work-status--hold'],
+      ['offered', 'my-work-status--offer'],
+      ['draft', 'my-work-status--offer-draft'],
+      ['presented', 'my-work-status--offer'],
+      ['scheduled', 'my-work-status--scheduled'],
+      ['overdue', 'my-work-status--danger'],
+      ['rejected', 'my-work-status--danger'],
+      ['offerdeclined', 'my-work-status--danger'],
+      ['closed', 'my-work-status--closed'],
+      ['completed', 'my-work-status--success'],
+      ['approved', 'my-work-status--success'],
+      ['pending', 'my-work-status--scheduled'],
+      ['inprogress', 'my-work-status--claimed'],
+      ['claimed', 'my-work-status--claimed'],
+      ['unclaimed', 'my-work-status--idle'],
+      ['notstarted', 'my-work-status--idle'],
+    ]);
+
+    return `status-badge ${classByStatus.get(normalized) ?? 'my-work-status--neutral'}`;
   }
 
   private formatHiringReviewStatus(status: string): string {

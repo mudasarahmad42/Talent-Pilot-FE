@@ -13,6 +13,18 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login.component').then((component) => component.LoginComponent),
   },
   {
+    path: 'docs/:module/:page',
+    loadComponent: () => import('./features/docs/docs-page.component').then((component) => component.DocsPageComponent),
+  },
+  {
+    path: 'docs/:module',
+    loadComponent: () => import('./features/docs/docs-page.component').then((component) => component.DocsPageComponent),
+  },
+  {
+    path: 'docs',
+    loadComponent: () => import('./features/docs/docs-page.component').then((component) => component.DocsPageComponent),
+  },
+  {
     path: 'app',
     canActivate: [authGuard, internalAppGuard],
     loadComponent: () => import('./features/shell/app-shell.component').then((component) => component.AppShellComponent),
@@ -245,7 +257,40 @@ export const routes: Routes = [
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
+        path: 'signup',
+        loadComponent: () =>
+          import('./features/candidate/candidate-signup.component').then(
+            (component) => component.CandidateSignupComponent,
+          ),
+      },
+      {
         path: 'apply/:jobId',
+        canActivate: [candidateGuard],
+        data: { pageId: 'apply' },
+        loadComponent: () =>
+          import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
+      },
+      {
+        path: ':tenantSlug/jobs',
+        data: { pageId: 'jobs' },
+        loadComponent: () =>
+          import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
+      },
+      {
+        path: ':tenantSlug/jobs/:id',
+        data: { pageId: 'job-detail' },
+        loadComponent: () =>
+          import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
+      },
+      {
+        path: ':tenantSlug/signup',
+        loadComponent: () =>
+          import('./features/candidate/candidate-signup.component').then(
+            (component) => component.CandidateSignupComponent,
+          ),
+      },
+      {
+        path: ':tenantSlug/apply/:jobId',
         canActivate: [candidateGuard],
         data: { pageId: 'apply' },
         loadComponent: () =>
@@ -273,7 +318,21 @@ export const routes: Routes = [
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
+        path: ':tenantSlug/profile',
+        canActivate: [candidateGuard],
+        data: { pageId: 'profile' },
+        loadComponent: () =>
+          import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
+      },
+      {
         path: 'my-applications',
+        canActivate: [candidateGuard],
+        data: { pageId: 'my-applications' },
+        loadComponent: () =>
+          import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
+      },
+      {
+        path: ':tenantSlug/my-applications',
         canActivate: [candidateGuard],
         data: { pageId: 'my-applications' },
         loadComponent: () =>
@@ -287,7 +346,21 @@ export const routes: Routes = [
           import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
       },
       {
+        path: ':tenantSlug/applications/:id/status',
+        canActivate: [candidateGuard],
+        data: { pageId: 'application-status' },
+        loadComponent: () =>
+          import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
+      },
+      {
         path: 'interviews',
+        canActivate: [candidateGuard],
+        data: { pageId: 'interviews' },
+        loadComponent: () =>
+          import('./features/candidate/candidate-page.component').then((component) => component.CandidatePageComponent),
+      },
+      {
+        path: ':tenantSlug/interviews',
         canActivate: [candidateGuard],
         data: { pageId: 'interviews' },
         loadComponent: () =>

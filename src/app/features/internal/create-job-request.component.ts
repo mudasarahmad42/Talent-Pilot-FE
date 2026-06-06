@@ -57,6 +57,33 @@ interface FormProgressStep {
               </label>
             </div>
 
+            <label class="client-context-field">
+              <span class="label-with-help">
+                <span>Client context</span>
+                <span class="agent-help">
+                  <button
+                    type="button"
+                    class="agent-help-trigger compact-help-trigger"
+                    aria-label="What client context means"
+                    aria-describedby="client-context-help"
+                  >
+                    <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                  </button>
+                  <span id="client-context-help" class="agent-help-popover client-context-popover" role="tooltip">
+                    <strong>What to add</strong>
+                    <span>Describe the client's industry, product, business domain, region, and any delivery constraints that matter for this request.</span>
+                    <span>AI agents use this as tenant-provided context for drafting, bench matching, rediscovery, and finding similar industry/project evidence.</span>
+                    <span>Example: EV manufacturing, Lahore engineering office, fleet analytics platform, AWS-heavy backend environment.</span>
+                  </span>
+                </span>
+              </span>
+              <textarea
+                formControlName="clientContext"
+                rows="3"
+                placeholder="Industry, product/domain, region, and any client-specific context that should guide AI matching."
+              ></textarea>
+            </label>
+
             <div class="field-grid two">
               <label>
                 <span>Department</span>
@@ -340,6 +367,7 @@ export class CreateJobRequestComponent {
   readonly form = this.fb.group({
     title: ['', Validators.required],
     client: ['', Validators.required],
+    clientContext: [''],
     description: ['', Validators.required],
     departmentId: ['', Validators.required],
     locationId: ['', Validators.required],
@@ -543,6 +571,7 @@ export class CreateJobRequestComponent {
       const draft = await this.store.draftJobDescription({
         title: value.title,
         client: value.client,
+        clientContext: this.blankToNull(value.clientContext),
         departmentId: value.departmentId,
         locationId: value.locationId,
         skillIds: this.selectedSkillIds(),
@@ -578,6 +607,7 @@ export class CreateJobRequestComponent {
       const jobRequest = await this.store.createJobRequest({
         title: value.title,
         client: value.client,
+        clientContext: this.blankToNull(value.clientContext),
         description: value.description,
         departmentId: value.departmentId,
         locationId: value.locationId,
@@ -610,6 +640,11 @@ export class CreateJobRequestComponent {
 
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private blankToNull(value: string | null | undefined): string | null {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
   }
 
   private resetDraftMessages(): void {
