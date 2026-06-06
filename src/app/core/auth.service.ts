@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpContext } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
-import { AuthResponse, BackendCurrentUserContext, CurrentUser, LoginOption, TalentPilotRole } from './models';
+import { AuthResponse, BackendCurrentUserContext, CandidateSignupRequest, CurrentUser, LoginOption, TalentPilotRole } from './models';
 import { PermissionId } from './permissions';
 import { ApiService } from './services/api.service';
 import { StorageArea, StorageService } from './services/storage.service';
@@ -75,6 +75,37 @@ export class AuthService {
         email: normalizedEmail,
         password: normalizedPassword,
       })
+      .pipe(finalize(() => this.loginInProgressSignal.set(false)))
+      .subscribe({
+        next: (response) => this.applyAuthResponse(response, storageArea, true, returnUrl),
+        error: (error) => this.loginErrorSignal.set(this.toLoginErrorMessage(error)),
+      });
+  }
+
+  signupCandidate(input: CandidateSignupRequest, keepSignedIn = true, returnUrl?: string | null): void {
+    const normalizedInput: CandidateSignupRequest = {
+      ...input,
+      tenantSlug: input.tenantSlug?.trim() || null,
+      jobPostId: input.jobPostId?.trim() || null,
+      displayName: input.displayName.trim(),
+      email: input.email.trim(),
+      password: input.password,
+    };
+
+    if (
+      !normalizedInput.displayName ||
+      !normalizedInput.email ||
+      !normalizedInput.password ||
+      this.loginInProgressSignal()
+    ) {
+      return;
+    }
+
+    this.loginErrorSignal.set('');
+    this.loginInProgressSignal.set(true);
+    const storageArea: StorageArea = keepSignedIn ? 'local' : 'session';
+    this.api
+      .post<AuthResponse, CandidateSignupRequest>('auth/candidate-signup', normalizedInput)
       .pipe(finalize(() => this.loginInProgressSignal.set(false)))
       .subscribe({
         next: (response) => this.applyAuthResponse(response, storageArea, true, returnUrl),

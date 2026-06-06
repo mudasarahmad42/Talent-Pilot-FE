@@ -28,6 +28,7 @@
 - `GET /api/talent-pilot/snapshot`
 - `GET /api/talent-pilot/job-requests/intake-options`
 - `POST /api/talent-pilot/job-requests`
+- Job Request create/draft payloads include optional `clientContext` so users can provide industry/domain/product context for AI drafting and matching. The field is displayed in request detail/PMO review when returned by the backend.
 - `GET /api/talent-pilot/interviews/my-tasks`
 - `GET /api/talent-pilot/interviews/{interviewId}/question-recommendations`
 - `POST /api/talent-pilot/interviews/{interviewId}/question-recommendations/generate`

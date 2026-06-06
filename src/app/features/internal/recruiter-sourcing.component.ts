@@ -782,10 +782,9 @@ type InterviewTimelineEntry = {
                         <option value="90">90%+</option>
                       </select>
                     </label>
-                    <button class="table-link-button clear-filter-action" type="button" (click)="clearManualFilters()">Clear</button>
-                    <button class="icon-button filter-settings-button" type="button" aria-label="Candidate filter settings">
-                      <span class="material-symbols-outlined" aria-hidden="true">tune</span>
-                    </button>
+                    <div class="candidate-filter-actions">
+                      <button class="table-link-button clear-filter-action" type="button" (click)="clearManualFilters()">Clear filters</button>
+                    </div>
                   </div>
 
                   @if (filteredManualCandidates().length === 0) {
@@ -825,7 +824,7 @@ type InterviewTimelineEntry = {
                             <p>{{ candidateReasonSummary(candidate) }}</p>
                             <small>{{ candidateReasonCaveat(candidate) }}</small>
                           </div>
-                          <div data-label="Key Skills">
+                          <div class="candidate-skills-cell" data-label="Key Skills">
                             <div class="tag-stack compact-tags">
                               @for (skill of candidateKeySkills(candidate); track skill) {
                                 <span class="skill-chip" [class.matched]="candidate.matchedSkills.includes(skill)">{{ skill }}</span>
@@ -844,7 +843,7 @@ type InterviewTimelineEntry = {
                               <small class="activity-source">{{ candidateActivitySource(candidate) }}</small>
                             </div>
                           </div>
-                          <div data-label="Status">
+                          <div class="candidate-status-cell" data-label="Status">
                             <span class="candidate-status-chip" [class.active]="candidate.status === 'Active'" [class.benched]="candidate.status === 'Benched'">
                               {{ candidate.status }}
                             </span>
@@ -4812,11 +4811,16 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   candidateReasonSummary(candidate: ManualCandidateSearchItem): string {
     const match = this.rediscoveryMatchForCandidate(candidate);
     if (match) {
-      if (candidate.matchedSkills.length === 0 && candidate.missingSkills.length > 0) {
-        return 'Ranked mainly from warm-history signals. Current-request skill evidence is weak, so review before outreach.';
+      const directSkillWarning = this.rediscoveryDirectSkillWarning(candidate, match.explanation);
+      if (directSkillWarning) {
+        return `${directSkillWarning} ${match.explanation}`;
       }
 
-      return this.truncateText(match.explanation, 150);
+      if (candidate.matchedSkills.length === 0 && candidate.missingSkills.length > 0) {
+        return `${this.rediscoveryDirectSkillWarning(candidate) || 'Current-request skill evidence is weak.'} Review before outreach.`;
+      }
+
+      return match.explanation;
     }
 
     if (candidate.matchedSkills.length > 0) {
@@ -4824,6 +4828,82 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
     }
 
     return 'Manual pool score is based on profile history and interview evidence; no strong current-skill match is recorded.';
+  }
+
+  private rediscoveryDirectSkillWarning(candidate: ManualCandidateSearchItem, explanation?: string): string {
+    const primaryMissingRequirement = this.primaryMissingRequirement(candidate.missingSkills);
+    if (!primaryMissingRequirement) {
+      return '';
+    }
+
+    const warning = `${primaryMissingRequirement} is required, but no direct ${primaryMissingRequirement} evidence is recorded in this profile.`;
+    const normalizedExplanation = (explanation ?? '').toLowerCase();
+    const normalizedSkill = primaryMissingRequirement.toLowerCase();
+    if (normalizedExplanation.includes(warning.toLowerCase()) ||
+      normalizedExplanation.includes(`no direct ${normalizedSkill}`) ||
+      normalizedExplanation.includes(`no past ${normalizedSkill}`)) {
+      return '';
+    }
+
+    const matched = candidate.matchedSkills.length > 0
+      ? ` ${candidate.matchedSkills.slice(0, 2).join(', ')} evidence should be treated as partial or transferable only.`
+      : ' Any fit should be treated as transferable or incomplete until a recruiter verifies that requirement.';
+    return `${warning}${matched}`;
+  }
+
+  private primaryMissingRequirement(missingSkills: readonly string[]): string | null {
+    if (missingSkills.length === 0) {
+      return null;
+    }
+
+    const priority = [
+      'Technical recruitment',
+      'Software engineering hiring',
+      'B2B SaaS sales',
+      'Enterprise sales',
+      'CRM pipeline management',
+      'Quota ownership',
+      'Technical presales',
+      'FP&A',
+      'Budgeting',
+      'Forecasting',
+      'Performance marketing',
+      'Paid ads',
+      'Google Ads',
+      'Meta Ads',
+      'Customer success',
+      'Product adoption',
+      'Renewal management',
+      'Automation testing',
+      'Selenium',
+      'Playwright',
+      'Software project management',
+      'Agile/Scrum',
+      'Product owner',
+      'Backlog management',
+      'Data warehousing',
+      'ETL',
+      'Python',
+      'FastAPI',
+      'Django',
+      'Flask',
+      'Java',
+      'Spring Boot',
+      '.NET',
+      '.NET Core',
+      'C#',
+      'Node.js',
+      'React',
+      'Angular',
+      'Vue',
+      'AWS',
+      'Azure',
+      'PostgreSQL',
+      'SQL Server',
+      'Design Patterns',
+    ];
+    return priority.find((skill) => missingSkills.some((missing) => missing.toLowerCase() === skill.toLowerCase()))
+      ?? missingSkills[0];
   }
 
   private isRediscoverableCandidate(candidate: ManualCandidateSearchItem): boolean {

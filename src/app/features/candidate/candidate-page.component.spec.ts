@@ -24,9 +24,12 @@ describe('CandidatePageComponent', () => {
     updatePortalCandidateProfile: ReturnType<typeof vi.fn>;
     loadPortalMyApplications: ReturnType<typeof vi.fn>;
     loadPortalJobPost: ReturnType<typeof vi.fn>;
+    loadPublicPortalContext: ReturnType<typeof vi.fn>;
     loadPortalInvitation: ReturnType<typeof vi.fn>;
     applyToPortalJobPost: ReturnType<typeof vi.fn>;
     uploadPortalApplicationDocument: ReturnType<typeof vi.fn>;
+    uploadPortalCandidateProfileDocument: ReturnType<typeof vi.fn>;
+    downloadPortalCandidateProfileDocument: ReturnType<typeof vi.fn>;
   };
 
   const jobs: PortalJobPostListItem[] = [
@@ -136,6 +139,26 @@ describe('CandidatePageComponent', () => {
       updatePortalCandidateProfile: vi.fn().mockResolvedValue(profile),
       loadPortalMyApplications: vi.fn().mockResolvedValue({ items: [] }),
       loadPortalJobPost: vi.fn().mockResolvedValue(jobDetail),
+      loadPublicPortalContext: vi.fn().mockResolvedValue({
+        tenantId: 'tenant-1',
+        slug: 'tkxel',
+        displayName: 'TKXEL',
+        careerDisplayName: 'TKXEL Careers',
+        companyAddress: null,
+        companyCity: 'Lahore',
+        companyCountry: 'Pakistan',
+        officialEmail: 'hr@tkxel.com',
+        officialPhone: null,
+        primaryColor: '#2563EB',
+        candidateLoginRequired: true,
+        candidateCvFormat: 'DOCX',
+        publicJobsEnabled: true,
+        inviteExpiryDays: 7,
+        reapplyCooldownDays: 90,
+        logoFileName: null,
+        logoContentType: null,
+        logoContentBase64: null,
+      }),
       loadPortalInvitation: vi.fn().mockResolvedValue({
         candidateInvitationId: '11111111-2222-3333-4444-555555555555',
         jobPostId: 'post-1',
@@ -149,6 +172,24 @@ describe('CandidatePageComponent', () => {
       }),
       applyToPortalJobPost: vi.fn(),
       uploadPortalApplicationDocument: vi.fn(),
+      uploadPortalCandidateProfileDocument: vi.fn().mockResolvedValue({
+        document: {
+          candidateProfileDocumentId: 'profile-doc-1',
+          candidateId: 'candidate-1',
+          documentType: 'Resume',
+          fileName: 'sara-resume.docx',
+          contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          sizeBytes: 6,
+          storageProvider: 'LocalFileSystem',
+          uploadedAt: '2026-06-06T00:00:00Z',
+          extractionStatus: 'Extracted',
+          hasTextEvidence: true,
+          parserVersion: 'docx-wordprocessingml-v1',
+          extractedAt: '2026-06-06T00:00:00Z',
+          extractionError: null,
+        },
+      }),
+      downloadPortalCandidateProfileDocument: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -181,6 +222,38 @@ describe('CandidatePageComponent', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await Promise.resolve();
   }
+
+  it('loads public portal context and jobs for tenant-scoped job routes', async () => {
+    routeParamMap$.next(convertToParamMap({ tenantSlug: 'tkxel' }));
+
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    fixture.detectChanges();
+    await flushCandidatePageLoad();
+
+    expect(store.loadPublicPortalContext).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantSlug: 'tkxel' }),
+    );
+    expect(store.loadPortalJobPosts).toHaveBeenCalledWith('tkxel');
+  });
+
+  it('routes anonymous apply CTAs to tenant signup with job post and return URL', () => {
+    routeParamMap$.next(convertToParamMap({ tenantSlug: 'tkxel' }));
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.jobPosts.set([jobs[0]]);
+    component.loading.set(false);
+
+    fixture.detectChanges();
+
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>,
+    );
+    const link = links.find((anchor) => anchor.textContent?.includes('Apply Now'));
+    const href = link?.getAttribute('href') ?? '';
+    expect(href).toContain('/candidate/tkxel/signup');
+    expect(decodeURIComponent(href)).toContain('jobPostId=post-1');
+    expect(decodeURIComponent(href)).toContain('returnUrl=/candidate/tkxel/apply/post-1');
+  });
 
   it('filters jobs by keyword, department, location, and experience', () => {
     const fixture = TestBed.createComponent(CandidatePageComponent);
@@ -399,8 +472,39 @@ describe('CandidatePageComponent', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Resume / CV');
+    expect(text).toContain('No resume uploaded yet');
+    expect(text).not.toContain('Sara_Malik_CV.docx');
     expect(text).not.toContain('Account Settings');
     expect(text).not.toContain('Managed by Talent Pilot login');
+  });
+
+  it('uploads a DOCX resume to the candidate profile', async () => {
+    routeData$.next({ pageId: 'profile' });
+    userSignal.set(candidateUser);
+
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.portalProfile.set(profile);
+    component.populateProfileForm(profile);
+    fixture.detectChanges();
+
+    const file = new File(['resume'], 'sara-resume.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    await component.onProfileResumeSelected({
+      target: {
+        files: [file],
+        value: '',
+      },
+    } as unknown as Event);
+    fixture.detectChanges();
+
+    expect(store.uploadPortalCandidateProfileDocument).toHaveBeenCalledWith(file, 'Resume');
+    expect(component.selectedDocumentFile()).toBeNull();
+    expect(component.applicationCvSectionComplete()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('sara-resume.docx');
+    expect(fixture.nativeElement.textContent).toContain('Saved to your profile');
   });
 
   it('shows email verification only when the profile has verification evidence', async () => {

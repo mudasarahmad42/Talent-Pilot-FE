@@ -19,7 +19,7 @@
           <h1>Tenant Profile</h1>
           <p>Manage company details and brand identity</p>
         </div>
-        <div class="header-actions">
+        <div class="header-actions tenant-profile-actions">
           <button
             mat-stroked-button
             class="stitch-secondary-button"
@@ -28,6 +28,7 @@
             [disabled]="saving() || !canManageTenantProfile()"
             [matTooltip]="permissionTooltip(canManageTenantProfile())"
           >
+            <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>
             Reset
           </button>
           <button
@@ -37,6 +38,7 @@
             [disabled]="!canSaveTenantProfile()"
             [matTooltip]="permissionTooltip(canManageTenantProfile())"
           >
+            <span class="material-symbols-outlined" aria-hidden="true">save</span>
             {{ saving() ? 'Saving...' : 'Save Changes' }}
           </button>
         </div>
@@ -93,7 +95,18 @@
                   </label>
 
                   <label class="stitch-field">
-                    <span>Tenant Slug</span>
+                    <span class="setting-label tenant-slug-label">
+                      Tenant Slug
+                      <button
+                        type="button"
+                        class="inline-info-button"
+                        matTooltip="A tenant slug is the short, URL-safe identifier for this company. It is used in tenant-specific links and backend routing, so keep it lowercase, stable, and unique."
+                        matTooltipPosition="above"
+                        aria-label="What tenant slug means"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+                      </button>
+                    </span>
                     <input formControlName="slug" aria-label="Tenant slug" />
                     @if (tenantProfileForm.controls.slug.invalid && tenantProfileForm.controls.slug.touched) {
                       <em>Use lowercase letters, numbers, and hyphens.</em>

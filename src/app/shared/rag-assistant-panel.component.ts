@@ -59,7 +59,7 @@ interface RagCitationEvidence {
         </div>
         <div class="rag-header-actions">
           <button
-            class="rag-header-icon-button"
+            class="rag-header-icon-button rag-collapse-toggle"
             type="button"
             [attr.aria-expanded]="floatingLauncher ? mobileOpen() : !collapsed()"
             [attr.aria-label]="floatingLauncher ? 'Collapse assistant panel' : (collapsed() ? 'Expand assistant panel' : 'Collapse assistant panel')"
@@ -68,7 +68,13 @@ interface RagCitationEvidence {
             <span class="material-symbols-outlined" aria-hidden="true">{{ floatingLauncher ? 'close' : (collapsed() ? 'unfold_more' : 'unfold_less') }}</span>
           </button>
           @if (!floatingLauncher) {
-            <button class="rag-header-icon-button rag-mobile-toggle" type="button" [attr.aria-expanded]="mobileOpen()" (click)="toggleMobileOpen()">
+            <button
+              class="rag-header-icon-button rag-mobile-toggle"
+              type="button"
+              [attr.aria-expanded]="mobileOpen()"
+              [attr.aria-label]="mobileOpen() ? 'Close assistant panel' : 'Open assistant panel'"
+              (click)="toggleMobileOpen()"
+            >
               <span class="material-symbols-outlined" aria-hidden="true">{{ mobileOpen() ? 'close' : 'smart_toy' }}</span>
             </button>
           }
@@ -739,6 +745,10 @@ interface RagCitationEvidence {
 
         .rag-mobile-toggle {
           display: inline-flex;
+        }
+
+        .rag-assistant-panel:not(.floating) .rag-collapse-toggle {
+          display: none;
         }
 
         .rag-assistant-body,

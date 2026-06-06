@@ -43,6 +43,7 @@ import {
   PortalApplyToJobPostInput,
   PortalCandidateProfile,
   PortalJobApplicationResult,
+  PublicPortalContext,
   PortalInvitationContext,
   PortalJobPostDetail,
   PortalJobPostList,
@@ -54,6 +55,7 @@ import {
   RagConversation,
   RagFeedbackRequest,
   PortalUploadApplicationDocumentResult,
+  PortalUploadCandidateProfileDocumentResult,
   RankBenchMatchesResult,
   RankTalentRediscoveryResult,
   RealtimeNotification,
@@ -519,8 +521,24 @@ export class TalentPilotStoreService {
     return firstValueFrom(this.api.get<JobPublishing>('talent-pilot/job-posts'));
   }
 
-  async loadPortalJobPosts(): Promise<PortalJobPostList> {
-    return firstValueFrom(this.api.get<PortalJobPostList>('talent-pilot/portal/job-posts'));
+  async loadPortalJobPosts(tenantSlug?: string | null): Promise<PortalJobPostList> {
+    const path = tenantSlug
+      ? `talent-pilot/portal/job-posts?tenantSlug=${encodeURIComponent(tenantSlug)}`
+      : 'talent-pilot/portal/job-posts';
+    return firstValueFrom(this.api.get<PortalJobPostList>(path));
+  }
+
+  async loadPublicPortalContext(query: { tenantSlug?: string | null; jobPostId?: string | null } = {}): Promise<PublicPortalContext> {
+    const searchParams = new URLSearchParams();
+    if (query.tenantSlug) {
+      searchParams.set('tenantSlug', query.tenantSlug);
+    }
+    if (query.jobPostId) {
+      searchParams.set('jobPostId', query.jobPostId);
+    }
+
+    const queryString = searchParams.toString();
+    return firstValueFrom(this.api.get<PublicPortalContext>(queryString ? `portal/context?${queryString}` : 'portal/context'));
   }
 
   async loadPortalJobPost(jobPostId: string): Promise<PortalJobPostDetail> {
@@ -577,6 +595,28 @@ export class TalentPilotStoreService {
   ): Promise<PortalCandidateProfile> {
     return firstValueFrom(
       this.api.put<PortalCandidateProfile, UpdatePortalCandidateProfileInput>('talent-pilot/portal/profile', input),
+    );
+  }
+
+  async uploadPortalCandidateProfileDocument(
+    file: File,
+    documentType = 'Resume',
+  ): Promise<PortalUploadCandidateProfileDocumentResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+
+    return firstValueFrom(
+      this.api.post<PortalUploadCandidateProfileDocumentResult, FormData>(
+        'talent-pilot/portal/profile/documents',
+        formData,
+      ),
+    );
+  }
+
+  async downloadPortalCandidateProfileDocument(candidateProfileDocumentId: string): Promise<HttpResponse<Blob>> {
+    return firstValueFrom(
+      this.api.download(`talent-pilot/portal/profile/documents/${candidateProfileDocumentId}/download`),
     );
   }
 

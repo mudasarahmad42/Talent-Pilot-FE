@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { RecruitmentQueueItem } from '../../core/models';
+import { priorityBadgeClass } from '../../core/priority-formatting';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
@@ -51,7 +52,7 @@ import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
                       <small>{{ item.jobRequest.title }}</small>
                     </td>
                     <td>{{ item.jobRequest.client }}</td>
-                    <td><span class="status-badge priority">{{ item.jobRequest.priority }}</span></td>
+                    <td><span [class]="priorityBadgeClass(item.jobRequest.priority)">{{ item.jobRequest.priority }}</span></td>
                     <td>
                       <span class="status-badge">{{ item.assignment.status }}</span>
                       <small>{{ item.assignment.claimedByUserId ? store.getUserName(item.assignment.claimedByUserId) : item.jobRequest.ownerGroupId }}</small>
@@ -111,5 +112,9 @@ export class RecruitmentQueueComponent implements OnInit {
 
   postStatusLabel(status: string): string {
     return status === 'NotStarted' ? 'Not started' : status;
+  }
+
+  priorityBadgeClass(priority: string): string {
+    return priorityBadgeClass(priority);
   }
 }

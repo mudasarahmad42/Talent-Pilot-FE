@@ -41,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Hiring Manager Review', route: '/app/hiring-manager/reviews', icon: 'approval_delegation', roles: ['HiringManager', 'TenantAdmin'], requiredAnyPermissions: [Permission.ManageHiringDecisions], adminSection: 'operationalAccess' },
   { label: 'Offer Outcome', route: '/app/offer-onboarding', icon: 'handshake', roles: ['HiringManager', 'TenantAdmin'], requiredAnyPermissions: [Permission.ManageHiringDecisions], adminSection: 'operationalAccess' },
   { label: 'Reports', route: '/app/reports', icon: 'analytics', roles: ['TenantAdmin'], requiredAnyPermissions: [Permission.ManageAdminCenter], adminSection: 'adminTasks' },
+  { label: 'Admin Center', route: '/admin-center/tenant-profile', icon: 'admin_panel_settings', roles: ['TenantAdmin'], adminSection: 'adminTasks' },
 ];
 
 const ADMIN_NAV_GROUPS: ReadonlyArray<{ id: AdminNavSection; label: string }> = [
@@ -123,6 +124,16 @@ const ADMIN_NAV_GROUPS: ReadonlyArray<{ id: AdminNavSection; label: string }> = 
       </header>
 
       <div class="workspace">
+        @if (!sidebarCollapsed()) {
+          <button
+            class="sidebar-scrim"
+            type="button"
+            aria-label="Close navigation"
+            tabindex="-1"
+            (click)="closeSidebarOnNarrowViewport()"
+          ></button>
+        }
+
         <aside id="app-sidebar" class="sidebar stitch-app-sidebar" aria-label="Talent Pilot App navigation">
           <div class="sidebar-product">
             <span class="talent-pilot-logo sidebar-brand-logo" aria-hidden="true">
@@ -242,13 +253,36 @@ export class AppShellComponent {
     this.profileMenuOpen.set(false);
   }
 
+  @HostListener('document:pointerdown', ['$event'])
+  closeSidebarOnOutsidePointer(event: PointerEvent): void {
+    if (this.sidebarCollapsed() || !this.isNarrowViewport()) {
+      return;
+    }
+
+    const target = event.target;
+    const targetElement = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+    if (targetElement?.closest('#app-sidebar, .sidebar-mobile-toggle, .sidebar-scrim')) {
+      return;
+    }
+
+    event.preventDefault();
+    this.sidebarCollapsed.set(true);
+  }
+
   @HostListener('document:keydown.escape')
-  closeProfileMenuOnEscape(): void {
+  closeOverlayUiOnEscape(): void {
     this.profileMenuOpen.set(false);
+    this.closeSidebarOnNarrowViewport();
   }
 
   toggleSidebar(): void {
     this.sidebarCollapsed.update((collapsed) => !collapsed);
+  }
+
+  closeSidebarOnNarrowViewport(): void {
+    if (this.isNarrowViewport()) {
+      this.sidebarCollapsed.set(true);
+    }
   }
 
   navItemLabel(item: NavItem): string {

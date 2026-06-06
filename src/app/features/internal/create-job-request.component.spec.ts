@@ -84,10 +84,21 @@ describe('CreateJobRequestComponent', () => {
     expect(component.canDraftWithAi()).toBe(true);
   });
 
+  it('explains client context for AI agents', () => {
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Client context');
+    expect(text).toContain('AI agents use this as tenant-provided context');
+    expect(text).toContain('similar industry/project evidence');
+  });
+
   it('calls the Job Description Drafting Agent and inserts editable text', async () => {
     component.form.patchValue({
       title: 'Senior React Developer',
       client: 'Relia',
+      clientContext: 'Fintech customer portal for similar industry matching.',
       departmentId: 'dept-engineering',
       locationId: 'loc-lahore',
       hiringManagerId: 'hm-1',
@@ -100,6 +111,7 @@ describe('CreateJobRequestComponent', () => {
     expect(store.draftJobDescription).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Senior React Developer',
+        clientContext: 'Fintech customer portal for similar industry matching.',
         departmentId: 'dept-engineering',
         skillIds: ['skill-react'],
       }),
@@ -114,6 +126,7 @@ describe('CreateJobRequestComponent', () => {
     component.form.patchValue({
       title: 'Senior React Developer',
       client: 'Relia',
+      clientContext: 'Fintech customer portal for similar industry matching.',
       description: 'Final edited description.',
       departmentId: 'dept-engineering',
       locationId: 'loc-lahore',
@@ -130,6 +143,7 @@ describe('CreateJobRequestComponent', () => {
     expect(store.createJobRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         departmentId: 'dept-engineering',
+        clientContext: 'Fintech customer portal for similar industry matching.',
         locationId: 'loc-lahore',
         skillIds: ['skill-react'],
         hiringManagerId: 'hm-1',
