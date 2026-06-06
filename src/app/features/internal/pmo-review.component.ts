@@ -279,7 +279,7 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
 
                       <div class="rationale-cell" data-label="AI Rationale">
                         @if (matchFor(employee.employeeId); as match) {
-                          <p>{{ rationaleFor(employee, match) }}</p>
+                          <p [title]="rationaleFor(employee, match)">{{ rationalePreviewFor(employee, match) }}</p>
                           <button type="button" class="link-button" (click)="toggleRationale(employee.employeeId)">
                             {{ isRationaleExpanded(employee.employeeId) ? 'Hide details' : 'View details' }}
                           </button>
@@ -1201,8 +1201,25 @@ export class PmoReviewComponent {
     return [preface, sanitized].filter(Boolean).join(' ');
   }
 
+  rationalePreviewFor(employee: BenchEmployee, match: BenchMatch): string {
+    return this.truncateText(this.rationaleFor(employee, match), 50);
+  }
+
   formattedDescription(description: string): string {
     return formatJobDescription(description);
+  }
+
+  private truncateText(value: string, maxLength: number): string {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+
+    const hardLimit = Math.max(0, maxLength - 3);
+    const clipped = normalized.slice(0, hardLimit).trimEnd();
+    const lastSpace = clipped.lastIndexOf(' ');
+    const preview = lastSpace >= 40 ? clipped.slice(0, lastSpace) : clipped;
+    return `${preview}...`;
   }
 
   private skillMismatchPreface(employee: BenchEmployee): string {

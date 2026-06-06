@@ -217,6 +217,51 @@ describe('PmoReviewComponent', () => {
     expect(rationale).not.toMatch(/limited experience/i);
   });
 
+  it('keeps bench table rationale short while expanded details show the full text', async () => {
+    const longExplanation =
+      'Web Performance Optimization is required, but no direct Web Performance Optimization evidence is recorded. Human review should validate missing or weak required skills before recommendation.';
+    const rankedReview = {
+      ...review,
+      benchMatches: [
+        {
+          employeeId: 'employee-1',
+          rank: 1,
+          score: 57.95,
+          confidence: 'Medium',
+          explanation: longExplanation,
+          strengths: ['Matches React.'],
+          gaps: ['Missing performance evidence.'],
+          projectEvidence: [],
+          webResearchStatus: 'Skipped:LiveContextNotRequired',
+          webSummary: '',
+          webSources: [],
+          generatedAt: '2026-06-04T00:00:00Z',
+        },
+      ],
+    };
+    store.getPmoReviewByRequestId.mockReturnValue(rankedReview as unknown as typeof review);
+    store.loadPmoReview.mockResolvedValue(rankedReview as unknown as typeof review);
+    fixture.destroy();
+    fixture = TestBed.createComponent(PmoReviewComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.setActiveTab('bench');
+    fixture.detectChanges();
+
+    const preview = fixture.nativeElement.querySelector('.rationale-cell p') as HTMLElement;
+    expect(preview.textContent?.trim()).toBe('Web Performance Optimization is required, but...');
+    expect(preview.textContent?.trim().length).toBeLessThanOrEqual(50);
+    expect(preview.getAttribute('title')).toBe(longExplanation);
+
+    component.toggleRationale('employee-1');
+    fixture.detectChanges();
+
+    const details = fixture.nativeElement.querySelector('.rationale-details p') as HTMLElement;
+    expect(details.textContent?.trim()).toBe(longExplanation);
+  });
+
   it('sends selected employee recommendations to Presales only after manual PMO selection', async () => {
     component.toggleEmployee('employee-1');
     component.presalesUserId.set('presales-1');
