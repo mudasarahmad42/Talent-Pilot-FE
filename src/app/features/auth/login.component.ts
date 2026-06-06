@@ -180,6 +180,15 @@ const DEMO_ROLE_CARDS: readonly DemoRoleCard[] = [
             <span class="candidate-portal-arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
           </a>
 
+          <a class="candidate-portal-card login-docs-card" routerLink="/docs" aria-label="Open Talent Pilot product documentation">
+            <span class="candidate-portal-icon material-symbols-outlined" aria-hidden="true">menu_book</span>
+            <span>
+              <strong>Product documentation</strong>
+              <small>Read product guides, AI agents, and tech stack before signing in.</small>
+            </span>
+            <span class="candidate-portal-arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </a>
+
           @if (auth.loginError()) {
             <p class="login-error">{{ auth.loginError() }}</p>
           }
@@ -220,7 +229,7 @@ const DEMO_ROLE_CARDS: readonly DemoRoleCard[] = [
 export class LoginComponent {
   readonly email = signal('');
   readonly password = signal('demo');
-  readonly keepSignedIn = signal(true);
+  readonly keepSignedIn = signal(false);
   readonly demoCards = computed(() =>
     DEMO_ROLE_CARDS.map((card) => ({
       ...card,

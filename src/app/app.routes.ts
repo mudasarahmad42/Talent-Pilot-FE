@@ -13,6 +13,18 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login.component').then((component) => component.LoginComponent),
   },
   {
+    path: 'docs/:module/:page',
+    loadComponent: () => import('./features/docs/docs-page.component').then((component) => component.DocsPageComponent),
+  },
+  {
+    path: 'docs/:module',
+    loadComponent: () => import('./features/docs/docs-page.component').then((component) => component.DocsPageComponent),
+  },
+  {
+    path: 'docs',
+    loadComponent: () => import('./features/docs/docs-page.component').then((component) => component.DocsPageComponent),
+  },
+  {
     path: 'app',
     canActivate: [authGuard, internalAppGuard],
     loadComponent: () => import('./features/shell/app-shell.component').then((component) => component.AppShellComponent),

@@ -2565,7 +2565,7 @@ td small {
   color: #fff;
   gap: 32px;
   height: 64px;
-  padding: 0 24px 0 260px;
+  padding: 0 24px;
 }
 
 .admin-shell .brand {
@@ -2582,20 +2582,8 @@ td small {
   width: 28px;
 }
 
-.admin-shell .top-links {
-  gap: 24px;
-}
-
-.admin-shell .top-links a {
-  border-bottom: 2px solid transparent;
-  color: #8f9aa8;
-  font-size: 13px;
-  padding: 22px 0 19px;
-}
-
-.admin-shell .top-links a.active {
-  border-bottom-color: #0a66c2;
-  color: #fff;
+.admin-shell .user-menu {
+  margin-left: auto;
 }
 
 .topbar-icon-button,
@@ -3709,6 +3697,17 @@ label .label-with-help > span {
   border-color: var(--primary);
 }
 
+.logo-upload-box.disabled {
+  border-color: #d5dce8;
+  cursor: not-allowed;
+  opacity: 0.68;
+  pointer-events: none;
+}
+
+.logo-upload-box.disabled:hover {
+  border-color: #d5dce8;
+}
+
 .logo-upload-box input {
   display: none;
 }
@@ -3980,40 +3979,6 @@ label .label-with-help > span {
 
 .mvp-footnote strong {
   color: #414752;
-}
-
-.tenant-info-footer {
-  background: transparent;
-  border-top: 1px solid var(--border);
-  color: #5f6b7a;
-  display: grid;
-  gap: 10px;
-  margin-top: 24px;
-  padding-top: 18px;
-}
-
-.tenant-info-footer > div {
-  align-items: center;
-  color: var(--text);
-  display: flex;
-  gap: 8px;
-}
-
-.tenant-info-footer .material-symbols-outlined {
-  color: var(--primary);
-  font-size: 18px;
-}
-
-.tenant-info-footer ul {
-  display: grid;
-  gap: 5px;
-  margin: 0;
-  padding-left: 26px;
-}
-
-.tenant-info-footer li {
-  font-size: 12px;
-  line-height: 18px;
 }
 
 .tenant-summary-card {
@@ -9524,6 +9489,71 @@ textarea:focus {
   min-width: 0;
 }
 
+.hiring-manager-dashboard-page {
+  max-width: 1240px;
+}
+
+.hiring-manager-dashboard-grid {
+  align-items: stretch;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hiring-manager-dashboard-grid > .full-span {
+  grid-column: 1 / -1;
+}
+
+.hiring-dashboard-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hiring-dashboard-card .panel-header {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.hiring-dashboard-panel-title {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hiring-dashboard-panel-title > .material-symbols-outlined {
+  align-items: center;
+  background: #eef6ff;
+  border-radius: 6px;
+  color: var(--primary);
+  display: inline-flex;
+  flex: 0 0 36px;
+  font-size: 20px;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.hiring-dashboard-panel-title h2,
+.hiring-dashboard-panel-title p {
+  min-width: 0;
+}
+
+.hiring-outcome-card .admin-metric-mini-grid {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.hiring-outcome-tile {
+  min-height: 84px;
+}
+
+.hiring-outcome-tile small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
 .admin-analytics-help .agent-help-trigger {
   height: 24px;
   width: 24px;
@@ -14642,6 +14672,7 @@ app-recruiter-sourcing .job-post-editor .panel-header .btn.compact {
   .pmo-dashboard-grid,
   .pmo-dashboard-filters,
   .admin-dashboard-grid,
+  .hiring-manager-dashboard-grid,
   .admin-dashboard-filters,
   .reports-layout,
   .reports-filter-panel,

@@ -166,7 +166,9 @@ describe('DashboardComponent interviewer dashboard', () => {
     expect(text).toContain('Priority decision queue');
     expect(text).toContain('Amara Haq');
     expect(text).toContain('Open review');
-    expect(text).toContain('Hiring Manager Decision Brief');
+    expect(text).toContain('Outcome split');
+    expect(text).not.toContain('AI transparency');
+    expect(text).not.toContain('Hiring Manager Decision Brief');
     expect(text).not.toContain('Open next review');
     expect(text).not.toContain('View all reviews');
     expect(text).not.toContain('Offer outcome');

@@ -1,4 +1,5 @@
 export type TalentPilotRole =
+  | 'SystemAdmin'
   | 'TenantAdmin'
   | 'Presales'
   | 'PMO'
@@ -1860,6 +1861,7 @@ export type TenantStatus = 'Active' | 'Inactive';
 export type CandidateCvFormat = 'DOCX';
 export type TenantCurrency = 'PKR' | 'USD' | 'EUR';
 export type NotificationEmailProvider = 'Resend' | 'MicrosoftGraph';
+export type AdminCenterAccessMode = 'FullAccess' | 'ReadOnly';
 
 export interface TenantProfileSettings {
   tenantId: string;
@@ -1883,6 +1885,7 @@ export interface TenantProfileSettings {
   inviteExpiryDays: number;
   reapplyCooldownDays: number;
   notificationEmailProvider: NotificationEmailProvider;
+  adminCenterAccessMode: AdminCenterAccessMode;
   userCount: number;
   roleCount: number;
   setupComplete: boolean;
@@ -1916,6 +1919,7 @@ export type UpdateTenantProfileSettingsInput = Pick<
   | 'inviteExpiryDays'
   | 'reapplyCooldownDays'
   | 'notificationEmailProvider'
+  | 'adminCenterAccessMode'
   | 'logoFileName'
   | 'logoContentType'
   | 'logoContentBase64'

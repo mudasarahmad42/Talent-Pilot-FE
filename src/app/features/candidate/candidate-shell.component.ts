@@ -32,6 +32,10 @@ import { CANDIDATE_NAV } from './candidate-experience.data';
         </nav>
 
         <div class="user-menu">
+          <a class="btn ghost compact docs-topbar-link" routerLink="/docs" aria-label="Open product documentation">
+            <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+            Docs
+          </a>
           @if (currentUser(); as user) {
             <app-ai-health-warning />
             <details class="candidate-account-menu">

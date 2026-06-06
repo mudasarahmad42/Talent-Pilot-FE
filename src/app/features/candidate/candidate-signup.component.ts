@@ -134,7 +134,7 @@ export class CandidateSignupComponent {
         email: this.email,
         password: this.password,
       },
-      true,
+      false,
       this.returnUrl() ?? this.defaultReturnUrl(),
     );
   }

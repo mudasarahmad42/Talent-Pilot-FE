@@ -37,6 +37,7 @@ const EMPTY_TENANT_PROFILE: TenantProfileSettings = {
   inviteExpiryDays: 7,
   reapplyCooldownDays: 90,
   notificationEmailProvider: 'Resend',
+  adminCenterAccessMode: 'FullAccess',
   userCount: 0,
   roleCount: 0,
   setupComplete: false,
@@ -127,6 +128,10 @@ export class AdminSettingsApiService {
 
     if (!['Resend', 'MicrosoftGraph'].includes(input.notificationEmailProvider)) {
       throw new Error('Email provider must be Resend or Microsoft Graph.');
+    }
+
+    if (!['FullAccess', 'ReadOnly'].includes(input.adminCenterAccessMode)) {
+      throw new Error('Admin Center access mode must be Full Access or View Only.');
     }
 
     if (!input.logoContentBase64) {

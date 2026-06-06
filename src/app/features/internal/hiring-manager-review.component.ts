@@ -91,7 +91,7 @@ type ReviewStatusFilterOption = {
                   <h2>{{ data.candidate.displayName }}</h2>
                   <p class="muted">{{ data.candidate.email }}</p>
                 </div>
-                <span class="status-badge info">{{ formatStatusLabel(data.job.applicationStatus) }}</span>
+                <span [class]="reviewStatusBadgeClass(data.job.applicationStatus)">{{ formatStatusLabel(data.job.applicationStatus) }}</span>
               </div>
               <dl class="review-meta-grid">
                 <div>
@@ -1514,15 +1514,15 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const printWindow = window.open('', '_blank', 'width=960,height=1200');
-    if (!printWindow) {
-      this.error.set('The browser blocked the print window. Allow pop-ups for this site and try again.');
-      return;
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(this.buildOfferPrintHtml(printableBody, data));
-    printWindow.document.close();
+    const objectUrl = URL.createObjectURL(new Blob([this.buildOfferPrintHtml(printableBody, data)], { type: 'text/html' }));
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   }
 
   private normalizePrintableOfferBody(body: string): string {
@@ -2174,7 +2174,7 @@ export class HiringManagerReviewComponent implements OnInit, OnDestroy {
 
   reviewStatusBadgeClass(status?: string | null): string {
     const normalizedStatus = (status ?? '').toLowerCase().replace(/[\s_-]+/g, '');
-    if (['joined', 'accepted', 'offeraccepted'].includes(normalizedStatus)) {
+    if (['joined', 'hired', 'accepted', 'offeraccepted'].includes(normalizedStatus)) {
       return 'status-badge status-badge--success';
     }
 

@@ -11,7 +11,26 @@
   [class.ai-settings-page]="isAiSettingsPage()"
   [class.integrations-page]="isIntegrationsPage()"
   [class.audit-logs-page]="isAuditLogsPage()"
+  [class.admin-center-readonly-locked]="adminCenterReadOnly() && !isSystemAdmin()"
 >
+  @if (adminCenterReadOnly()) {
+    <section class="admin-readonly-banner" [class.system-admin]="isSystemAdmin()">
+      <span class="material-symbols-outlined" aria-hidden="true">
+        {{ isSystemAdmin() ? 'admin_panel_settings' : 'visibility' }}
+      </span>
+      <div>
+        <strong>Admin Center is view-only for this tenant</strong>
+        <p>
+          {{
+            isSystemAdmin()
+              ? 'Tenant administrators can review Admin Center information, but only system administrators can make changes while this mode is enabled.'
+              : 'A system administrator has made Admin Center view-only for this tenant. You can review information, but changes are disabled. Contact your system administrator for assistance.'
+          }}
+        </p>
+      </div>
+    </section>
+  }
+
   @if (isTenantProfile()) {
     <form [formGroup]="tenantProfileForm" (ngSubmit)="saveTenantProfile()">
       <header class="stitch-page-header">
@@ -247,17 +266,30 @@
                 </div>
 
                 <div class="branding-form-grid">
-                  <label class="logo-upload-box" [class.has-logo]="companyLogoPreviewUrl()">
+                  <label
+                    class="logo-upload-box"
+                    [class.has-logo]="companyLogoPreviewUrl()"
+                    [class.disabled]="!canManageTenantProfile()"
+                    [attr.aria-disabled]="!canManageTenantProfile()"
+                    [matTooltip]="permissionTooltip(canManageTenantProfile())"
+                    matTooltipPosition="above"
+                  >
                     @if (companyLogoPreviewUrl(); as logoPreviewUrl) {
                       <img class="logo-upload-preview" [src]="logoPreviewUrl" alt="Company logo preview" />
                       <strong>{{ companyLogoFileName() || 'Company Logo' }}</strong>
-                      <small>Click to replace logo</small>
+                      <small>{{ canManageTenantProfile() ? 'Click to replace logo' : 'Logo is view-only' }}</small>
                     } @else {
                       <span class="material-symbols-outlined" aria-hidden="true">upload</span>
                       <strong>Company Logo</strong>
-                      <small>Click to upload or drop here</small>
+                      <small>{{ canManageTenantProfile() ? 'Click to upload or drop here' : 'Logo upload is disabled' }}</small>
                     }
-                    <input type="file" aria-label="Company logo" accept="image/*" (change)="setCompanyLogo($event)" />
+                    <input
+                      type="file"
+                      aria-label="Company logo"
+                      accept="image/*"
+                      [disabled]="!canManageTenantProfile()"
+                      (change)="setCompanyLogo($event)"
+                    />
                   </label>
 
                   <div class="brand-fields">
@@ -384,6 +416,36 @@
                     <input formControlName="inviteExpiryDays" type="number" min="1" max="30" />
                   </label>
                 </div>
+
+                <div class="admin-access-mode-card" [class.read-only]="tenantDraft().adminCenterAccessMode === 'ReadOnly'">
+                  <span class="material-symbols-outlined access-mode-icon" aria-hidden="true">
+                    {{ tenantDraft().adminCenterAccessMode === 'ReadOnly' ? 'lock' : 'admin_panel_settings' }}
+                  </span>
+                  <div>
+                    <h3>Admin Center access</h3>
+                    <p>
+                      Control whether tenant admins can edit Admin Center configuration for this tenant.
+                    </p>
+                    <span class="access-mode-status">
+                      <span class="material-symbols-outlined" aria-hidden="true">
+                        {{ tenantDraft().adminCenterAccessMode === 'ReadOnly' ? 'lock' : 'lock_open' }}
+                      </span>
+                      {{ adminCenterAccessModeLabel() }}
+                    </span>
+                  </div>
+
+                  @if (isSystemAdmin()) {
+                    <mat-slide-toggle
+                      [checked]="tenantProfileForm.controls.adminCenterAccessMode.value === 'ReadOnly'"
+                      (change)="setAdminCenterAccessMode($event.checked)"
+                      aria-label="Make Admin Center view-only for tenant admins"
+                    >
+                      View-only for tenant admins
+                    </mat-slide-toggle>
+                  } @else {
+                    <small>Managed by System Admin</small>
+                  }
+                </div>
               </section>
             }
           }
@@ -427,6 +489,15 @@
                   {{ tenantDraft().publicJobsEnabled ? 'Published' : 'Hidden' }}
                 </span>
               </div>
+              <div>
+                <span>Admin Center</span>
+                <span class="summary-status-chip" [class.inactive]="tenantDraft().adminCenterAccessMode === 'ReadOnly'">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ tenantDraft().adminCenterAccessMode === 'ReadOnly' ? 'visibility' : 'lock_open' }}
+                  </span>
+                  {{ adminCenterAccessModeLabel() }}
+                </span>
+              </div>
             </div>
 
             <div class="summary-list">
@@ -459,17 +530,6 @@
         </aside>
       </section>
 
-      <footer class="tenant-info-footer" role="note">
-        <div>
-          <span class="material-symbols-outlined" aria-hidden="true">info</span>
-          <strong>Implementation notes</strong>
-        </div>
-        <ul>
-          <li>{{ guardrailSummary() }}</li>
-          <li>Tenant status is stored on the tenant record as Active or Inactive.</li>
-          <li>Timezone is stored as an IANA timezone id; timestamps stay UTC and render in the client timezone.</li>
-        </ul>
-      </footer>
     </form>
   } @else {
     @if (isUsersPage()) {
@@ -1919,6 +1979,152 @@
               <p>{{ aiDecisionBoundary() }}</p>
             </div>
           </footer>
+        }
+
+        @case ('run-log') {
+          <section class="admin-info-banner ai-agent-count-banner">
+            <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+            <p>
+              <strong>Recent AI agent runs are tenant-scoped and read-only.</strong>
+              Prompts and raw evidence stay backend-only; this log exposes status, model, prompt version, input hash, and human-review boundary for audit.
+            </p>
+          </section>
+
+          <section class="admin-data-card ai-run-log-card">
+            <header class="admin-data-card-header">
+              <h2>Agent Run Log</h2>
+              <span class="table-status custom">{{ aiAgentRuns().length }} recent run(s)</span>
+            </header>
+
+            @if (aiAgentRuns().length > 0) {
+              <div class="table-wrap">
+                <table class="admin-stitch-table ai-settings-table ai-run-log-table">
+                  <thead>
+                    <tr>
+                      <th>Agent</th>
+                      <th>Status</th>
+                      <th>Runtime</th>
+                      <th>Evidence</th>
+                      <th>Audit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (run of aiAgentRuns(); track run.aiAgentRunId) {
+                      <tr>
+                        <td>
+                          <strong>{{ run.agentName }}</strong>
+                          <small>{{ aiRunSourceLabel(run) }}</small>
+                        </td>
+                        <td>
+                          <span
+                            class="table-status"
+                            [class.success]="aiRunStatusClass(run) === 'success'"
+                            [class.error]="aiRunStatusClass(run) === 'error'"
+                            [class.warning]="aiRunStatusClass(run) === 'warning'"
+                            [class.custom]="aiRunStatusClass(run) === 'custom'"
+                          >
+                            {{ run.status }}
+                          </span>
+                          @if (run.failureType) {
+                            <small>{{ run.failureType }}</small>
+                          }
+                        </td>
+                        <td>
+                          <strong>{{ run.modelName }}</strong>
+                          <small>{{ run.embeddingModelName || 'No embedding model' }}</small>
+                        </td>
+                        <td>
+                          <strong>{{ aiRunSemanticStatusLabel(run) }}</strong>
+                          <small
+                            class="ai-run-output-summary"
+                            [title]="run.outputSummary || 'No output summary recorded.'"
+                          >
+                            {{ run.outputSummary || 'No output summary recorded.' }}
+                          </small>
+                        </td>
+                        <td>
+                          <strong>{{ aiRunStartedLabel(run) }}</strong>
+                          <small>Prompt {{ aiRunPromptVersionLabel(run) }} · {{ aiRunDurationLabel(run) }}</small>
+                          <small class="ai-run-input-hash" [title]="run.inputHash">Input hash {{ run.inputHash }}</small>
+                          @if (run.humanDecisionRequired) {
+                            <span class="ai-run-review-chip">
+                              <span class="material-symbols-outlined" aria-hidden="true">person_check</span>
+                              Human review
+                            </span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="ai-run-log-empty">
+                <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                <strong>No AI runs recorded yet</strong>
+                <p>Run applicant ranking, bench matching, interview question generation, RAG assistant, or offer decision brief to populate this audit log.</p>
+              </div>
+            }
+          </section>
+        }
+
+        @case ('evaluation') {
+          <section class="admin-info-banner ai-evaluation-summary-banner">
+            <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
+            <p>
+              <strong>AI evaluation {{ aiEvaluationScoreLabel() }}.</strong>
+              {{ aiEvaluation()?.overallStatus ?? 'Evaluation data is not available from the running API yet.' }}
+            </p>
+            <small>Generated {{ aiEvaluationGeneratedLabel() }}</small>
+          </section>
+
+          @if (aiEvaluation(); as evaluation) {
+            <section class="ai-evaluation-grid" aria-label="AI maturity evaluation checklist">
+              @for (item of evaluation.items; track item.name) {
+                <article
+                  class="ai-evaluation-card"
+                  [class.success]="aiEvaluationStatusClass(item.status) === 'success'"
+                  [class.warning]="aiEvaluationStatusClass(item.status) === 'warning'"
+                  [class.error]="aiEvaluationStatusClass(item.status) === 'error'"
+                >
+                  <header>
+                    <span class="material-symbols-outlined" aria-hidden="true">
+                      {{ aiEvaluationStatusIcon(item.status) }}
+                    </span>
+                    <div>
+                      <h2>{{ item.name }}</h2>
+                      <p>{{ item.rubricArea }}</p>
+                    </div>
+                    <span
+                      class="table-status"
+                      [class.success]="aiEvaluationStatusClass(item.status) === 'success'"
+                      [class.warning]="aiEvaluationStatusClass(item.status) === 'warning'"
+                      [class.error]="aiEvaluationStatusClass(item.status) === 'error'"
+                    >
+                      {{ item.status }}
+                    </span>
+                  </header>
+
+                  <dl>
+                    <div>
+                      <dt>Evidence</dt>
+                      <dd>{{ item.evidence }}</dd>
+                    </div>
+                    <div>
+                      <dt>Recommended action</dt>
+                      <dd>{{ item.nextStep }}</dd>
+                    </div>
+                  </dl>
+                </article>
+              }
+            </section>
+          } @else {
+            <div class="ai-run-log-empty ai-evaluation-empty">
+              <span class="material-symbols-outlined" aria-hidden="true">rule_settings</span>
+              <strong>Evaluation endpoint not available</strong>
+              <p>Restart the API with the latest backend build, then reload AI Settings to see the judge-facing checklist.</p>
+            </div>
+          }
         }
       }
     } @else {

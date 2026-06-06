@@ -31,7 +31,7 @@ export class FileDownloadService {
       const link = document.createElement('a');
       link.href = objectUrl;
       link.download = safeFileName;
-      link.rel = 'noopener';
+      link.rel = 'noopener noreferrer';
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
@@ -40,14 +40,16 @@ export class FileDownloadService {
       this.revokeLater(objectUrl);
       return { method: 'download' };
     } catch (error) {
-      const opened = window.open(objectUrl, '_blank', 'noopener');
+      const openLink = document.createElement('a');
+      openLink.href = objectUrl;
+      openLink.target = '_blank';
+      openLink.rel = 'noopener noreferrer';
+      openLink.style.display = 'none';
+      document.body.appendChild(openLink);
+      openLink.click();
+      openLink.remove();
       this.revokeLater(objectUrl);
-
-      if (opened) {
-        return { method: 'open' };
-      }
-
-      throw new Error('The browser blocked the file download.');
+      return { method: 'open' };
     }
   }
 

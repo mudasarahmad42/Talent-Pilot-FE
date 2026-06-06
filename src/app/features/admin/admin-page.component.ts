@@ -44,6 +44,8 @@ import { AuthService } from '../../core/auth.service';
 import { GoogleCalendarApiService, GoogleCalendarConnectionStatus } from '../../core/google-calendar-api.service';
 import {
   AdminAiAgentDefinition,
+  AdminAiEvaluationResponse,
+  AdminAiAgentRunListItem,
   AdminAiRuntimeResponse,
   AdminSemanticSimilarityHealthResponse,
   AdminCandidateSourceListItem,
@@ -70,6 +72,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
+  AdminCenterAccessMode,
   CandidateCvFormat,
   NotificationEmailProvider,
   TenantCurrency,
@@ -157,6 +160,10 @@ export class AdminPageComponent {
       this.savedTenantProfile().notificationEmailProvider as NotificationEmailProvider,
       [Validators.required],
     ],
+    adminCenterAccessMode: [
+      this.savedTenantProfile().adminCenterAccessMode as AdminCenterAccessMode,
+      [Validators.required],
+    ],
   });
 
   private readonly backendPageOverrides = signal<Record<string, AdminPage>>({});
@@ -195,19 +202,26 @@ export class AdminPageComponent {
   readonly isIntegrationsPage = computed(() => this.page().id === 'integrations');
   readonly isAuditLogsPage = computed(() => this.page().id === 'audit-logs');
   readonly isHiringPipelinePage = computed(() => this.page().id === 'hiring-pipeline');
+  readonly isSystemAdmin = computed(() => this.auth.hasAnyRole(['SystemAdmin']));
+  readonly adminCenterReadOnly = computed(() => this.savedTenantProfile().adminCenterAccessMode === 'ReadOnly');
+  readonly canWriteAdminCenter = computed(() => this.isSystemAdmin() || !this.adminCenterReadOnly());
   readonly canManageTenantProfile = computed(() =>
+    this.canWriteAdminCenter() &&
     this.permissionService.hasAny([Permission.ManageTenantProfile, Permission.ManageAdminCenter]),
   );
-  readonly canManageUsers = computed(() => this.permissionService.has(Permission.ManageUsers));
-  readonly canManageRoles = computed(() => this.permissionService.has(Permission.ManageRoles));
+  readonly canManageUsers = computed(() => this.canWriteAdminCenter() && this.permissionService.has(Permission.ManageUsers));
+  readonly canManageRoles = computed(() => this.canWriteAdminCenter() && this.permissionService.has(Permission.ManageRoles));
   readonly canViewAuditLogs = computed(() => this.permissionService.has(Permission.ViewAuditLogs));
   readonly canManageNotifications = computed(() =>
+    this.canWriteAdminCenter() &&
     this.permissionService.hasAny([Permission.ManageNotifications, Permission.ManageAdminCenter]),
   );
-  readonly canSendNotificationTestEmail = computed(() => this.auth.isAdmin());
-  readonly canSendNotificationRealtimeTest = computed(() => this.auth.isAdmin());
+  readonly canSendNotificationTestEmail = computed(() => this.canWriteAdminCenter() && this.auth.isAdmin());
+  readonly canSendNotificationRealtimeTest = computed(() => this.canWriteAdminCenter() && this.auth.isAdmin());
   readonly realtimeConnectionStatus = this.realtimeNotifications.status;
-  readonly canManageCurrentAdminPage = computed(() => this.permissionService.canAccessAdminPage(this.page().id));
+  readonly canManageCurrentAdminPage = computed(() =>
+    this.canWriteAdminCenter() && this.permissionService.canAccessAdminPage(this.page().id),
+  );
   readonly saving = signal(false);
   readonly formMessage = signal('');
   readonly formMessageIsError = signal(false);
@@ -338,6 +352,8 @@ export class AdminPageComponent {
   readonly aiSettingsTabs: Array<{ id: AiSettingsTab; label: string }> = [
     { id: 'runtime', label: 'Runtime & Guardrails' },
     { id: 'agents', label: 'AI Agents' },
+    { id: 'run-log', label: 'Agent Run Log' },
+    { id: 'evaluation', label: 'AI Evaluation' },
   ];
   readonly notificationTabs: Array<{ id: NotificationChannelTab; label: string; icon: string }> = [
     { id: 'email', label: 'Email Notifications', icon: 'mail' },
@@ -352,6 +368,8 @@ export class AdminPageComponent {
   ];
   readonly activeAiAgentCount = signal(0);
   readonly aiDecisionBoundary = signal('');
+  readonly aiAgentRuns = signal<AdminAiAgentRunListItem[]>([]);
+  readonly aiEvaluation = signal<AdminAiEvaluationResponse | null>(null);
   aiAgents: AiAgentDefinition[] = [];
 
   constructor() {
@@ -371,6 +389,17 @@ export class AdminPageComponent {
       if (!this.companyLogoDirty()) {
         this.patchCompanyLogoPreview(profile);
       }
+    });
+
+    effect(() => {
+      const shouldDisable = this.adminCenterReadOnly() && !this.isSystemAdmin();
+      untracked(() => {
+        if (shouldDisable && this.tenantProfileForm.enabled) {
+          this.tenantProfileForm.disable({ emitEvent: false });
+        } else if (!shouldDisable && this.tenantProfileForm.disabled) {
+          this.tenantProfileForm.enable({ emitEvent: false });
+        }
+      });
     });
 
     effect(() => {
@@ -547,16 +576,20 @@ export class AdminPageComponent {
       }
 
       if (pageId === 'ai-settings') {
-        const [runtime, agents, guardrails] = await Promise.all([
+        const [runtime, agents, guardrails, runs, evaluation] = await Promise.all([
           this.adminCenterApi.getAiRuntime(),
           this.adminCenterApi.getAiAgents(),
           this.adminCenterApi.getAiGuardrails(),
+          this.adminCenterApi.getAiAgentRuns(12).catch(() => ({ totalCount: 0, items: [] })),
+          this.adminCenterApi.getAiEvaluation().catch(() => null),
         ]);
         const semanticHealth = await this.adminCenterApi.getAiSemanticSimilarityHealth()
           .catch((error) => this.semanticSimilarityDiagnosticUnavailable(error, runtime));
         this.aiAgents = agents.items.map((agent) => this.toAiAgentDefinition(agent));
         this.activeAiAgentCount.set(agents.activeAgentCount);
         this.aiDecisionBoundary.set(guardrails.decisionBoundary);
+        this.aiAgentRuns.set(runs.items);
+        this.aiEvaluation.set(evaluation);
         this.setBackendPageOverride(pageId, {
           ...getAdminPage(pageId),
           metrics: [
@@ -579,6 +612,11 @@ export class AdminPageComponent {
               label: 'Human Review',
               value: guardrails.humanReviewRequired ? 'Required' : 'Optional',
               note: guardrails.decisionBoundary,
+            },
+            {
+              label: 'AI Evaluation',
+              value: evaluation ? `${evaluation.scorePercent}%` : 'Pending',
+              note: evaluation?.overallStatus ?? 'Evaluation endpoint pending',
             },
           ],
           table: {
@@ -1510,6 +1548,83 @@ export class AdminPageComponent {
     };
   }
 
+  aiRunStatusClass(run: AdminAiAgentRunListItem): string {
+    const status = run.status.toLowerCase();
+    if (status === 'succeeded') {
+      return 'success';
+    }
+
+    if (status === 'failed') {
+      return 'error';
+    }
+
+    if (status === 'running') {
+      return 'warning';
+    }
+
+    return 'custom';
+  }
+
+  aiRunStartedLabel(run: AdminAiAgentRunListItem): string {
+    return this.formatAuditTimestamp(run.startedAtUtc);
+  }
+
+  aiRunDurationLabel(run: AdminAiAgentRunListItem): string {
+    if (run.durationMs === null || run.durationMs === undefined) {
+      return run.status === 'Running' ? 'Running' : 'Not recorded';
+    }
+
+    if (run.durationMs < 1000) {
+      return `${run.durationMs} ms`;
+    }
+
+    return `${Math.round(run.durationMs / 100) / 10}s`;
+  }
+
+  aiRunPromptVersionLabel(run: AdminAiAgentRunListItem): string {
+    return run.promptVersion?.trim() || 'Not recorded';
+  }
+
+  aiRunSemanticStatusLabel(run: AdminAiAgentRunListItem): string {
+    return run.semanticSimilarityStatus?.trim() || 'Not used';
+  }
+
+  aiRunSourceLabel(run: AdminAiAgentRunListItem): string {
+    return `${run.sourceEntityType} ${run.sourceEntityId.slice(0, 8)}`;
+  }
+
+  aiEvaluationScoreLabel(): string {
+    const evaluation = this.aiEvaluation();
+    return evaluation ? `${evaluation.scorePercent}%` : 'Pending';
+  }
+
+  aiEvaluationStatusClass(status: string): string {
+    const normalized = status.trim().toLowerCase();
+    if (normalized === 'passed') {
+      return 'success';
+    }
+
+    if (normalized === 'failed') {
+      return 'error';
+    }
+
+    return 'warning';
+  }
+
+  aiEvaluationStatusIcon(status: string): string {
+    const statusClass = this.aiEvaluationStatusClass(status);
+    if (statusClass === 'success') {
+      return 'check_circle';
+    }
+
+    return statusClass === 'error' ? 'error' : 'warning';
+  }
+
+  aiEvaluationGeneratedLabel(): string {
+    const generatedAt = this.aiEvaluation()?.generatedAtUtc;
+    return generatedAt ? this.formatAuditTimestamp(generatedAt) : 'Not generated';
+  }
+
   private isValidEmailAddress(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
   }
@@ -1654,7 +1769,25 @@ export class AdminPageComponent {
   }
 
   permissionTooltip(hasPermission: boolean): string {
+    if (!hasPermission && !this.canWriteAdminCenter()) {
+      return 'A system administrator has made Admin Center view-only for this tenant. Contact your system administrator for assistance.';
+    }
+
     return hasPermission ? '' : 'Your current role does not include permission for this action.';
+  }
+
+  adminCenterAccessModeLabel(mode = this.tenantDraft().adminCenterAccessMode): string {
+    return mode === 'ReadOnly' ? 'View only' : 'Full access';
+  }
+
+  setAdminCenterAccessMode(readOnly: boolean): void {
+    if (!this.isSystemAdmin()) {
+      this.notifications.error('Only a system administrator can change Admin Center access mode.');
+      return;
+    }
+
+    this.tenantProfileForm.controls.adminCenterAccessMode.setValue(readOnly ? 'ReadOnly' : 'FullAccess');
+    this.tenantProfileForm.controls.adminCenterAccessMode.markAsDirty();
   }
 
   openAddUserDialog(): void {
@@ -2419,6 +2552,12 @@ export class AdminPageComponent {
 
   setCompanyLogo(event: Event): void {
     const input = event.target as HTMLInputElement;
+    if (!this.canManageTenantProfile()) {
+      input.value = '';
+      this.notifications.error(this.permissionTooltip(false));
+      return;
+    }
+
     const file = input.files?.[0];
     if (!file) {
       return;
@@ -3160,6 +3299,7 @@ export class AdminPageComponent {
       inviteExpiryDays: saved.inviteExpiryDays,
       reapplyCooldownDays: saved.reapplyCooldownDays,
       notificationEmailProvider,
+      adminCenterAccessMode: saved.adminCenterAccessMode,
       logoFileName: saved.logoFileName ?? null,
       logoContentType: saved.logoContentType ?? null,
       logoContentBase64: saved.logoContentBase64 ?? null,
@@ -3192,6 +3332,7 @@ export class AdminPageComponent {
       inviteExpiryDays: saved.inviteExpiryDays,
       reapplyCooldownDays: saved.reapplyCooldownDays,
       notificationEmailProvider: saved.notificationEmailProvider,
+      adminCenterAccessMode: saved.adminCenterAccessMode,
     };
   }
 }

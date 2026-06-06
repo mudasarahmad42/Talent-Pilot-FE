@@ -13,8 +13,9 @@ export const AUTH_ACCESS_TOKEN_KEY = 'talent-pilot.auth.access-token';
 const AUTH_REFRESH_TOKEN_KEY = 'talent-pilot.auth.refresh-token';
 const AUTH_EXPIRES_AT_KEY = 'talent-pilot.auth.expires-at';
 const AUTH_USER_KEY = 'talent-pilot.auth.current-user';
-const ADMIN_ROLES: readonly TalentPilotRole[] = ['TenantAdmin'];
+const ADMIN_ROLES: readonly TalentPilotRole[] = ['SystemAdmin', 'TenantAdmin'];
 const INTERNAL_APP_ROLES: readonly TalentPilotRole[] = [
+  'SystemAdmin',
   'TenantAdmin',
   'Presales',
   'PMO',
@@ -56,11 +57,11 @@ export class AuthService {
     });
   }
 
-  loginDemoUser(user: LoginOption, keepSignedIn = true, returnUrl?: string | null): void {
+  loginDemoUser(user: LoginOption, keepSignedIn = false, returnUrl?: string | null): void {
     this.loginWithCredentials(user.email, 'demo', keepSignedIn, returnUrl);
   }
 
-  loginWithCredentials(email: string, password: string | null, keepSignedIn = true, returnUrl?: string | null): void {
+  loginWithCredentials(email: string, password: string | null, keepSignedIn = false, returnUrl?: string | null): void {
     const normalizedEmail = email.trim();
     const normalizedPassword = password?.trim() ?? '';
     if (!normalizedEmail || !normalizedPassword || this.loginInProgressSignal()) {
@@ -82,7 +83,7 @@ export class AuthService {
       });
   }
 
-  signupCandidate(input: CandidateSignupRequest, keepSignedIn = true, returnUrl?: string | null): void {
+  signupCandidate(input: CandidateSignupRequest, keepSignedIn = false, returnUrl?: string | null): void {
     const normalizedInput: CandidateSignupRequest = {
       ...input,
       tenantSlug: input.tenantSlug?.trim() || null,
@@ -178,7 +179,8 @@ export class AuthService {
       return false;
     }
 
-    return roles.some((role) => user.roles.includes(role));
+    return roles.some((role) => user.roles.includes(role)) ||
+      (user.roles.includes('SystemAdmin') && roles.includes('TenantAdmin'));
   }
 
   isAdmin(): boolean {
@@ -328,6 +330,7 @@ export class AuthService {
 
 function isTalentPilotRole(role: string): role is TalentPilotRole {
   return [
+    'SystemAdmin',
     'TenantAdmin',
     'Presales',
     'PMO',

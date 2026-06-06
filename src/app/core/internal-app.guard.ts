@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { TalentPilotRole } from './models';
 
 const INTERNAL_APP_ROLES: readonly TalentPilotRole[] = [
+  'SystemAdmin',
   'TenantAdmin',
   'Presales',
   'PMO',

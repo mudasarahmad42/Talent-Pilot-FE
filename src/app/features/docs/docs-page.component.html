@@ -1,0 +1,100 @@
+@if (state(); as view) {
+  <div class="docs-page">
+    <header class="docs-topbar">
+      <a class="docs-brand" routerLink="/docs" aria-label="Talent Pilot product documentation">
+        <span class="talent-pilot-logo docs-brand-mark" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+        <span>
+          <strong>Talent Pilot</strong>
+          <small>Product Documentation</small>
+        </span>
+      </a>
+
+      <a class="docs-return-link" routerLink="/auth/login">
+        <span class="material-symbols-outlined" aria-hidden="true">login</span>
+        Open app
+      </a>
+    </header>
+
+    <div class="docs-layout">
+      <aside class="docs-sidebar" aria-label="Documentation navigation">
+        <div class="docs-version-row" aria-label="Documentation version">
+          <span class="docs-version-pill active">v1.0</span>
+          <span class="docs-version-pill muted">MVP</span>
+        </div>
+
+        @for (module of modules(view); track module.id) {
+          <section class="docs-nav-group" [attr.aria-label]="module.label">
+            <a class="docs-nav-module" [routerLink]="moduleRoute(module)" [class.active]="activeModuleId(view) === module.id">
+              <span>{{ module.label }}</span>
+              <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            </a>
+
+            @if (activeModuleId(view) === module.id) {
+              <div class="docs-nav-pages">
+                @for (page of module.pages; track page.id) {
+                  <a [routerLink]="pageRoute(module, page)" [class.active]="activePageId(view) === page.id">
+                    {{ page.label }}
+                  </a>
+                }
+              </div>
+            }
+          </section>
+        }
+      </aside>
+
+      <main class="docs-main" tabindex="-1">
+        @if (view.status === 'loading') {
+          <section class="docs-loading-state" aria-live="polite">
+            <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
+            <div>
+              <strong>Loading documentation</strong>
+              <p>Preparing the product documentation source.</p>
+            </div>
+          </section>
+        } @else if (view.status === 'ready') {
+          <nav class="docs-breadcrumb" aria-label="Breadcrumb">
+            <a routerLink="/docs">Docs</a>
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            <a [routerLink]="moduleRoute(view.module)">{{ view.module.label }}</a>
+            <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            <span>{{ view.page.label }}</span>
+          </nav>
+
+          <article class="docs-article" [innerHTML]="view.html"></article>
+        } @else {
+          <section class="docs-error-state" aria-live="polite">
+            <span class="material-symbols-outlined" aria-hidden="true">article_alert</span>
+            <div>
+              <h1>Documentation unavailable</h1>
+              <p>{{ view.message }}</p>
+              <a class="docs-error-action" routerLink="/docs">
+                <span class="material-symbols-outlined" aria-hidden="true">home</span>
+                Product documentation home
+              </a>
+            </div>
+          </section>
+        }
+      </main>
+
+      <aside class="docs-toc" aria-label="On this page">
+        @if (view.status === 'ready') {
+          <p>On this page</p>
+          @if (view.headings.length > 0) {
+            <nav>
+              @for (heading of view.headings; track heading.id) {
+                <a [class.child]="heading.level === 3" [attr.href]="'#' + heading.id">{{ heading.title }}</a>
+              }
+            </nav>
+          } @else {
+            <span class="docs-toc-empty">No sections yet</span>
+          }
+        }
+      </aside>
+    </div>
+  </div>
+}

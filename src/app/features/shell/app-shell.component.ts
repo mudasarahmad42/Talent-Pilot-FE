@@ -81,6 +81,10 @@ const ADMIN_NAV_GROUPS: ReadonlyArray<{ id: AdminNavSection; label: string }> = 
 
         <div class="user-menu">
           @if (currentUser(); as user) {
+            <a class="btn ghost compact docs-topbar-link" routerLink="/docs" aria-label="Open product documentation">
+              <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+              Docs
+            </a>
             <app-ai-health-warning />
             <app-notification-bell />
             <button type="button" class="topbar-icon-button" aria-label="Settings">
@@ -332,6 +336,7 @@ export class AppShellComponent {
 
   private roleLabel(role: TalentPilotRole): string {
     const labels: Record<TalentPilotRole, string> = {
+      SystemAdmin: 'System Admin',
       TenantAdmin: 'Tenant Admin',
       Presales: 'Pre-Sales',
       PMO: 'PMO',
