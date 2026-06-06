@@ -604,6 +604,8 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
 
       .bench-table-row strong {
         color: #0f172a;
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
 
       .bench-table-row small {
@@ -611,6 +613,12 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
         display: block;
         font-size: 12px;
         line-height: 1.35;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .employee-cell small {
+        word-break: break-word;
       }
 
       .fit-score {
