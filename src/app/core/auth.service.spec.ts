@@ -160,9 +160,11 @@ describe('AuthService', () => {
         displayName: ' Amara Haq ',
         email: ' amara.haq@example.com ',
         password: 'StrongPass123',
+        candidateInvitationId: ' invite-1 ',
+        invitationToken: ' tracked-token ',
       },
       true,
-      '/candidate/tkxel/apply/post-1',
+      '/candidate/tkxel/apply/post-1?source=invite&inviteId=invite-1&token=tracked-token',
     );
 
     expect(api.post).toHaveBeenCalledWith('auth/candidate-signup', {
@@ -171,10 +173,12 @@ describe('AuthService', () => {
       displayName: 'Amara Haq',
       email: 'amara.haq@example.com',
       password: 'StrongPass123',
+      candidateInvitationId: 'invite-1',
+      invitationToken: 'tracked-token',
     });
     expect(localStorage.getItem(AUTH_ACCESS_TOKEN_KEY)).toBe('candidate-access-token');
     expect(service.currentUser()?.roles).toEqual(['Candidate']);
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/candidate/tkxel/apply/post-1');
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/candidate/tkxel/apply/post-1?source=invite&inviteId=invite-1&token=tracked-token');
   });
 
   it('keeps the current user unset when password authentication fails', () => {

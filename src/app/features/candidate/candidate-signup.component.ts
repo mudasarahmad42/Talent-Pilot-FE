@@ -107,6 +107,8 @@ export class CandidateSignupComponent {
   readonly localError = signal('');
   readonly tenantSlug = computed(() => this.route.snapshot.paramMap.get('tenantSlug') ?? this.route.snapshot.queryParamMap.get('tenantSlug'));
   readonly jobPostId = computed(() => this.route.snapshot.queryParamMap.get('jobPostId'));
+  readonly inviteId = computed(() => this.route.snapshot.queryParamMap.get('inviteId'));
+  readonly inviteToken = computed(() => this.route.snapshot.queryParamMap.get('token'));
   readonly returnUrl = computed(() => this.route.snapshot.queryParamMap.get('returnUrl'));
 
   canSubmit(): boolean {
@@ -133,6 +135,8 @@ export class CandidateSignupComponent {
         displayName: this.displayName,
         email: this.email,
         password: this.password,
+        candidateInvitationId: this.inviteId(),
+        invitationToken: this.inviteToken(),
       },
       false,
       this.returnUrl() ?? this.defaultReturnUrl(),

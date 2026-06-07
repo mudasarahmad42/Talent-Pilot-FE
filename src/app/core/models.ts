@@ -80,6 +80,8 @@ export interface CandidateSignupRequest {
   displayName: string;
   email: string;
   password: string;
+  candidateInvitationId?: string | null;
+  invitationToken?: string | null;
 }
 
 export interface CurrentUserGroup {

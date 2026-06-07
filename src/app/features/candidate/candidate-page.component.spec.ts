@@ -1013,6 +1013,44 @@ describe('CandidatePageComponent', () => {
     expect(link.getAttribute('href')).toContain('token=tracked-token');
   });
 
+  it('carries tracked invite identity into the unauthenticated signup route', () => {
+    routeData$.next({ pageId: 'job-detail' });
+    routeParamMap$.next(convertToParamMap({ id: 'post-1' }));
+    routeQueryParamMap$.next(
+      convertToParamMap({
+        source: 'invite',
+        inviteId: '11111111-2222-3333-4444-555555555555',
+        token: 'tracked-token',
+      }),
+    );
+    userSignal.set(null);
+
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.jobPost.set(jobDetail);
+    component.portalInvitation.set({
+      candidateInvitationId: '11111111-2222-3333-4444-555555555555',
+      jobPostId: 'post-1',
+      jobTitle: 'Senior React Developer',
+      companyName: 'TKXEL Careers',
+      status: 'Sent',
+      expiresAtUtc: '2026-06-09T00:00:00Z',
+      usedAtUtc: null,
+      isExpired: false,
+      isRevoked: false,
+    });
+    component.loading.set(false);
+    fixture.detectChanges();
+
+    const link = fixture.nativeElement.querySelector('.job-detail-invite-card a') as HTMLAnchorElement;
+    const href = link.getAttribute('href') ?? '';
+    expect(fixture.nativeElement.textContent).toContain('Create account to apply');
+    expect(href).toContain('/candidate/signup');
+    expect(href).toContain('inviteId=11111111-2222-3333-4444-555555555555');
+    expect(href).toContain('token=tracked-token');
+    expect(decodeURIComponent(href)).toContain('returnUrl=/candidate/apply/post-1?source=invite');
+  });
+
   it('sends internal users to candidate sign-in with the apply return URL', () => {
     routeData$.next({ pageId: 'job-detail' });
     routeParamMap$.next(convertToParamMap({ id: 'post-1' }));

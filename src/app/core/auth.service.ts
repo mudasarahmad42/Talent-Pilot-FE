@@ -91,6 +91,8 @@ export class AuthService {
       displayName: input.displayName.trim(),
       email: input.email.trim(),
       password: input.password,
+      candidateInvitationId: input.candidateInvitationId?.trim() || null,
+      invitationToken: input.invitationToken?.trim() || null,
     };
 
     if (

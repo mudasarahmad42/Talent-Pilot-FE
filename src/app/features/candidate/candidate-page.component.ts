@@ -3190,6 +3190,12 @@ export class CandidatePageComponent {
       params['tenantSlug'] = slug;
     }
 
+    const inviteParams = this.jobDetailInviteQueryParams();
+    if (inviteParams?.['inviteId'] && inviteParams?.['token']) {
+      params['inviteId'] = inviteParams['inviteId'];
+      params['token'] = inviteParams['token'];
+    }
+
     return params;
   }
 
