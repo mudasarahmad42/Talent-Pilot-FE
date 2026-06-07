@@ -132,6 +132,24 @@ textarea {
   width: 42px;
 }
 
+.candidate-progress-message.rejected {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.candidate-progress-message.rejected > .material-symbols-outlined {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.candidate-progress-message.rejected strong {
+  color: #991b1b;
+}
+
+.candidate-progress-message.rejected p {
+  color: #7f1d1d;
+}
+
 .candidate-progress-message strong {
   display: block;
   font-size: 16px;
@@ -234,6 +252,20 @@ textarea {
   color: #0b66c3;
 }
 
+.journey-steps li.rejected .journey-dot {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.journey-steps li.rejected strong {
+  color: #991b1b;
+}
+
+.journey-steps li.rejected small {
+  color: #b91c1c;
+}
+
 .journey-steps strong {
   color: #0f172a;
   font-size: 12px;
@@ -269,6 +301,19 @@ textarea {
   height: 28px;
   justify-content: center;
   width: 28px;
+}
+
+.journey-event.rejected > .material-symbols-outlined {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.journey-event.rejected strong {
+  color: #991b1b;
+}
+
+.journey-event.rejected p {
+  color: #7f1d1d;
 }
 
 .journey-event strong {
@@ -12996,6 +13041,12 @@ app-candidate-page .candidate-status-pill.applied {
   color: #047857;
 }
 
+app-candidate-page .candidate-status-pill.rejected {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
 app-candidate-page .candidate-panel {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
   min-width: 0;
@@ -13817,6 +13868,24 @@ app-candidate-page .candidate-progress-message .material-symbols-outlined {
   height: 42px;
   justify-content: center;
   width: 42px;
+}
+
+app-candidate-page .candidate-progress-message.rejected {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+app-candidate-page .candidate-progress-message.rejected .material-symbols-outlined {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+app-candidate-page .candidate-progress-message.rejected strong {
+  color: #991b1b;
+}
+
+app-candidate-page .candidate-progress-message.rejected p {
+  color: #7f1d1d;
 }
 
 @media (max-width: 980px) {

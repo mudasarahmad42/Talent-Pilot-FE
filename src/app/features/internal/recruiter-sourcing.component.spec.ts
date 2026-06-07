@@ -584,6 +584,82 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     expect(component.interviewTimelineItemClass(entries[2])).toContain('unscheduled');
   });
 
+  it('opens completed interview feedback details from the application timeline', async () => {
+    const sourcing = buildSourcing('Published');
+    const application = buildApplication({
+      candidateName: 'Amara Haq',
+      interviews: [
+        buildApplicationInterview({
+          interviewId: 'interview-hr',
+          jobPostInterviewRoundId: 'round-1',
+          roundName: 'HR Screening',
+          status: 'Completed',
+          recommendation: 'Proceed',
+          technicalScore: 4,
+          communicationScore: 5,
+          cultureScore: 4,
+          feedbackText: 'HR screen confirmed communication clarity and availability.',
+          submittedAt: '2026-06-09T13:00:00.000Z',
+        }),
+        buildApplicationInterview({
+          interviewId: 'interview-technical',
+          jobPostInterviewRoundId: 'round-2',
+          roundName: 'Technical Interview',
+          interviewerName: 'Bilal Hussain',
+          interviewerUserId: 'interviewer-2',
+          status: 'Completed',
+          startsAt: '2026-06-10T12:00:00.000Z',
+          recommendation: 'Proceed',
+          technicalScore: 5,
+          communicationScore: 4,
+          cultureScore: 4,
+          feedbackText: 'Strong Java, Spring Boot, API design, and production debugging evidence.',
+          submittedAt: '2026-06-10T13:10:00.000Z',
+        }),
+      ],
+    });
+    sourcing.applications = [application];
+    sourcing.jobPost!.interviewRounds = [
+      buildInterviewRound({ jobPostInterviewRoundId: 'round-1', roundOrder: 1, name: 'HR Screening' }),
+      buildInterviewRound({ jobPostInterviewRoundId: 'round-2', roundOrder: 2, name: 'Technical Interview' }),
+    ];
+    await renderPostRounds(sourcing, sourcing.jobPost!.interviewRounds);
+
+    component.setTab('applications');
+    fixture.detectChanges();
+
+    const timelineButtons = Array.from(
+      fixture.nativeElement.querySelectorAll('.interview-timeline-detail-trigger') as NodeListOf<HTMLButtonElement>,
+    );
+    const technicalButton = timelineButtons.find((button) => button.textContent?.includes('Technical Interview'));
+    expect(technicalButton).toBeTruthy();
+
+    technicalButton!.click();
+    fixture.detectChanges();
+
+    const modal = fixture.nativeElement.querySelector('.interview-feedback-modal') as HTMLElement;
+    expect(modal).toBeTruthy();
+    expect(modal.textContent).toContain('Technical Interview');
+    expect(modal.textContent).toContain('Amara Haq');
+    expect(modal.textContent).toContain('Bilal Hussain');
+    expect(modal.textContent).toContain('5/5');
+    expect(modal.textContent).toContain('4/5');
+    expect(modal.textContent).toContain('4.3/5');
+    expect(modal.textContent).toContain('Proceed');
+    expect(modal.textContent).toContain('Strong Java, Spring Boot, API design, and production debugging evidence.');
+
+    const recommendation = modal.querySelector('.interview-recommendation-pill') as HTMLElement;
+    expect(recommendation.textContent).toContain('Proceed');
+    expect(recommendation.classList).toContain('positive');
+  });
+
+  it('color codes interview recommendations by decision', () => {
+    expect(component.interviewRecommendationClass('Proceed')).toContain('positive');
+    expect(component.interviewRecommendationClass('Reject')).toContain('negative');
+    expect(component.interviewRecommendationClass('Hold')).toContain('caution');
+    expect(component.interviewRecommendationClass(null)).toContain('neutral');
+  });
+
   it('shows feedback action only to the assigned interviewer for that scheduled round', () => {
     currentUser.set({ id: 'interviewer-1', roles: ['Interviewer'] });
 
@@ -1221,6 +1297,11 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
       meetingLink: null,
       locationText: null,
       recommendation: null,
+      technicalScore: null,
+      communicationScore: null,
+      cultureScore: null,
+      feedbackText: null,
+      submittedAt: null,
       ...overrides,
     };
   }

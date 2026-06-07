@@ -42,6 +42,7 @@ interface ApplicationJourneyStep {
   date?: string | null;
   icon: string;
   state: JourneyStepState;
+  tone?: 'rejected';
 }
 
 interface CandidateJobFilters {
@@ -867,7 +868,7 @@ interface CandidateInterviewGroup {
                       <h1>{{ application.jobTitle }}</h1>
                       <p>
                         {{ application.companyName }} - {{ application.client }} - {{ application.department }}
-                        <span class="candidate-status-pill">{{ applicationStatusLabel(application.status) }}</span>
+                        <span [class]="candidateStatusPillClass(application.status)">{{ applicationStatusLabel(application.status) }}</span>
                       </p>
                     </div>
                     <a class="btn secondary" [routerLink]="candidateRoute('jobs', application.jobPostId)">
@@ -877,8 +878,8 @@ interface CandidateInterviewGroup {
                   </div>
                 </header>
 
-                <article class="candidate-progress-message">
-                  <span class="material-symbols-outlined" aria-hidden="true">celebration</span>
+                <article [class]="candidateProgressMessageClass(application)">
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ statusMessageIcon(application) }}</span>
                   <div>
                     <strong>{{ statusGreeting(application) }}</strong>
                     <p>{{ statusSummary(application) }}</p>
@@ -893,7 +894,12 @@ interface CandidateInterviewGroup {
                       </header>
                       <ol class="journey-steps">
                         @for (step of journeySteps(application); track step.label) {
-                          <li [class.done]="step.state === 'done'" [class.current]="step.state === 'current'" [class.upcoming]="step.state === 'upcoming'">
+                          <li
+                            [class.done]="step.state === 'done'"
+                            [class.current]="step.state === 'current'"
+                            [class.upcoming]="step.state === 'upcoming'"
+                            [class.rejected]="step.tone === 'rejected'"
+                          >
                             <span class="journey-dot">
                               <span class="material-symbols-outlined" aria-hidden="true">{{ step.icon }}</span>
                             </span>
@@ -912,13 +918,13 @@ interface CandidateInterviewGroup {
                       </ol>
                       <div class="journey-event-list">
                         @for (event of application.timeline ?? []; track $index) {
-                          <div class="journey-event">
-                            <span class="material-symbols-outlined" aria-hidden="true">{{ timelineIcon(event.kind) }}</span>
+                          <div [class]="journeyEventClass(event, application)">
+                            <span class="material-symbols-outlined" aria-hidden="true">{{ timelineEventIcon(event, application) }}</span>
                             <div>
                               <strong>{{ event.title }}</strong>
                               <p>{{ event.occurredAt | date: 'medium' }} - {{ journeyEventDescription(event, application) }}</p>
                             </div>
-                            <span class="candidate-status-pill">{{ event.status }}</span>
+                            <span [class]="candidateStatusPillClass(event.status)">{{ event.status }}</span>
                           </div>
                         } @empty {
                           <div class="journey-event">
@@ -3364,13 +3370,45 @@ export class CandidatePageComponent {
     }
   }
 
+  timelineEventIcon(event: PortalApplicationTimelineItem, application: PortalMyApplicationItem): string {
+    return this.timelineEventLooksRejected(event, application) ? 'close' : this.timelineIcon(event.kind);
+  }
+
   applicationStatusLabel(status: string): string {
     return this.humanizeStatus(status).toUpperCase();
+  }
+
+  candidateStatusPillClass(status: string | null | undefined): string {
+    return this.statusLooksRejected(status) ? 'candidate-status-pill rejected' : 'candidate-status-pill';
+  }
+
+  candidateProgressMessageClass(application: PortalMyApplicationItem): string {
+    return this.statusLooksRejected(application.status) ? 'candidate-progress-message rejected' : 'candidate-progress-message';
+  }
+
+  statusMessageIcon(application: PortalMyApplicationItem): string {
+    const status = application.status.toLowerCase();
+    if (this.statusLooksRejected(status)) {
+      return 'cancel';
+    }
+    if (status.includes('joined') || this.isHiredAwaitingJoining(status)) {
+      return 'celebration';
+    }
+    if (status.includes('offered')) {
+      return 'event_available';
+    }
+    if (this.isDecisionStatus(status)) {
+      return 'info';
+    }
+    return 'track_changes';
   }
 
   statusGreeting(application: PortalMyApplicationItem): string {
     const firstName = this.currentUser()?.displayName?.split(' ')[0] || 'there';
     const status = application.status.toLowerCase();
+    if (this.statusLooksRejected(status)) {
+      return 'Unfortunately, we have decided not to continue with your application.';
+    }
     if (status.includes('joined') || this.isHiredAwaitingJoining(status)) {
       return `Congratulations, ${firstName}!`;
     }
@@ -3451,8 +3489,9 @@ export class CandidatePageComponent {
       {
         label: 'Decision',
         date: finalDate,
-        icon: decision ? 'task_alt' : 'flag',
+        icon: decision && this.statusLooksRejected(status) ? 'close' : decision ? 'task_alt' : 'flag',
         state: successfulDecision ? 'done' : decision ? 'current' : 'upcoming',
+        tone: decision && this.statusLooksRejected(status) ? 'rejected' : undefined,
       },
     ];
 
@@ -3551,6 +3590,10 @@ export class CandidatePageComponent {
     return this.isCurrentStatusEvent(event) ? this.currentStatusContext(application) : event.description;
   }
 
+  journeyEventClass(event: PortalApplicationTimelineItem, application: PortalMyApplicationItem): string {
+    return this.timelineEventLooksRejected(event, application) ? 'journey-event rejected' : 'journey-event';
+  }
+
   currentStatusContext(application: PortalMyApplicationItem): string {
     const status = application.status.toLowerCase();
     if (status.includes('interview')) {
@@ -3608,6 +3651,23 @@ export class CandidatePageComponent {
       text.includes('joined') ||
       text.includes('declined')
     );
+  }
+
+  private timelineEventLooksRejected(event: PortalApplicationTimelineItem, application: PortalMyApplicationItem): boolean {
+    return (
+      event.kind === 'FinalOutcome' &&
+      (
+        this.statusLooksRejected(event.status) ||
+        this.statusLooksRejected(event.title) ||
+        this.statusLooksRejected(event.description) ||
+        this.statusLooksRejected(application.status)
+      )
+    );
+  }
+
+  private statusLooksRejected(value: string | null | undefined): boolean {
+    const normalized = value?.toLowerCase().replace(/\s+/g, '') ?? '';
+    return normalized.includes('rejected') || normalized.includes('declined') || normalized.includes('withdrawn');
   }
 
   private interviewsComplete(application: PortalMyApplicationItem): boolean {
