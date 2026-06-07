@@ -1,12 +1,37 @@
 # AI Agents Overview
 
-Talent Pilot has **11 implemented AI-assisted agents or workflows** in the MVP. Some are visible buttons, some are chat assistants, and some run quietly in the background to prepare search and ranking data. There are also **3 planned agents** for future versions.
+Talent Pilot has **11 implemented AI-assisted agents or workflows** in the MVP: **6 are triggered manually** by a user action such as a button click or chat question, and **5 are triggered automatically** by workflow events such as saving a request, uploading a CV, finishing a ranking run, or opening a review page. There are also **3 planned agents** for future versions.
 
 AI helps users draft, parse, rank, summarize, and explain. AI does **not** approve requests, hire candidates, reject candidates, send offers, or move workflow stages by itself.
 
 For guardrails and the improvement plan, see [Guardrails and Feedback](/docs/ai-agents/guardrails-feedback).
 
 ![Talent Pilot AI agent flow](/docs/assets/ai-agent-flow.png)
+
+## Trigger Pattern
+
+Manual agents run only when a user explicitly asks for them. Automatic agents run after a known product event, but they still stay advisory and do not move workflow stages by themselves.
+
+| Trigger Type | Count | Agents |
+| --- | ---: | --- |
+| Manual / on demand | 6 | RAG Assistant, Job Description Drafter, Bench Matching, Talent Rediscovery, Online Headhunting, Interview Question Recommender |
+| Automatic / event-triggered | 5 | Requirement Parser, CV Parser, Candidate Profile Indexing, Candidate Fit Explanation, Hiring Manager Decision Brief |
+
+## Trigger Details
+
+| Agent | Trigger Type | What Starts It |
+| --- | --- | --- |
+| RAG Assistant | Manual | User types a question in a copilot panel. |
+| Job Description Drafter | Manual | User clicks **Draft with AI** on the Job Request form. |
+| Requirement Parser | Automatic | Job Request is saved, then the backend indexes the saved requirement text. |
+| Bench Matching | Manual | PMO clicks **Rank with AI**. |
+| CV Parser | Automatic | Recruiter uploads a DOCX CV in Add Candidate; parsing starts from that upload. |
+| Candidate Profile Indexing | Automatic | Candidate saves profile information in Candidate Portal. |
+| Talent Rediscovery | Manual | Recruiter clicks **Rediscover Talent** or runs the rediscovery ranking. |
+| Online Headhunting | Manual | Recruiter selects sources and clicks **Run Agent**. |
+| Candidate Fit Explanation | Automatic | A ranking result is produced, then the system writes the plain-English rationale for that result. |
+| Interview Question Recommender | Manual | Interviewer clicks **Generate** in the AI interview questions panel. |
+| Hiring Manager Decision Brief | Automatic | Hiring Manager opens a review page and Talent Pilot prepares the evidence summary. |
 
 ## Implemented Agents
 
