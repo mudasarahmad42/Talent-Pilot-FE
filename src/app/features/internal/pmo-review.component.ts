@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { formatJobDescription } from '../../core/job-description-formatting';
 import { BenchEmployee, BenchMatch, EmployeeProjectEvidence, PmoReview } from '../../core/models';
 import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.component';
@@ -62,7 +63,7 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
                     </button>
                   }
                 </div>
-                <p>{{ review.jobRequest.description }}</p>
+                <div class="job-description-body">{{ formattedDescription(review.jobRequest.description) }}</div>
                 @if (review.jobRequest.clientContext) {
                   <div class="client-context-summary">
                     <span>Client context</span>
@@ -278,7 +279,7 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
 
                       <div class="rationale-cell" data-label="AI Rationale">
                         @if (matchFor(employee.employeeId); as match) {
-                          <p>{{ rationaleFor(employee, match) }}</p>
+                          <p [title]="rationaleFor(employee, match)">{{ rationalePreviewFor(employee, match) }}</p>
                           <button type="button" class="link-button" (click)="toggleRationale(employee.employeeId)">
                             {{ isRationaleExpanded(employee.employeeId) ? 'Hide details' : 'View details' }}
                           </button>
@@ -772,6 +773,13 @@ import { RagAssistantPanelComponent } from '../../shared/rag-assistant-panel.com
         white-space: pre-line;
       }
 
+      .job-description-body {
+        color: #0f172a;
+        line-height: 1.65;
+        margin: 0;
+        white-space: pre-line;
+      }
+
       @media (max-width: 860px) {
         .bench-table-header {
           display: none;
@@ -1191,6 +1199,27 @@ export class PmoReviewComponent {
     }
 
     return [preface, sanitized].filter(Boolean).join(' ');
+  }
+
+  rationalePreviewFor(employee: BenchEmployee, match: BenchMatch): string {
+    return this.truncateText(this.rationaleFor(employee, match), 50);
+  }
+
+  formattedDescription(description: string): string {
+    return formatJobDescription(description);
+  }
+
+  private truncateText(value: string, maxLength: number): string {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+
+    const hardLimit = Math.max(0, maxLength - 3);
+    const clipped = normalized.slice(0, hardLimit).trimEnd();
+    const lastSpace = clipped.lastIndexOf(' ');
+    const preview = lastSpace >= 40 ? clipped.slice(0, lastSpace) : clipped;
+    return `${preview}...`;
   }
 
   private skillMismatchPreface(employee: BenchEmployee): string {
