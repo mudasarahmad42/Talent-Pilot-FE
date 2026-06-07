@@ -154,6 +154,16 @@ type InterviewTimelineEntry = {
   isUnscheduled: boolean;
 };
 
+type InterviewFeedbackModalState = {
+  application: RecruiterApplication;
+  interview: RecruiterApplicationInterview;
+};
+
+type InterviewScoreItem = {
+  label: string;
+  value: number | null;
+};
+
 @Component({
   selector: 'app-recruiter-sourcing',
   imports: [CommonModule, FormsModule, RouterLink, RagAssistantPanelComponent],
@@ -401,28 +411,43 @@ type InterviewTimelineEntry = {
                             } @else {
                               <ol class="interview-timeline-list" [attr.aria-label]="'Interview timeline for ' + application.candidateName">
                                 @for (entry of timelineEntries.slice(0, 3); track entry.key) {
-                                  <li [class]="interviewTimelineItemClass(entry)">
+                                  <li [class]="interviewTimelineItemClass(entry)" [class.has-feedback-detail]="!!entry.interview">
                                     <span class="interview-status-dot" aria-hidden="true"></span>
-                                    <div class="interview-timeline-content">
-                                      <div class="interview-timeline-title-row">
-                                        <strong class="interview-round-name">{{ entry.roundName }}</strong>
-                                        <span [class]="interviewStatusChipClass(entry.status)">{{ entry.status }}</span>
-                                      </div>
-                                      <small class="interview-timeline-meta">
-                                        {{ entry.startsAt ? formatInterviewSchedule(entry.startsAt) : 'Waiting to be scheduled' }}
-                                      </small>
-                                      @if (entry.interview) {
-                                        @if (interviewFeedbackActionLabel(entry.interview); as feedbackActionLabel) {
-                                          <a
-                                            class="table-link-button inline-feedback-link timeline-feedback-link"
-                                            routerLink="/app/interview-feedback"
-                                            [queryParams]="{ interviewId: entry.interview.interviewId, returnUrl: currentReturnUrl() }"
-                                          >
-                                            {{ feedbackActionLabel }}
-                                          </a>
-                                        }
+                                    @if (entry.interview; as interview) {
+                                      <button
+                                        class="interview-timeline-content interview-timeline-detail-trigger"
+                                        type="button"
+                                        [attr.aria-label]="'View feedback for ' + entry.roundName + ' with ' + application.candidateName"
+                                        (click)="openInterviewFeedbackModal(application, interview)"
+                                      >
+                                        <div class="interview-timeline-title-row">
+                                          <strong class="interview-round-name">{{ entry.roundName }}</strong>
+                                          <span [class]="interviewStatusChipClass(entry.status)">{{ entry.status }}</span>
+                                        </div>
+                                        <small class="interview-timeline-meta">
+                                          {{ entry.startsAt ? formatInterviewSchedule(entry.startsAt) : 'Waiting to be scheduled' }}
+                                        </small>
+                                      </button>
+                                      @if (interviewFeedbackActionLabel(interview); as feedbackActionLabel) {
+                                        <a
+                                          class="table-link-button inline-feedback-link timeline-feedback-link"
+                                          routerLink="/app/interview-feedback"
+                                          [queryParams]="{ interviewId: interview.interviewId, returnUrl: currentReturnUrl() }"
+                                        >
+                                          {{ feedbackActionLabel }}
+                                        </a>
                                       }
-                                    </div>
+                                    } @else {
+                                      <div class="interview-timeline-content">
+                                        <div class="interview-timeline-title-row">
+                                          <strong class="interview-round-name">{{ entry.roundName }}</strong>
+                                          <span [class]="interviewStatusChipClass(entry.status)">{{ entry.status }}</span>
+                                        </div>
+                                        <small class="interview-timeline-meta">
+                                          {{ entry.startsAt ? formatInterviewSchedule(entry.startsAt) : 'Waiting to be scheduled' }}
+                                        </small>
+                                      </div>
+                                    }
                                   </li>
                                 }
                               </ol>
@@ -1888,6 +1913,77 @@ type InterviewTimelineEntry = {
         }
       }
 
+      @if (interviewFeedbackModal(); as feedbackDetail) {
+        <div class="sourcing-modal-backdrop" role="presentation">
+          <section class="sourcing-modal-panel compact-modal interview-feedback-modal" role="dialog" aria-modal="true" aria-labelledby="interviewFeedbackTitle">
+            <header class="panel-header">
+              <div>
+                <p class="eyebrow">Interview feedback</p>
+                <h2 id="interviewFeedbackTitle">{{ feedbackDetail.interview.roundName }}</h2>
+                <p class="muted">{{ feedbackDetail.application.candidateName }} - {{ feedbackDetail.interview.interviewerName }}</p>
+              </div>
+              <button class="icon-button" type="button" aria-label="Close" (click)="closeInterviewFeedbackModal()">
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+              </button>
+            </header>
+
+            <section class="interview-feedback-summary" aria-label="Interview feedback summary">
+              <div>
+                <small>Status</small>
+                <strong>{{ feedbackDetail.interview.status }}</strong>
+              </div>
+              <div>
+                <small>Scheduled</small>
+                <strong>{{ formatInterviewSchedule(feedbackDetail.interview.startsAt) }}</strong>
+              </div>
+              <div>
+                <small>Submitted</small>
+                <strong>{{ feedbackDetail.interview.submittedAt ? formatInterviewSchedule(feedbackDetail.interview.submittedAt) : 'Not submitted' }}</strong>
+              </div>
+            </section>
+
+            <section class="interview-feedback-score-grid" aria-label="Interview scores">
+              @for (score of interviewScoreItems(feedbackDetail.interview); track score.label) {
+                <div class="interview-feedback-score" [class.empty-score]="score.value === null">
+                  <span>{{ score.label }}</span>
+                  <strong>{{ score.value === null ? 'Not scored' : score.value + '/5' }}</strong>
+                </div>
+              }
+              @if (interviewAverageScore(feedbackDetail.interview); as averageScore) {
+                <div class="interview-feedback-score average-score">
+                  <span>Average</span>
+                  <strong>{{ averageScore }}/5</strong>
+                </div>
+              } @else {
+                <div class="interview-feedback-score average-score empty-score">
+                  <span>Average</span>
+                  <strong>Not scored</strong>
+                </div>
+              }
+            </section>
+
+            <section class="interview-feedback-notes" aria-label="Interviewer feedback notes">
+              <div class="interview-feedback-recommendation">
+                <small>Recommendation</small>
+                <strong>{{ feedbackDetail.interview.recommendation || 'Not recorded' }}</strong>
+              </div>
+              <div>
+                <small>Feedback notes</small>
+                @if (interviewFeedbackText(feedbackDetail.interview); as feedbackText) {
+                  <p>{{ feedbackText }}</p>
+                } @else {
+                  <p>No feedback notes have been submitted for this interview.</p>
+                }
+              </div>
+            </section>
+
+            <div class="modal-actions">
+              <button class="btn primary" type="button" (click)="closeInterviewFeedbackModal()">Close</button>
+            </div>
+          </section>
+        </div>
+      }
+
       @if (scheduleModalOpen()) {
         @if (selectedApplication(); as application) {
           <div class="sourcing-modal-backdrop" role="presentation">
@@ -2206,6 +2302,104 @@ type InterviewTimelineEntry = {
         width: min(720px, calc(100vw - 36px));
       }
 
+      .interview-timeline-detail-trigger {
+        background: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        padding: 0;
+        text-align: left;
+        width: 100%;
+      }
+
+      .interview-timeline-detail-trigger:hover .interview-round-name,
+      .interview-timeline-detail-trigger:focus-visible .interview-round-name {
+        color: #0b66c3;
+        text-decoration: underline;
+      }
+
+      .interview-timeline-detail-trigger:focus-visible {
+        border-radius: 6px;
+        outline: 2px solid #0b66c3;
+        outline-offset: 3px;
+      }
+
+      .timeline-feedback-link {
+        margin-left: 20px;
+        margin-top: 4px;
+      }
+
+      .interview-feedback-modal {
+        gap: 18px;
+      }
+
+      .interview-feedback-summary,
+      .interview-feedback-score-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .interview-feedback-summary > div,
+      .interview-feedback-score,
+      .interview-feedback-notes {
+        background: #f8fafc;
+        border: 1px solid #dbe3ef;
+        border-radius: 8px;
+        min-width: 0;
+        padding: 12px;
+      }
+
+      .interview-feedback-summary small,
+      .interview-feedback-score span,
+      .interview-feedback-notes small {
+        color: #64748b;
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+        margin-bottom: 5px;
+        overflow-wrap: anywhere;
+        text-transform: uppercase;
+      }
+
+      .interview-feedback-summary strong,
+      .interview-feedback-score strong,
+      .interview-feedback-recommendation strong {
+        color: #0f172a;
+        overflow-wrap: anywhere;
+      }
+
+      .interview-feedback-score-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .interview-feedback-score strong {
+        font-size: 22px;
+      }
+
+      .interview-feedback-score.empty-score strong {
+        color: #64748b;
+        font-size: 15px;
+      }
+
+      .average-score {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+      }
+
+      .interview-feedback-notes {
+        display: grid;
+        gap: 14px;
+      }
+
+      .interview-feedback-notes p {
+        color: #334155;
+        line-height: 1.55;
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+
       .sourcing-modal-panel .modal-form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         max-width: 100%;
@@ -2510,6 +2704,11 @@ type InterviewTimelineEntry = {
           grid-template-columns: 1fr;
         }
 
+        .interview-feedback-summary,
+        .interview-feedback-score-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
       }
 
     `,
@@ -2550,6 +2749,7 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   readonly selectedApplication = signal<RecruiterApplication | null>(null);
   readonly invitationLinkModalApplication = signal<RecruiterApplication | null>(null);
   readonly invitationLinkCopyMessage = signal('');
+  readonly interviewFeedbackModal = signal<InterviewFeedbackModalState | null>(null);
   readonly scheduleModalOpen = signal(false);
   readonly scheduleSaving = signal(false);
   readonly scheduleError = signal('');
@@ -3059,6 +3259,45 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   closeInvitationLinkModal(): void {
     this.invitationLinkModalApplication.set(null);
     this.invitationLinkCopyMessage.set('');
+  }
+
+  openInterviewFeedbackModal(application: RecruiterApplication, interview: RecruiterApplicationInterview): void {
+    this.clearStatus();
+    this.interviewFeedbackModal.set({ application, interview });
+  }
+
+  closeInterviewFeedbackModal(): void {
+    this.interviewFeedbackModal.set(null);
+  }
+
+  interviewScoreItems(interview: RecruiterApplicationInterview): InterviewScoreItem[] {
+    return [
+      { label: 'Technical', value: this.normalizedInterviewScore(interview.technicalScore) },
+      { label: 'Communication', value: this.normalizedInterviewScore(interview.communicationScore) },
+      { label: 'Culture', value: this.normalizedInterviewScore(interview.cultureScore) },
+    ];
+  }
+
+  interviewAverageScore(interview: RecruiterApplicationInterview): string | null {
+    const scores = this.interviewScoreItems(interview)
+      .map((score) => score.value)
+      .filter((score): score is number => score !== null);
+
+    if (scores.length === 0) {
+      return null;
+    }
+
+    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    return Number.isInteger(average) ? average.toFixed(0) : average.toFixed(1);
+  }
+
+  interviewFeedbackText(interview: RecruiterApplicationInterview): string | null {
+    const feedback = interview.feedbackText?.trim();
+    return feedback && feedback.length > 0 ? feedback : null;
+  }
+
+  private normalizedInterviewScore(score: number | null | undefined): number | null {
+    return typeof score === 'number' && Number.isFinite(score) ? score : null;
   }
 
   openInvitationLink(inviteLink: string): void {

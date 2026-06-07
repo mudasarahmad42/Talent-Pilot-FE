@@ -743,6 +743,11 @@ export interface RecruiterApplicationInterview {
   meetingLink?: string | null;
   locationText?: string | null;
   recommendation?: string | null;
+  technicalScore?: number | null;
+  communicationScore?: number | null;
+  cultureScore?: number | null;
+  feedbackText?: string | null;
+  submittedAt?: string | null;
 }
 
 export interface ManualCandidateSearchItem {
