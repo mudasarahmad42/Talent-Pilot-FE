@@ -1,61 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
   <title id="title">Talent Pilot AI agent improvement loop</title>
-  <desc id="desc">A controlled loop where an agent run is reviewed by a human, feedback and outcomes are evaluated, a proposal is approved, and a new version is released.</desc>
+  <desc id="desc">A governed feedback loop where an AI agent run is reviewed by a human, evaluated for repeated issues, approved by a human owner, and released as a new version.</desc>
   <defs>
-    <filter id="shadow" x="-10%" y="-20%" width="120%" height="140%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.14"/>
+    <filter id="softShadow" x="-15%" y="-20%" width="130%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#0f172a" flood-opacity="0.14"/>
     </filter>
     <marker id="arrow" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
-      <path d="M2 2 L12 7 L2 12 Z" fill="#64748b"/>
+      <path d="M2 2 L12 7 L2 12 Z" fill="#596579"/>
     </marker>
+    <style>
+      .title { font: 800 38px "Inter", "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 500 18px "Inter", "Segoe UI", Arial, sans-serif; fill: #64748b; }
+      .step-label { font: 800 13px "Inter", "Segoe UI", Arial, sans-serif; fill: #64748b; letter-spacing: .08em; }
+      .card-title { font: 800 22px "Inter", "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .card-text { font: 500 15px "Inter", "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .rule-title { font: 800 18px "Inter", "Segoe UI", Arial, sans-serif; fill: #111827; }
+      .rule-text { font: 500 16px "Inter", "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .pill-text { font: 800 13px "Inter", "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+    </style>
   </defs>
-  <rect width="1280" height="560" rx="28" fill="#f8fafc"/>
-  <rect x="36" y="36" width="1208" height="488" rx="24" fill="#ffffff" stroke="#dbe3ef"/>
-  <text x="82" y="96" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="800" fill="#101828">AI agents improve through a governed feedback loop</text>
-  <text x="82" y="132" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" fill="#667085">AI can find patterns and suggest upgrades, but humans approve changes before production agents use them.</text>
 
-  <path d="M244 258 H386" stroke="#64748b" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
-  <path d="M548 258 H690" stroke="#64748b" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
-  <path d="M852 258 H994" stroke="#64748b" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
-  <path d="M1080 334 C1080 448 198 448 198 348" stroke="#64748b" stroke-width="4" stroke-dasharray="12 12" fill="none" marker-end="url(#arrow)"/>
+  <rect width="1280" height="640" rx="32" fill="#f8fafc"/>
+  <rect x="26" y="26" width="1228" height="588" rx="28" fill="#ffffff" stroke="#d9e2ef"/>
 
-  <g filter="url(#shadow)">
-    <rect x="82" y="176" width="176" height="164" rx="18" fill="#eef6ff" stroke="#bfdbfe"/>
-    <circle cx="118" cy="214" r="18" fill="#2563eb"/>
-    <text x="148" y="220" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#1e3a8a">Agent run</text>
-    <text x="108" y="262" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">Draft, rank, parse,</text>
-    <text x="108" y="286" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">summarize, or explain</text>
-    <text x="108" y="310" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">inside guardrails.</text>
+  <text class="step-label" x="70" y="88">GOVERNED IMPROVEMENT LOOP</text>
+  <text class="title" x="70" y="132">AI agents improve when feedback becomes controlled changes</text>
+  <text class="subtitle" x="70" y="166">The evaluator can suggest improvements, but production behavior changes only after human approval.</text>
+
+  <path d="M312 318 H393" stroke="#596579" stroke-width="5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M560 318 H641" stroke="#596579" stroke-width="5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M808 318 H889" stroke="#596579" stroke-width="5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M1044 406 C900 542 380 542 218 428" stroke="#596579" stroke-width="4" stroke-dasharray="12 12" fill="none" marker-end="url(#arrow)"/>
+
+  <g filter="url(#softShadow)">
+    <rect x="70" y="226" width="242" height="184" rx="22" fill="#eff6ff" stroke="#bfdbfe" stroke-width="2"/>
+    <circle cx="105" cy="267" r="17" fill="#2563eb"/>
+    <text class="pill-text" x="100" y="272">1</text>
+    <text class="card-title" x="134" y="273">Agent run</text>
+    <text class="card-text" x="96" y="316">Drafts, ranks, parses,</text>
+    <text class="card-text" x="96" y="340">summarizes, or explains</text>
+    <text class="card-text" x="96" y="364">inside fixed guardrails.</text>
   </g>
 
-  <g filter="url(#shadow)">
-    <rect x="386" y="176" width="176" height="164" rx="18" fill="#f0fdf4" stroke="#bbf7d0"/>
-    <circle cx="422" cy="214" r="18" fill="#16a34a"/>
-    <text x="452" y="220" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#166534">Human review</text>
-    <text x="412" y="262" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">User edits, accepts,</text>
-    <text x="412" y="286" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">rejects, rates, or</text>
-    <text x="412" y="310" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">chooses another action.</text>
+  <g filter="url(#softShadow)">
+    <rect x="394" y="226" width="166" height="184" rx="22" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="2"/>
+    <circle cx="429" cy="267" r="17" fill="#16a34a"/>
+    <text class="pill-text" x="424" y="272">2</text>
+    <text class="card-title" x="458" y="273">Human</text>
+    <text class="card-title" x="458" y="300">review</text>
+    <text class="card-text" x="420" y="340">User edits,</text>
+    <text class="card-text" x="420" y="364">accepts, rejects,</text>
+    <text class="card-text" x="420" y="388">or rates output.</text>
   </g>
 
-  <g filter="url(#shadow)">
-    <rect x="690" y="176" width="176" height="164" rx="18" fill="#fff7ed" stroke="#fed7aa"/>
-    <circle cx="726" cy="214" r="18" fill="#f97316"/>
-    <text x="756" y="220" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#9a3412">Evaluator</text>
-    <text x="716" y="262" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">Finds repeated issues</text>
-    <text x="716" y="286" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">across prompts, data,</text>
-    <text x="716" y="310" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">retrieval, and scoring.</text>
+  <g filter="url(#softShadow)">
+    <rect x="642" y="226" width="166" height="184" rx="22" fill="#fff7ed" stroke="#fed7aa" stroke-width="2"/>
+    <circle cx="677" cy="267" r="17" fill="#f97316"/>
+    <text class="pill-text" x="672" y="272">3</text>
+    <text class="card-title" x="706" y="273">Evaluator</text>
+    <text class="card-text" x="668" y="316">Finds repeated</text>
+    <text class="card-text" x="668" y="340">issues in prompts,</text>
+    <text class="card-text" x="668" y="364">data, retrieval,</text>
+    <text class="card-text" x="668" y="388">and scoring.</text>
   </g>
 
-  <g filter="url(#shadow)">
-    <rect x="994" y="176" width="204" height="164" rx="18" fill="#f5f3ff" stroke="#ddd6fe"/>
-    <circle cx="1030" cy="214" r="18" fill="#7c3aed"/>
-    <text x="1060" y="220" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#4c1d95">Approved version</text>
-    <text x="1020" y="262" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">Prompt, rubric, rule,</text>
-    <text x="1020" y="286" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">retrieval, or data fix</text>
-    <text x="1020" y="310" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#334155">released intentionally.</text>
+  <g filter="url(#softShadow)">
+    <rect x="890" y="226" width="270" height="184" rx="22" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="2"/>
+    <circle cx="925" cy="267" r="17" fill="#7c3aed"/>
+    <text class="pill-text" x="920" y="272">4</text>
+    <text class="card-title" x="954" y="273">Approved version</text>
+    <text class="card-text" x="916" y="316">A prompt, rubric, rule,</text>
+    <text class="card-text" x="916" y="340">retrieval setting, or data</text>
+    <text class="card-text" x="916" y="364">fix is released as a</text>
+    <text class="card-text" x="916" y="388">tracked new version.</text>
   </g>
 
-  <rect x="82" y="404" width="1116" height="58" rx="16" fill="#f1f5f9" stroke="#dbe3ef"/>
-  <text x="110" y="440" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" font-weight="700" fill="#101828">Rule:</text>
-  <text x="160" y="440" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" fill="#475467">AI suggests improvements. Humans approve. Backend guardrails still enforce permissions, review, audit, and workflow boundaries.</text>
+  <rect x="70" y="470" width="1090" height="88" rx="20" fill="#f1f5f9" stroke="#d9e2ef"/>
+  <circle cx="106" cy="514" r="18" fill="#0f766e"/>
+  <path d="M98 514 L104 520 L116 506" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text class="rule-title" x="138" y="508">Control rule</text>
+  <text class="rule-text" x="138" y="536">AI suggests improvements. Humans approve them. Backend guardrails still enforce permissions, review, audit, and workflow boundaries.</text>
 </svg>
