@@ -205,6 +205,25 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     }))).toBe('Web');
   });
 
+  it('formats partial online headhunting provider status for recruiters', () => {
+    const sourcing = buildSourcing('Published');
+    component.sourcing.set({
+      ...sourcing,
+      onlineHeadhunting: {
+        run: {
+          ...buildOnlineRun(),
+          leadsReturned: 20,
+          searchStatus: 'Partial:Web:Unavailable:TavilyMissingApiKey;GitHub:Succeeded',
+        },
+        leads: [],
+      },
+    });
+
+    expect(component.onlineAgentStatusLabel()).toBe(
+      'Partial results - Web search not configured; GitHub succeeded: 20 leads returned',
+    );
+  });
+
   it('explains online lead actions through button tooltips', () => {
     const lead = buildOnlineLead();
 

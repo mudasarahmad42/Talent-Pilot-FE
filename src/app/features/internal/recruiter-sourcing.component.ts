@@ -4182,7 +4182,8 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
       return 'Agent ready';
     }
 
-    return `${run.searchStatus || 'Completed'}: ${run.leadsReturned} lead${run.leadsReturned === 1 ? '' : 's'} returned`;
+    const status = this.formatOnlineSearchStatus(run.searchStatus);
+    return `${status}: ${run.leadsReturned} lead${run.leadsReturned === 1 ? '' : 's'} returned`;
   }
 
   onlineRunButtonLabel(): string {
@@ -4265,6 +4266,73 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
 
   onlineSourceTooltipId(source: string): string {
     return `online-source-help-${source.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  }
+
+  private formatOnlineSearchStatus(status: string | null | undefined): string {
+    const raw = status?.trim();
+    if (!raw) {
+      return 'Completed';
+    }
+
+    const partialMatch = raw.match(/^Partial:(.+)$/i);
+    const statusBody = partialMatch?.[1] ?? raw;
+    const sourceStatuses = statusBody
+      .split(';')
+      .map((value) => this.formatOnlineSourceStatus(value))
+      .filter((value): value is string => !!value);
+
+    if (sourceStatuses.length > 0 && (partialMatch || statusBody.includes(';'))) {
+      return `${partialMatch ? 'Partial results' : 'Source status'} - ${sourceStatuses.join('; ')}`;
+    }
+
+    return this.formatOnlineStatusCode(statusBody);
+  }
+
+  private formatOnlineSourceStatus(value: string): string | null {
+    const tokens = value
+      .split(':')
+      .map((token) => token.trim())
+      .filter(Boolean);
+    if (tokens.length === 0) {
+      return null;
+    }
+
+    const source = tokens.length > 1 ? tokens[0] : '';
+    const statusCode = tokens.length > 1 ? tokens.slice(1).join(':') : tokens[0];
+    const sourceLabel = this.onlineStatusSourceLabel(source);
+    const statusLabel = this.formatOnlineStatusCode(statusCode);
+    return sourceLabel ? `${sourceLabel} ${statusLabel.toLowerCase()}` : statusLabel;
+  }
+
+  private onlineStatusSourceLabel(source: string): string {
+    const labels: Record<string, string> = {
+      GitHub: 'GitHub',
+      LinkedIn: 'LinkedIn',
+      Portfolio: 'Portfolio',
+      PublicSearch: 'Web search',
+      Web: 'Web search',
+    };
+
+    return labels[source] ?? source;
+  }
+
+  private formatOnlineStatusCode(statusCode: string): string {
+    const normalized = statusCode.trim().toLowerCase();
+    const labels: Record<string, string> = {
+      succeeded: 'Succeeded',
+      completed: 'Completed',
+      'unavailable:tavilymissingapikey': 'Not configured',
+      'unavailable:missingapikey': 'Not configured',
+      'unavailable:tavilyapiunauthorized': 'API key rejected',
+      'unavailable:tavilypermissiondenied': 'Permission denied',
+      'unavailable:tavilyinvalidrequest': 'Request invalid',
+      'unavailable:tavilyaccountlimit': 'Account limit reached',
+      tavilyproviderquotaexceeded: 'Provider quota reached',
+      googleproviderquotaexceeded: 'Provider quota reached',
+      quotaexceeded: 'Daily limit reached',
+    };
+
+    return labels[normalized] ?? statusCode.trim();
   }
 
   setOnlineLeadFilter(value: string): void {
