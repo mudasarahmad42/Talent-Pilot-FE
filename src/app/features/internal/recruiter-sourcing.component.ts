@@ -1965,7 +1965,9 @@ type InterviewScoreItem = {
             <section class="interview-feedback-notes" aria-label="Interviewer feedback notes">
               <div class="interview-feedback-recommendation">
                 <small>Recommendation</small>
-                <strong>{{ feedbackDetail.interview.recommendation || 'Not recorded' }}</strong>
+                <strong [class]="interviewRecommendationClass(feedbackDetail.interview.recommendation)">
+                  {{ feedbackDetail.interview.recommendation || 'Not recorded' }}
+                </strong>
               </div>
               <div>
                 <small>Feedback notes</small>
@@ -2368,6 +2370,41 @@ type InterviewScoreItem = {
       .interview-feedback-recommendation strong {
         color: #0f172a;
         overflow-wrap: anywhere;
+      }
+
+      .interview-recommendation-pill {
+        align-items: center;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 14px;
+        line-height: 1.2;
+        padding: 5px 10px;
+        width: fit-content;
+      }
+
+      .interview-feedback-recommendation .interview-recommendation-pill.positive {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #166534;
+      }
+
+      .interview-feedback-recommendation .interview-recommendation-pill.negative {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #991b1b;
+      }
+
+      .interview-feedback-recommendation .interview-recommendation-pill.caution {
+        background: #fef3c7;
+        border-color: #fcd34d;
+        color: #92400e;
+      }
+
+      .interview-feedback-recommendation .interview-recommendation-pill.neutral {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #475569;
       }
 
       .interview-feedback-score-grid {
@@ -3294,6 +3331,46 @@ export class RecruiterSourcingComponent implements OnInit, AfterViewChecked, OnD
   interviewFeedbackText(interview: RecruiterApplicationInterview): string | null {
     const feedback = interview.feedbackText?.trim();
     return feedback && feedback.length > 0 ? feedback : null;
+  }
+
+  interviewRecommendationClass(recommendation: string | null | undefined): string {
+    const normalized = recommendation?.trim().toLowerCase();
+    if (!normalized) {
+      return 'interview-recommendation-pill neutral';
+    }
+
+    if (
+      normalized.includes('reject') ||
+      normalized.includes('decline') ||
+      normalized.includes('fail') ||
+      normalized.includes('not recommend') ||
+      normalized.includes('no hire')
+    ) {
+      return 'interview-recommendation-pill negative';
+    }
+
+    if (
+      normalized.includes('hold') ||
+      normalized.includes('maybe') ||
+      normalized.includes('conditional') ||
+      normalized.includes('review')
+    ) {
+      return 'interview-recommendation-pill caution';
+    }
+
+    if (
+      normalized.includes('proceed') ||
+      normalized.includes('hire') ||
+      normalized.includes('pass') ||
+      normalized.includes('yes') ||
+      normalized.includes('recommend') ||
+      normalized.includes('shortlist') ||
+      normalized.includes('advance')
+    ) {
+      return 'interview-recommendation-pill positive';
+    }
+
+    return 'interview-recommendation-pill neutral';
   }
 
   private normalizedInterviewScore(score: number | null | undefined): number | null {

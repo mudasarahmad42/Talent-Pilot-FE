@@ -741,6 +741,58 @@ describe('CandidatePageComponent', () => {
     expect(card.textContent).not.toContain('Prepare Now');
   });
 
+  it('marks rejected final outcomes in red on the application status journey', () => {
+    routeData$.next({ pageId: 'application-status' });
+    routeParamMap$.next(convertToParamMap({ id: 'app-1' }));
+    const fixture = TestBed.createComponent(CandidatePageComponent);
+    const component = fixture.componentInstance;
+    component.loading.set(false);
+    component.myApplications.set([
+      {
+        ...appliedReactApplication,
+        status: 'Rejected',
+        finalDecisionAt: '2026-06-07T13:14:53Z',
+        finalDecisionReason: 'Rejected during recruiter screening.',
+        timeline: [
+          {
+            kind: 'FinalOutcome',
+            title: 'Final outcome: Rejected',
+            description: 'Rejected during recruiter screening.',
+            occurredAt: '2026-06-07T13:14:53Z',
+            status: 'Rejected',
+          },
+        ],
+      },
+    ]);
+
+    fixture.detectChanges();
+
+    const headerPill = fixture.nativeElement.querySelector('.status-title-row .candidate-status-pill') as HTMLElement;
+    const progressMessage = fixture.nativeElement.querySelector('.candidate-progress-message') as HTMLElement;
+    const progressIcon = progressMessage.querySelector('.material-symbols-outlined') as HTMLElement;
+    const event = fixture.nativeElement.querySelector('.journey-event') as HTMLElement;
+    const eventIcon = event.querySelector('.material-symbols-outlined') as HTMLElement;
+    const eventPill = event.querySelector('.candidate-status-pill') as HTMLElement;
+    const decisionStep = Array.from(fixture.nativeElement.querySelectorAll('.journey-steps li') as NodeListOf<HTMLElement>)
+      .find((step) => step.textContent?.includes('Decision'));
+    const decisionIcon = decisionStep?.querySelector('.material-symbols-outlined') as HTMLElement | null;
+
+    expect(headerPill.textContent).toContain('REJECTED');
+    expect(headerPill.classList).toContain('rejected');
+    expect(progressMessage.classList).toContain('rejected');
+    expect(progressIcon.textContent?.trim()).toBe('cancel');
+    expect(progressMessage.textContent).toContain('Unfortunately, we have decided not to continue with your application.');
+    expect(progressMessage.textContent).toContain('Rejected during recruiter screening.');
+    expect(progressMessage.textContent).not.toContain('Application update');
+    expect(progressMessage.textContent).not.toContain('celebration');
+    expect(event.textContent).toContain('Final outcome: Rejected');
+    expect(event.classList).toContain('rejected');
+    expect(eventIcon.textContent?.trim()).toBe('close');
+    expect(eventPill.classList).toContain('rejected');
+    expect(decisionStep?.classList).toContain('rejected');
+    expect(decisionIcon?.textContent?.trim()).toBe('close');
+  });
+
   it('marks the decision journey step complete for hired applications', () => {
     routeData$.next({ pageId: 'application-status' });
     routeParamMap$.next(convertToParamMap({ id: 'app-1' }));

@@ -647,6 +647,17 @@ describe('RecruiterSourcingComponent skill picker behavior', () => {
     expect(modal.textContent).toContain('4.3/5');
     expect(modal.textContent).toContain('Proceed');
     expect(modal.textContent).toContain('Strong Java, Spring Boot, API design, and production debugging evidence.');
+
+    const recommendation = modal.querySelector('.interview-recommendation-pill') as HTMLElement;
+    expect(recommendation.textContent).toContain('Proceed');
+    expect(recommendation.classList).toContain('positive');
+  });
+
+  it('color codes interview recommendations by decision', () => {
+    expect(component.interviewRecommendationClass('Proceed')).toContain('positive');
+    expect(component.interviewRecommendationClass('Reject')).toContain('negative');
+    expect(component.interviewRecommendationClass('Hold')).toContain('caution');
+    expect(component.interviewRecommendationClass(null)).toContain('neutral');
   });
 
   it('shows feedback action only to the assigned interviewer for that scheduled round', () => {
