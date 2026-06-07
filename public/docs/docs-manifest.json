@@ -202,6 +202,20 @@
       ]
     },
     {
+      "id": "external-integrations",
+      "label": "External Integrations",
+      "description": "Email delivery, realtime notifications, Tavily web search, Google Calendar meetings, and integration guardrails.",
+      "basePath": "external-integrations",
+      "pages": [
+        {
+          "id": "overview",
+          "label": "External Integrations",
+          "file": "overview.md",
+          "summary": "How Talent Pilot connects with email, realtime updates, Tavily, Google Calendar, and other external services."
+        }
+      ]
+    },
+    {
       "id": "tech-stack",
       "label": "Tech Stack",
       "description": "Concise overview of the frontend, backend, database, and runtime processes.",
