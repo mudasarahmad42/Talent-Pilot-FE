@@ -23,6 +23,46 @@ Talent Pilot does not have a full AI-agent feedback loop yet. This is the planne
 - Improve prompts, retrieval rules, scoring weights, and evidence display based on those patterns.
 - Test the changes with saved examples before releasing them.
 
+## Want To Go Deeper? A Technical Journey Into Improving AI Agents
+
+Better AI agents do not come from prompts alone. In Talent Pilot, an agent improves when the whole system around it improves: prompt instructions, structured inputs, retrieval evidence, deterministic scoring, validation, human feedback, and audit data.
+
+![AI agent improvement loop](/docs/assets/ai-agent-improvement-loop.svg)
+
+### Agent-Specific Improvement Levers
+
+| Agent | What Makes It Better |
+| --- | --- |
+| Job Description Drafter | Better prompt, better structured intake fields, better examples, better tone/style rules. |
+| Bench Matching | Better skills data, better employee profiles, better embeddings, better ranking rubric, better evidence summaries. |
+| Talent Rediscovery | Better candidate history, better interview feedback, better CV/profile parsing, better vector search. |
+| Online Headhunting | Better source filters, better query generation, better duplicate detection, better scoring rules. |
+| RAG Assistant | Better indexed knowledge, better chunking, better retrieval permissions, better citation discipline. |
+
+### How Self-Improvement Should Work
+
+The evaluator is a separate AI-assisted process that studies past runs. It should find patterns and suggest improvements, not silently rewrite production behavior.
+
+1. A production agent creates an advisory output.
+2. A human reviews, edits, accepts, rejects, or rates that output.
+3. Talent Pilot stores the AI run, final human-approved output, feedback, and later workflow outcome.
+4. An evaluator looks for repeated problems across runs.
+5. The evaluator proposes a prompt, rubric, retrieval, scoring, or data-quality improvement.
+6. A human approves the change.
+7. The next approved prompt or rule version is used by future agent runs.
+
+Good evaluator suggestions look like this:
+
+| Pattern Found | Suggested Improvement |
+| --- | --- |
+| Job descriptions keep turning Angular roles into generic frontend roles. | Add a prompt rule that preserves exact framework, library, cloud, and tool names from structured input. |
+| Bench Matching overvalues broad department labels. | Improve skills data and ranking rubric so exact and adjacent skills score differently. |
+| Rediscovery misses strong candidates with old CVs but useful interview feedback. | Feed previous interview outcomes and profile evidence more clearly into the rediscovery context. |
+| Online Headhunting returns too many duplicate or weak leads. | Improve source filters, duplicate detection, and scoring rules before showing results. |
+| RAG answers cite too broadly. | Improve chunking and citation discipline so each answer points to narrower evidence. |
+
+Do not let the evaluator agent activate changes by itself. Self-improvement should mean AI-assisted governance and versioning, not autonomous code or workflow mutation.
+
 ## Future Improvement Plan
 
 | Area | Improvement |

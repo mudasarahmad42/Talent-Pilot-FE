@@ -4,7 +4,7 @@ Talent Pilot has **11 implemented AI-assisted agents or workflows** in the MVP: 
 
 AI helps users draft, parse, rank, summarize, and explain. AI does **not** approve requests, hire candidates, reject candidates, send offers, or move workflow stages by itself.
 
-For guardrails and the improvement plan, see [Guardrails and Feedback](/docs/ai-agents/guardrails-feedback).
+For guardrails and the improvement plan, see [Guardrails and Feedback](/docs/ai-agents/guardrails-feedback). For the deeper technical version, start with [Want To Go Deeper? A Technical Journey Into Improving AI Agents](/docs/ai-agents/guardrails-feedback#want-to-go-deeper-a-technical-journey-into-improving-ai-agents).
 
 ![Talent Pilot AI agent flow](/docs/assets/ai-agent-flow.png)
 
