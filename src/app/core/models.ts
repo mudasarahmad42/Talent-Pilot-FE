@@ -879,6 +879,8 @@ export interface PortalInvitationContext {
   jobPostId: string;
   jobTitle: string;
   companyName: string;
+  candidateDisplayName?: string | null;
+  candidateEmail?: string | null;
   status: string;
   expiresAtUtc: string;
   usedAtUtc?: string | null;

@@ -1,7 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { TalentPilotStoreService } from '../../core/talent-pilot-store.service';
 
 @Component({
   selector: 'app-candidate-signup',
@@ -19,13 +20,19 @@ import { AuthService } from '../../core/auth.service';
           <form class="candidate-signup-form" (ngSubmit)="submit()">
             <label class="stitch-field">
               <span>Full name</span>
-              <input name="displayName" autocomplete="name" required [(ngModel)]="displayName" />
+              <input name="displayName" autocomplete="name" required [readonly]="namePrefilled()" [(ngModel)]="displayName" />
             </label>
 
             <label class="stitch-field">
               <span>Email</span>
-              <input name="email" type="email" autocomplete="email" required [(ngModel)]="email" />
+              <input name="email" type="email" autocomplete="email" required [readonly]="emailPrefilled()" [(ngModel)]="email" />
             </label>
+
+            @if (invitePrefilled()) {
+              <p class="candidate-signup-invite-note">
+                This invitation is linked to your email. Add a password to activate your candidate account.
+              </p>
+            }
 
             <label class="stitch-field">
               <span>Password</span>
@@ -89,6 +96,19 @@ import { AuthService } from '../../core/auth.service';
         gap: 16px;
       }
 
+      .candidate-signup-form input[readonly] {
+        background: #f8fafc;
+        color: #334155;
+        cursor: default;
+      }
+
+      .candidate-signup-invite-note {
+        margin: -4px 0 0;
+        color: #0f766e;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
       .candidate-signup-secondary a {
         font-weight: 800;
         color: #0a66c2;
@@ -96,20 +116,28 @@ import { AuthService } from '../../core/auth.service';
     `,
   ],
 })
-export class CandidateSignupComponent {
+export class CandidateSignupComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
+  private readonly store = inject(TalentPilotStoreService);
 
   displayName = '';
   email = '';
   password = '';
   confirmPassword = '';
   readonly localError = signal('');
+  readonly invitePrefilled = signal(false);
+  readonly namePrefilled = signal(false);
+  readonly emailPrefilled = signal(false);
   readonly tenantSlug = computed(() => this.route.snapshot.paramMap.get('tenantSlug') ?? this.route.snapshot.queryParamMap.get('tenantSlug'));
   readonly jobPostId = computed(() => this.route.snapshot.queryParamMap.get('jobPostId'));
   readonly inviteId = computed(() => this.route.snapshot.queryParamMap.get('inviteId'));
   readonly inviteToken = computed(() => this.route.snapshot.queryParamMap.get('token'));
   readonly returnUrl = computed(() => this.route.snapshot.queryParamMap.get('returnUrl'));
+
+  ngOnInit(): void {
+    void this.prefillFromInvitation();
+  }
 
   canSubmit(): boolean {
     return (
@@ -154,5 +182,35 @@ export class CandidateSignupComponent {
   private defaultReturnUrl(): string {
     const slug = this.tenantSlug();
     return slug ? `/candidate/${encodeURIComponent(slug)}/profile` : '/candidate/profile';
+  }
+
+  private async prefillFromInvitation(): Promise<void> {
+    const inviteId = this.inviteId();
+    const token = this.inviteToken();
+    if (!inviteId || !token) {
+      return;
+    }
+
+    try {
+      const invitation = await this.store.loadPortalInvitation(inviteId, token);
+      const displayName = invitation.candidateDisplayName?.trim();
+      const email = invitation.candidateEmail?.trim();
+
+      if (displayName && !this.displayName.trim()) {
+        this.displayName = displayName;
+        this.namePrefilled.set(true);
+      }
+
+      if (email && !this.email.trim()) {
+        this.email = email;
+        this.emailPrefilled.set(true);
+      }
+
+      this.invitePrefilled.set(this.namePrefilled() || this.emailPrefilled());
+    } catch {
+      this.invitePrefilled.set(false);
+      this.namePrefilled.set(false);
+      this.emailPrefilled.set(false);
+    }
   }
 }
