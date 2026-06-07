@@ -1,6 +1,20 @@
 {
-  "defaultModule": "talent-pilot-app",
+  "defaultModule": "eli5",
   "modules": [
+    {
+      "id": "eli5",
+      "label": "ELI5",
+      "description": "A simple start-to-finish guide for non-technical readers.",
+      "basePath": "eli5",
+      "pages": [
+        {
+          "id": "complete-flow",
+          "label": "Complete Flow",
+          "file": "complete-flow.md",
+          "summary": "Explain Talent Pilot in simple words, from the first job request to the final hiring decision."
+        }
+      ]
+    },
     {
       "id": "admin-center",
       "label": "Admin Center",
